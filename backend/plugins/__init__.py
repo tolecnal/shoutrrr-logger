@@ -1,0 +1,1 @@
+"""shoutrrr-logger plugin package."""

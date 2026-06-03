@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "4000:4000"   # Next.js frontend
+      - "9000:9000"   # FastAPI backend / Swagger UI at :9000/api/docs
+    env_file:
+      - .env
+    environment:
+      # Override specific values here if needed; all are also configurable via .env
+      WORKERS: "${WORKERS:-4}"
+      # Used by Next.js rewrites to proxy /api/* → FastAPI (internal container address)
+      BACKEND_URL: "http://localhost:9000"
+      # Inside Docker the DB host is the service name, not localhost.
+      # This overrides whatever DATABASE_URL is set to in .env.
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-shoutrrr}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-shoutrrr_logger}?ssl=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-shoutrrr_logger}"
+      POSTGRES_USER: "${POSTGRES_USER:-shoutrrr}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shoutrrr} -d ${POSTGRES_DB:-shoutrrr_logger}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Postgres is NOT exposed externally by default.
+    # Uncomment the lines below if you need direct DB access:
+    # ports:
+    #   - "5432:5432"
+
+volumes:
+  postgres_data:

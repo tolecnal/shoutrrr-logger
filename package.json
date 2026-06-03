@@ -1,0 +1,17 @@
+{
+  "name": "shoutrrr-logger",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.1",
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "start": "pnpm --filter frontend start",
+    "lint": "pnpm --filter frontend lint"
+  },
+  "dependencies": {
+    "lucide-react": "^0.564.0",
+    "react": "19.2.4",
+    "swr": "^2.4.1"
+  }
+}

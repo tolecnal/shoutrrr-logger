@@ -1,0 +1,22 @@
+/**
+ * Frontend plugin registry.
+ *
+ * Maps each plugin_id to its React config panel component.
+ * This is the ONLY file that needs to be edited when adding a new plugin.
+ *
+ * To add a plugin:
+ *   1. Create frontend/plugins/<id>/config.tsx exporting a component
+ *      that satisfies PluginConfigProps (see plugins/types.ts).
+ *   2. Add one line below: `  <id>: lazy(() => import("./<id>/config").then(m => ({ default: m.<Component> }))),`
+ *
+ * Components are lazy-loaded so unused plugin bundles are never sent to the browser.
+ */
+
+import { lazy, type ComponentType } from "react";
+import type { PluginConfigProps } from "./types";
+
+export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProps>> = {
+  splunk: lazy(() =>
+    import("./splunk/config").then((m) => ({ default: m.SplunkConfigPanel }))
+  ),
+};

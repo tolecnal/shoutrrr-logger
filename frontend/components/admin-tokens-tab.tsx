@@ -1,0 +1,311 @@
+"use client";
+
+import { useState } from "react";
+import useSWR from "swr";
+import { format, isPast } from "date-fns";
+import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
+import { fetchTokens, createToken, deleteToken, updateToken, fetchUsers } from "@/lib/api";
+import type { AccessTokenCreated, AccessTokenOut } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button size="sm" variant="outline" className="h-7 w-7 p-0 shrink-0" onClick={copy}>
+      {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+    </Button>
+  );
+}
+
+function tokenStatus(t: AccessTokenOut) {
+  if (!t.is_active) return { label: "Inactive", variant: "destructive" as const };
+  if (t.expires_at && isPast(new Date(t.expires_at))) return { label: "Expired", variant: "destructive" as const };
+  return { label: "Active", variant: "outline" as const };
+}
+
+export function TokensTab() {
+  const { data: tokens, isLoading, mutate } = useSWR("/admin/tokens", fetchTokens);
+  const { data: users } = useSWR("/admin/users", fetchUsers);
+
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<AccessTokenCreated | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<AccessTokenOut | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    user_id: "",
+    expires_at: "",
+  });
+
+  const handleCreate = async () => {
+    setSaving(true);
+    try {
+      const result = await createToken({
+        name: form.name,
+        user_id: form.user_id,
+        expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+      });
+      setCreated(result);
+      setCreating(false);
+      setShowRaw(false);
+      await mutate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create token.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (t: AccessTokenOut) => {
+    try {
+      await updateToken(t.id, { is_active: !t.is_active });
+      toast.success(t.is_active ? "Token deactivated." : "Token activated.");
+      await mutate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update token.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deleteToken(pendingDelete.id);
+      toast.success("Token deleted.");
+      setPendingDelete(null);
+      await mutate();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete token.");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {tokens?.length ?? 0} token{tokens?.length !== 1 ? "s" : ""}
+        </p>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", user_id: "", expires_at: "" }); }}>
+          <Plus className="h-3.5 w-3.5" />
+          Create Token
+        </Button>
+      </div>
+
+      <div className="rounded-lg border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 border-b border-border">
+            <tr>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Name</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Owner</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Status</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Expires</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Last used</th>
+              <th className="px-4 py-2.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border last:border-0">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3">
+                        <Skeleton className="h-3 w-20" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : tokens?.map((t) => {
+                  const status = tokenStatus(t);
+                  return (
+                    <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 text-xs font-medium text-foreground">{t.name}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{t.owner_username ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={status.variant} className="text-[11px]">{status.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        {t.expires_at ? format(new Date(t.expires_at), "MMM d, yyyy") : <span className="text-muted-foreground/50">Never</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        {t.last_used_at ? format(new Date(t.last_used_at), "MMM d, HH:mm") : <span className="text-muted-foreground/50">Never</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => handleToggle(t)}
+                            title={t.is_active ? "Deactivate" : "Activate"}
+                          >
+                            {t.is_active ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setPendingDelete(t)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Create token dialog */}
+      <Dialog open={creating} onOpenChange={(o) => !o && setCreating(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Create Access Token</DialogTitle>
+            <DialogDescription className="text-xs">
+              The raw token value is shown once after creation. Store it securely.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Token name</Label>
+              <Input
+                className="h-8 text-xs"
+                placeholder="e.g. homelab-alertmanager"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Owner</Label>
+              <Select value={form.user_id} onValueChange={(v) => setForm({ ...form, user_id: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select user…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users?.map((u) => (
+                    <SelectItem key={u.id} value={u.id} className="text-xs">
+                      {u.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Expiration date <span className="text-muted-foreground">(optional)</span></Label>
+              <Input
+                className="h-8 text-xs"
+                type="datetime-local"
+                value={form.expires_at}
+                onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+              />
+              <p className="text-[11px] text-muted-foreground">Leave blank for unlimited.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button size="sm" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleCreate} disabled={saving || !form.name || !form.user_id}>
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reveal token dialog */}
+      <Dialog open={!!created} onOpenChange={(o) => !o && setCreated(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Token Created</DialogTitle>
+            <DialogDescription className="text-xs text-amber-400">
+              Copy this token now. It will not be shown again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Raw token</Label>
+              <div className="flex gap-2 items-center">
+                <div className="flex-1 rounded-md bg-muted border border-border px-3 py-2 font-mono text-xs text-foreground break-all">
+                  {showRaw ? created?.raw_token : "•".repeat(48)}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowRaw((s) => !s)}
+                >
+                  {showRaw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </Button>
+                {created && <CopyButton value={created.raw_token} />}
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Use this as a Bearer token in the <code className="font-mono">Authorization</code> header when sending notifications to <code className="font-mono">/api/shoutrrr</code>.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button size="sm" onClick={() => setCreated(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Delete token?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              The token <strong>{pendingDelete?.name}</strong> will be permanently deleted and any services using it will stop working.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
