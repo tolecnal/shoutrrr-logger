@@ -23,9 +23,9 @@ jobs:
 
       - name: Lint
         run: ruff check backend/
-        
+
       - name: Format check
-        run: ruff format --check backend/
+        run: ruff format --check backend/ --exclude backend/build/
 
   lint-frontend:
     name: Frontend (ESLint + tsc)
@@ -38,8 +38,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Node
         uses: actions/setup-node@v4
