@@ -3,6 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Resolved in the host shell before being passed into the build.
+        # Run:  export GIT_HASH=$(git rev-parse --short HEAD) && docker compose build
+        # Or just use the Makefile target `make build` which sets this automatically.
+        GIT_HASH: ${GIT_HASH:-dev}
+        BUILD_TIME: ${BUILD_TIME:-}
     restart: unless-stopped
     ports:
       - "4000:4000"   # Next.js frontend

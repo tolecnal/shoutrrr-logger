@@ -33,6 +33,13 @@ export interface PluginMeta {
   config: Record<string, unknown>;
 }
 
+export interface VersionInfo {
+  version: string;
+  api_version: string;
+  git_hash: string;
+  build_time: string;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, LayoutDashboard, LogIn, LogOut, Settings, User } from "lucide-react";
+import { Bell, Info, LogIn, LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { PreferencesDialog } from "@/components/preferences-dialog";
 const navItems = [
   { href: "/log", label: "Notification Log", icon: Bell, roles: ["viewer", "admin"] },
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
+  { href: "/about", label: "About", icon: Info, roles: ["viewer", "admin"] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

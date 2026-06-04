@@ -46,10 +46,16 @@ const DEFAULT_RULES: TagRule[] = [
     id: "default-startup",
     name: "Startup",
     color: "teal",
+    // These patterns match the Watchtower startup-only message lines.
+    // Deliberately anchored/specific so they don't fire on update reports
+    // that may also contain scheduling info in the same message blob.
     patterns: [
-      "(?i)watchtower \\d+\\.\\d+",
-      "(?i)next scheduled run",
-      "(?i)using notifications",
+      // "Watchtower 1.17.2 using Docker API v1.54 [hostname]"
+      "(?i)watchtower \\d+\\.\\d+.*using docker api",
+      // "Using notifications: generic+http" — startup-only line
+      "(?i)^using notifications:",
+      // "Next scheduled run: 2026-06-04 04:00:00 UTC in N hours"
+      "(?i)^next scheduled run:",
     ],
     enabled: true,
     exclude: false,
@@ -90,6 +96,9 @@ const DEFAULT_RULES: TagRule[] = [
 
 const STORAGE_KEY = "shoutrrr-logger:tag-rules";
 
+// Index default rules by ID for fast pattern lookups during migration
+const DEFAULT_RULES_BY_ID = new Map(DEFAULT_RULES.map((r) => [r.id, r]));
+
 // Tailwind color map — the badge component reads these
 export const TAG_COLOR_CLASSES: Record<TagColor, { bg: string; text: string; border: string }> = {
   slate:  { bg: "bg-slate-100 dark:bg-slate-800",   text: "text-slate-700 dark:text-slate-300",   border: "border-slate-300 dark:border-slate-600" },
@@ -110,8 +119,19 @@ function loadRules(): TagRule[] {
     if (!raw) return DEFAULT_RULES;
     const parsed = JSON.parse(raw) as TagRule[];
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_RULES;
-    // Backfill `exclude` for rules saved before the field existed
-    return parsed.map((r) => ({ exclude: false, ...r }));
+    return parsed.map((r) => {
+      const def = DEFAULT_RULES_BY_ID.get(r.id);
+      return {
+        // Backfill `exclude` for rules saved before the field existed
+        exclude: false,
+        ...r,
+        // Always use the canonical patterns from DEFAULT_RULES for built-in
+        // rules so that pattern fixes are applied to existing users
+        // automatically. User preferences (enabled, exclude, color, name)
+        // are preserved via the spread above.
+        ...(def ? { patterns: def.patterns } : {}),
+      };
+    });
   } catch {
     return DEFAULT_RULES;
   }

@@ -24,6 +24,7 @@ from auth import (
 )
 from config import settings
 from database import get_db, init_db
+from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import notifications, plugins, shoutrrr, tokens, users
@@ -61,13 +62,44 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Routers
+# Backward-compatibility redirect middleware
+#
+# Requests to the old unversioned /api/<path> are permanently redirected to
+# /api/v1/<path> with a 308 (Permanent Redirect, preserves method + body).
+# This keeps existing shoutrrr webhook URLs working after the versioning change.
+# Excluded paths are those that will never be versioned.
 # ---------------------------------------------------------------------------
-app.include_router(shoutrrr.router, prefix="/api")
-app.include_router(notifications.router, prefix="/api")
-app.include_router(users.router, prefix="/api/admin")
-app.include_router(tokens.router, prefix="/api/admin")
-app.include_router(plugins.router, prefix="/api")
+_UNVERSIONED_PREFIXES = {"/api/docs", "/api/redoc", "/api/openapi.json",
+                         "/api/health", "/api/version", "/api/auth"}
+
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
+from starlette.responses import Response as StarletteResponse  # noqa: E402
+
+class _VersionRedirectMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        path = request.url.path
+        if path.startswith("/api/") and not path.startswith(f"/api/{API_VERSION}/"):
+            # Skip permanently-unversioned paths
+            if not any(path.startswith(p) for p in _UNVERSIONED_PREFIXES):
+                new_path = f"/api/{API_VERSION}" + path[len("/api"):]
+                qs = f"?{request.url.query}" if request.url.query else ""
+                return StarletteResponse(
+                    status_code=308,
+                    headers={"Location": new_path + qs},
+                )
+        return await call_next(request)
+
+app.add_middleware(_VersionRedirectMiddleware)
+
+# ---------------------------------------------------------------------------
+# Routers  (all versioned under /api/v1)
+# ---------------------------------------------------------------------------
+_V1 = f"/api/{API_VERSION}"
+app.include_router(shoutrrr.router,       prefix=_V1)
+app.include_router(notifications.router,  prefix=_V1)
+app.include_router(users.router,          prefix=f"{_V1}/admin")
+app.include_router(tokens.router,         prefix=f"{_V1}/admin")
+app.include_router(plugins.router,        prefix=_V1)
 
 
 # ---------------------------------------------------------------------------
@@ -268,3 +300,16 @@ async def me(user: User = Depends(get_current_user_from_session)) -> UserOut:
 @app.get("/api/health", tags=["health"], summary="Health check")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Version
+# ---------------------------------------------------------------------------
+@app.get("/api/version", tags=["meta"], summary="Application version info")
+async def version_info() -> dict[str, str]:
+    return {
+        "version": APP_VERSION,
+        "api_version": API_VERSION,
+        "git_hash": BUILD_GIT_HASH,
+        "build_time": BUILD_TIME,
+    }

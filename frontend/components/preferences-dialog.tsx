@@ -72,12 +72,13 @@ function RuleRow({
   return (
     <div className="rounded-md border border-border bg-card">
       {/* Row header */}
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex items-center gap-2 p-3 overflow-hidden">
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
         <Switch
           checked={rule.enabled}
           onCheckedChange={(v) => onUpdate({ enabled: v })}
           aria-label={`Enable ${rule.name}`}
+          className="shrink-0"
         />
         <button
           onClick={() => onUpdate({ exclude: !rule.exclude })}
@@ -91,17 +92,11 @@ function RuleRow({
         >
           Exclude
         </button>
-        <Input
-          className="h-7 flex-1 min-w-0 text-sm bg-input"
-          value={rule.name}
-          placeholder="Tag name"
-          onChange={(e) => onUpdate({ name: e.target.value })}
-        />
         <Select
           value={rule.color}
           onValueChange={(v) => onUpdate({ color: v as TagColor })}
         >
-          <SelectTrigger className="h-7 w-28 text-xs bg-input">
+          <SelectTrigger className="h-7 w-24 text-xs bg-input shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -112,19 +107,20 @@ function RuleRow({
             ))}
           </SelectContent>
         </Select>
+        {/* Live badge preview — acts as the visible name; click "N patterns" to edit name */}
         <TagBadgePreview color={rule.color} name={rule.name} />
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 px-2 text-xs text-muted-foreground"
+        {/* Spacer to push patterns + delete to the right */}
+        <span className="flex-1" />
+        <button
+          className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setExpanded((v) => !v)}
         >
           {rule.patterns.length} pattern{rule.patterns.length !== 1 ? "s" : ""}
-        </Button>
+        </button>
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+          className="shrink-0 h-7 w-7 p-0 text-destructive hover:text-destructive"
           onClick={onDelete}
           aria-label="Delete rule"
         >
@@ -135,6 +131,16 @@ function RuleRow({
       {/* Expanded patterns editor */}
       {expanded && (
         <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
+          {/* Name editor */}
+          <div className="flex items-center gap-2 pb-1">
+            <Label className="text-xs text-muted-foreground shrink-0 w-12">Name</Label>
+            <Input
+              className="h-7 flex-1 min-w-0 text-xs"
+              value={rule.name}
+              placeholder="Tag name"
+              onChange={(e) => onUpdate({ name: e.target.value })}
+            />
+          </div>
           <p className="text-xs text-muted-foreground mb-2">
             Regex patterns — any match applies this tag. Use{" "}
             <code className="font-mono">(?i)</code> prefix for case-insensitive.

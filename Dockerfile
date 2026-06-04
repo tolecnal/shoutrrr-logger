@@ -74,9 +74,24 @@ COPY --from=python-deps /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
     && rm -rf /wheels
 
+# Build-time version metadata — injected by docker-compose automatically:
+#   GIT_HASH: ${GIT_HASH} resolved in the shell before compose passes it in
+#   BUILD_TIME: ${BUILD_TIME} same
+# Or pass explicitly with plain docker build:
+#   docker build --build-arg GIT_HASH=$(git rev-parse --short HEAD) .
+ARG GIT_HASH=dev
+ARG BUILD_TIME=
+
 # ---- Backend ----
 WORKDIR /app/backend
 COPY backend/ ./
+
+# Generate _version_meta.py so version.py can import it at runtime.
+RUN RESOLVED_HASH="${GIT_HASH:-dev}" \
+    && BUILD_TIME_VAL="${BUILD_TIME:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}" \
+    && printf 'BUILD_GIT_HASH = "%s"\nBUILD_TIME = "%s"\n' "${RESOLVED_HASH}" "${BUILD_TIME_VAL}" \
+       > _version_meta.py \
+    && echo "==> version metadata:" && cat _version_meta.py
 
 # ---- Frontend (Next.js standalone) ----
 WORKDIR /app/frontend

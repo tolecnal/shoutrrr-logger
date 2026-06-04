@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import useSWR from "swr";
 import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X } from "lucide-react";
 import { fetchNotifications, notificationsKey } from "@/lib/api";
@@ -15,9 +15,13 @@ import { NotificationDetail } from "@/components/notification-detail";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
+// When filters are active we need a larger server page so that after
+// client-side filtering we still have enough rows to fill the view.
+const FILTERED_FETCH_SIZE = 100;
 
 export function NotificationLog() {
-  const [page, setPage] = useState(1);
+  const [serverPage, setServerPage] = useState(1);
+  const [clientPage, setClientPage] = useState(1);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<NotificationOut | null>(null);
@@ -26,16 +30,74 @@ export function NotificationLog() {
   const { formatTimestamp, formatTime } = usePreferences();
   const { rules, classify } = useTagRules();
 
-  const { data, isLoading, mutate } = useSWR(
-    notificationsKey(page, query),
-    fetchNotifications,
-    { refreshInterval: 30_000 }
+  // Are any client-side filters active?
+  const hasExclude = useMemo(() => rules.some((r) => r.enabled && r.exclude), [rules]);
+  const filtersActive = hasExclude || activeTag !== null;
+
+  // When filters are active we fetch a large page so client-side filtering
+  // has enough raw material. When filters are off, use normal server pagination.
+  const fetchSize = filtersActive ? FILTERED_FETCH_SIZE : PAGE_SIZE;
+  const fetchPage = filtersActive ? serverPage : serverPage;
+
+  const swrKey = useMemo(
+    () => notificationsKey(fetchPage, query, fetchSize),
+    [fetchPage, query, fetchSize]
   );
+
+  const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
+    refreshInterval: 30_000,
+  });
+
+  // Classify + exclude on every page fetch
+  const classifiedItems = useMemo(() => {
+    if (!data?.items) return [];
+    return data.items
+      .filter((n) => !isExcluded(n, rules))
+      .map((n) => ({ notification: n, tags: classify(n) }));
+  }, [data, rules, classify]);
+
+  // Apply tag filter on top
+  const filteredItems = useMemo(() => {
+    if (!activeTag) return classifiedItems;
+    return classifiedItems.filter(({ tags }) => tags.includes(activeTag));
+  }, [classifiedItems, activeTag]);
+
+  // Client-side pagination over filteredItems when filters are active
+  const clientPageCount = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+
+  // If the current client page exceeds available pages (e.g. filter was just
+  // enabled and fewer items are visible), reset to page 1.
+  useEffect(() => {
+    if (clientPage > clientPageCount) setClientPage(1);
+  }, [clientPage, clientPageCount]);
+
+  // When filters are active we slice filteredItems for display; otherwise
+  // the server already returned exactly one page worth.
+  const visibleItems = filtersActive
+    ? filteredItems.slice((clientPage - 1) * PAGE_SIZE, clientPage * PAGE_SIZE)
+    : filteredItems;
+
+  // Pagination metadata shown in the UI
+  // When filters are active: client-side page over filtered results + a
+  // "load more from server" button when we've exhausted the current fetch.
+  const displayPage = filtersActive ? clientPage : data?.page ?? 1;
+  const displayPages = filtersActive
+    ? clientPageCount
+    : data?.pages ?? 1;
+  const displayTotal = filtersActive ? filteredItems.length : data?.total ?? 0;
+  // True when filters are active, we've consumed all locally-fetched items,
+  // and the server has more pages.
+  const serverHasMore =
+    filtersActive &&
+    clientPage >= clientPageCount &&
+    data != null &&
+    serverPage < data.pages;
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      setPage(1);
+      setServerPage(1);
+      setClientPage(1);
       setQuery(search.trim());
     },
     [search]
@@ -44,27 +106,48 @@ export function NotificationLog() {
   const handleClearSearch = () => {
     setSearch("");
     setQuery("");
-    setPage(1);
+    setServerPage(1);
+    setClientPage(1);
   };
 
-  // Collect all enabled tag names for the filter bar
+  const handlePrev = () => {
+    if (filtersActive) {
+      if (clientPage > 1) {
+        setClientPage((p) => p - 1);
+      } else if (serverPage > 1) {
+        setServerPage((p) => p - 1);
+        setClientPage(1);
+      }
+    } else {
+      setServerPage((p) => Math.max(1, p - 1));
+    }
+  };
+
+  const handleNext = () => {
+    if (filtersActive) {
+      if (clientPage < clientPageCount) {
+        setClientPage((p) => p + 1);
+      } else if (serverHasMore) {
+        // Fetch the next server page; reset client page to 1 within new fetch
+        setServerPage((p) => p + 1);
+        setClientPage(1);
+      }
+    } else {
+      setServerPage((p) => p + 1);
+    }
+  };
+
+  const canGoPrev = filtersActive
+    ? clientPage > 1 || serverPage > 1
+    : serverPage > 1;
+  const canGoNext = filtersActive
+    ? clientPage < clientPageCount || serverHasMore
+    : serverPage < (data?.pages ?? 1);
+
   const enabledTags = useMemo(
     () => rules.filter((r) => r.enabled).map((r) => r.name),
     [rules]
   );
-
-  // Classify all items; drop any that match an exclude rule
-  const classifiedItems = useMemo(() => {
-    if (!data?.items) return [];
-    return data.items
-      .filter((n) => !isExcluded(n, rules))
-      .map((n) => ({ notification: n, tags: classify(n) }));
-  }, [data, rules, classify]);
-
-  const visibleItems = useMemo(() => {
-    if (!activeTag) return classifiedItems;
-    return classifiedItems.filter(({ tags }) => tags.includes(activeTag));
-  }, [classifiedItems, activeTag]);
 
   return (
     <div className="flex flex-1 h-full">
@@ -108,7 +191,9 @@ export function NotificationLog() {
           </Button>
           {data && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {data.total.toLocaleString()} total
+              {filtersActive
+                ? `${displayTotal.toLocaleString()} visible`
+                : `${data.total.toLocaleString()} total`}
             </span>
           )}
         </div>
@@ -136,8 +221,16 @@ export function NotificationLog() {
                 return (
                   <button
                     key={rule.id}
-                    onClick={() => !rule.exclude && setActiveTag(isActive ? null : rule.name)}
-                    title={rule.exclude ? `"${rule.name}" is an exclude rule — matching messages are hidden` : undefined}
+                    onClick={() => {
+                      if (rule.exclude) return;
+                      setActiveTag(isActive ? null : rule.name);
+                      setClientPage(1);
+                    }}
+                    title={
+                      rule.exclude
+                        ? `"${rule.name}" is an exclude rule — matching messages are hidden`
+                        : undefined
+                    }
                     className={cn(
                       "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
                       rule.exclude
@@ -153,7 +246,7 @@ export function NotificationLog() {
               })}
             {activeTag && (
               <button
-                onClick={() => setActiveTag(null)}
+                onClick={() => { setActiveTag(null); setClientPage(1); }}
                 className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
               >
                 <X className="h-3 w-3" />
@@ -181,10 +274,21 @@ export function NotificationLog() {
               <p className="text-sm text-muted-foreground">
                 {activeTag
                   ? `No notifications tagged "${activeTag}".`
+                  : hasExclude
+                  ? "No notifications match the current filters."
                   : query
                   ? "No notifications match your search."
                   : "No notifications yet."}
               </p>
+              {serverHasMore && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => { setServerPage((p) => p + 1); setClientPage(1); }}
+                >
+                  Load more from server
+                </Button>
+              )}
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -222,18 +326,19 @@ export function NotificationLog() {
         </div>
 
         {/* Pagination */}
-        {data && data.pages > 1 && (
+        {(displayPages > 1 || serverHasMore) && (
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-card/50 text-xs text-muted-foreground">
             <span>
-              Page {data.page} of {data.pages}
+              Page {displayPage} of {displayPages}
+              {serverHasMore && "+"}
             </span>
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={!canGoPrev}
+                onClick={handlePrev}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
@@ -241,8 +346,8 @@ export function NotificationLog() {
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0"
-                disabled={page >= data.pages}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={!canGoNext}
+                onClick={handleNext}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
