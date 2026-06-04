@@ -6,14 +6,15 @@ Production:    gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4
 """
 
 import urllib.parse
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-
 from jose import jwt as jose_jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import (
     create_session_jwt,
@@ -24,13 +25,11 @@ from auth import (
 )
 from config import settings
 from database import get_db, init_db
-from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import notifications, plugins, shoutrrr, tokens, users
 from schemas import OIDCCallbackResponse, UserOut
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 
 
 @asynccontextmanager
@@ -74,6 +73,7 @@ _UNVERSIONED_PREFIXES = {"/api/docs", "/api/redoc", "/api/openapi.json",
 
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from starlette.responses import Response as StarletteResponse  # noqa: E402
+
 
 class _VersionRedirectMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]

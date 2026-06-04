@@ -10,12 +10,12 @@ POST /api/admin/plugins/{id}/test — trigger a test notification through the pl
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user_from_session
 from database import get_db
-from models import Notification, PluginConfig, UserRole
+from models import PluginConfig, UserRole
 from plugins import registry
 from schemas import PluginOut, PluginUpdate
 
@@ -156,7 +156,8 @@ async def test_plugin(
     _user=Depends(_require_admin),
 ) -> dict:
     """Fire a synthetic test notification through the plugin."""
-    import datetime, uuid  # noqa: PLC0415
+    import datetime
+    import uuid  # noqa: PLC0415
     plugin = registry.get_plugin(plugin_id)
     if not plugin:
         raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
@@ -170,7 +171,7 @@ async def test_plugin(
         "sender_name": "shoutrrr-logger test",
         "title": "Plugin test",
         "message": "This is a test notification sent from the shoutrrr-logger admin panel.",
-        "received_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "received_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "source_ip": "127.0.0.1",
         "custom_fields": {},
     }

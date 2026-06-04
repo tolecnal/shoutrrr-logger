@@ -13,12 +13,11 @@ Two auth flows are supported:
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +57,7 @@ SESSION_TTL_MINUTES = 60 * 8  # 8 hours
 
 
 def create_session_jwt(user_id: str, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=SESSION_TTL_MINUTES)
+    expire = datetime.now(UTC) + timedelta(minutes=SESSION_TTL_MINUTES)
     return jwt.encode(
         {"sub": user_id, "role": role, "exp": expire},
         settings.secret_key,
@@ -182,7 +181,7 @@ async def verify_bearer_access_token(
     if not raw:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Load all active, non-expired tokens and verify against the hash.
     # We intentionally avoid a DB-side plaintext comparison for security.

@@ -26,6 +26,7 @@ variables:
 
 stages:
   - lint
+  - test
   - build
 
 # ---------------------------------------------------------------------------
@@ -56,6 +57,41 @@ lint:frontend:
   script:
     - cd frontend && pnpm lint
     - cd frontend && pnpm exec tsc --noEmit
+  cache:
+    key:
+      files:
+        - frontend/pnpm-lock.yaml
+    paths:
+      - frontend/node_modules/
+  rules:
+    - when: always
+
+# ---------------------------------------------------------------------------
+# Test — Backend (pytest)
+# ---------------------------------------------------------------------------
+test:backend:
+  stage: test
+  image: python:3.12-slim
+  services: []
+  before_script:
+    - cd backend && pip install -e ".[test]" --quiet
+  script:
+    - pytest tests/ -v --tb=short
+  rules:
+    - when: always
+
+# ---------------------------------------------------------------------------
+# Test — Frontend (vitest)
+# ---------------------------------------------------------------------------
+test:frontend:
+  stage: test
+  image: node:22-alpine
+  services: []
+  before_script:
+    - corepack enable
+    - cd frontend && pnpm install --frozen-lockfile
+  script:
+    - cd frontend && pnpm test:run
   cache:
     key:
       files:

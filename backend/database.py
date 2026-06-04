@@ -39,8 +39,9 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
     attempts so that the app tolerates postgres still starting up when the
     container comes online.
     """
-    from models import Base  # noqa: PLC0415
     import sqlalchemy  # noqa: PLC0415
+
+    from models import Base  # noqa: PLC0415
 
     for attempt in range(1, retries + 1):
         try:

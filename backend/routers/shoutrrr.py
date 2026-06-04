@@ -9,7 +9,6 @@ Body: JSON (application/json) or plain text (text/plain).
 Watchtower sends plain text; curl / API clients typically send JSON.
 """
 
-import asyncio
 import json
 import logging
 
@@ -35,8 +34,9 @@ async def _dispatch_plugins(notification_dict: dict, db_url: str) -> None:
     Each plugin gets its own try/except so one failure doesn't block others.
     Runs as a FastAPI BackgroundTask — DB session obtained fresh here.
     """
-    from database import engine  # noqa: PLC0415
     from sqlalchemy.ext.asyncio import async_sessionmaker  # noqa: PLC0415
+
+    from database import engine  # noqa: PLC0415
 
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     async with async_session() as db:

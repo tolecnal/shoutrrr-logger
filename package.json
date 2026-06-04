@@ -10,8 +10,12 @@
     "lint": "pnpm --filter frontend lint"
   },
   "dependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@testing-library/jest-dom": "^6.9.1",
+    "eslint-config-next": "^16.2.7",
     "lucide-react": "^0.564.0",
     "react": "19.2.4",
-    "swr": "^2.4.1"
+    "swr": "^2.4.1",
+    "vitest": "^3.2.6"
   }
 }
