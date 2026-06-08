@@ -322,6 +322,34 @@ Replace `YOUR_TOKEN` with the raw token value shown once when creating a token i
 
 Watchtower sends the notification body as **plain text**. shoutrrr-logger accepts both plain text and JSON bodies automatically.
 
+### TLS trust errors with self-signed certificates
+
+If nginx is serving a self-signed certificate (or one issued by an internal/private CA) and Watchtower runs on a **different host**, you'll see an error like:
+
+```
+error="failed to send notification to generic webhook: sending HTTP request:
+Post \"https://shoutrrr-logger.example.com/api/shoutrrr\": tls: failed to
+verify certificate: x509: certificate signed by unknown authority"
+```
+
+This is Watchtower's Go HTTP client refusing to trust a certificate that isn't signed by a CA in its trust store — it's not a problem with shoutrrr-logger or the reverse proxy. `disabletls=Yes` does **not** help here; it only switches the request scheme from `https` to `http`, it does not skip certificate verification. Pick one of:
+
+- **Use a CA-trusted certificate** (recommended) — replace the self-signed cert at `/etc/ssl/certs/<NGINX_SERVER_NAME>.crt` / `/etc/ssl/private/<NGINX_SERVER_NAME>.key` with one issued by a CA the Watchtower host already trusts (Let's Encrypt if the host is publicly reachable, or your organization's internal CA). This fixes the issue for Watchtower *and* any other external client (browsers, curl, other integrations) without per-client configuration.
+- **Make the Watchtower container trust your CA** — mount the self-signed certificate (or, better, the internal CA that signed it) into the container and point Go's certificate loader at it via the `SSL_CERT_FILE` environment variable:
+  ```yaml
+  services:
+    watchtower:
+      image: nickfedor/watchtower
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /path/to/vm-development.xiro.net.crt:/certs/shoutrrr-logger.crt:ro
+      environment:
+        SSL_CERT_FILE: /certs/shoutrrr-logger.crt
+        WATCHTOWER_NOTIFICATION_URL: "generic+https://vm-development.xiro.net/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN"
+  ```
+  Note `SSL_CERT_FILE` replaces Go's default trust store entirely with the given file — fine if Watchtower only ever talks to this one HTTPS endpoint, but it will then refuse *other* HTTPS connections (e.g. pulling from private registries over TLS). If Watchtower needs to trust multiple endpoints, concatenate the system CA bundle with your certificate into one PEM file and mount that instead.
+- **Run Watchtower on the same host/compose stack** and use the internal URL (`http://app:9000`, see [Running on the same host](#running-on-the-same-host-as-shoutrrr-logger)) — bypasses TLS entirely over the internal Docker network, no trust configuration needed.
+
 ### docker run
 
 ```bash
