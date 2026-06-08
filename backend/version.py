@@ -9,7 +9,7 @@ local development) sensible fallback values are used.
 
 from datetime import UTC
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "0.2.0"
 
 # The current API version prefix. Increment this (v2, v3…) when making
 # breaking changes to the REST API. Non-breaking additions stay on v1.

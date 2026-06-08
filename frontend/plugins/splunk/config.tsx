@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { GripVertical, Plus, Trash2, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { PluginConfigProps } from "@/plugins/types";
 import type { SplunkConfig, SplunkFieldMapping } from "./types";
@@ -21,6 +21,60 @@ const NOTIFICATION_FIELDS = [
   "source_ip",
 ];
 
+/**
+ * Build a preview of the Splunk event body from the current field mappings,
+ * using a representative sample notification.  Mirrors the backend
+ * `_build_event` / `_resolve_field` logic so the preview is accurate.
+ */
+function buildPreviewPayload(
+  config: SplunkConfig,
+  availableCustomFields: string[]
+): Record<string, unknown> {
+  const sampleCustomFields: Record<string, string> = {};
+  for (const k of availableCustomFields) sampleCustomFields[k] = `<${k}>`;
+
+  const sample: Record<string, unknown> = {
+    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    sender_name: "my-service",
+    title: "Deploy succeeded",
+    message: "Production v0.2.0 deployed successfully.",
+    received_at: 1749412800.0,
+    source_ip: "10.0.0.1",
+    custom_fields: sampleCustomFields,
+  };
+
+  let event: Record<string, unknown>;
+
+  if (config.field_mappings.length === 0) {
+    event = Object.fromEntries(
+      Object.entries(sample).filter(([, v]) => v !== null && v !== undefined)
+    );
+  } else {
+    event = {};
+    for (const m of config.field_mappings) {
+      const outKey = m.output_key.trim();
+      const srcField = m.source_field.trim();
+      if (!outKey || !srcField) continue;
+      let value: unknown;
+      if (srcField.startsWith("literal:")) {
+        value = srcField.slice("literal:".length);
+      } else if (srcField.startsWith("custom_fields.")) {
+        const key = srcField.slice("custom_fields.".length);
+        value = (sample.custom_fields as Record<string, unknown>)[key] ?? `<${key}>`;
+      } else {
+        value = sample[srcField];
+      }
+      if (value !== undefined && value !== null) event[outKey] = value;
+    }
+  }
+
+  const payload: Record<string, unknown> = { event };
+  if (config.index.trim()) payload.index = config.index.trim();
+  if (config.source.trim()) payload.source = config.source.trim();
+  if (config.sourcetype.trim()) payload.sourcetype = config.sourcetype.trim();
+  return payload;
+}
+
 function toSplunkConfig(raw: Record<string, unknown>): SplunkConfig {
   return {
     hec_url: String(raw.hec_url ?? ""),
@@ -37,19 +91,39 @@ function FieldMappingRow({
   mapping,
   index,
   availableSources,
+  isDragOver,
   onUpdate,
   onRemove,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   mapping: SplunkFieldMapping;
   index: number;
   availableSources: string[];
+  isDragOver: boolean;
   onUpdate: (next: SplunkFieldMapping) => void;
   onRemove: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }) {
   const listId = `sf-list-${index}`;
   return (
-    <div className="flex items-center gap-2">
-      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "flex items-center gap-2 rounded px-1 transition-colors",
+        isDragOver && "outline outline-2 outline-primary/50 bg-primary/5"
+      )}
+    >
+      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
       <Input
         value={mapping.source_field}
         placeholder="Source field"
@@ -90,6 +164,8 @@ export function SplunkConfigPanel({
   const config = toSplunkConfig(rawConfig);
   const [testState, setTestState] = useState<"idle" | "loading" | "ok" | "err">("idle");
   const [testMsg, setTestMsg] = useState("");
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const dragSrc = useRef<number | null>(null);
 
   /** Build the full source-field datalist: notification fields + custom_fields.* + literal: hint */
   const availableSources = [
@@ -119,6 +195,14 @@ export function SplunkConfigPanel({
     ]);
   }
 
+  function moveMapping(from: number, to: number) {
+    if (from === to) return;
+    const next = [...config.field_mappings];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    update("field_mappings", next);
+  }
+
   async function handleTest() {
     setTestState("loading");
     setTestMsg("");
@@ -131,6 +215,8 @@ export function SplunkConfigPanel({
       setTestMsg(e instanceof Error ? e.message : "Unknown error");
     }
   }
+
+  const previewPayload = buildPreviewPayload(config, availableCustomFields);
 
   return (
     <div className="space-y-5">
@@ -214,8 +300,8 @@ export function SplunkConfigPanel({
           <div className="min-w-0">
             <h4 className="text-xs font-semibold text-foreground">Field mappings</h4>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Define which notification fields map to Splunk event keys.
-              Use <code className="font-mono">custom_fields.&lt;key&gt;</code> for custom fields
+              Drag rows to reorder. Use{" "}
+              <code className="font-mono">custom_fields.&lt;key&gt;</code> for custom fields
               and <code className="font-mono">literal:value</code> for constants.
             </p>
           </div>
@@ -229,6 +315,7 @@ export function SplunkConfigPanel({
             Add
           </Button>
         </div>
+
         <div className="space-y-2">
           {config.field_mappings.map((m, i) => (
             <FieldMappingRow
@@ -236,8 +323,18 @@ export function SplunkConfigPanel({
               mapping={m}
               index={i}
               availableSources={availableSources}
+              isDragOver={dragOver === i}
               onUpdate={(next) => updateMapping(i, next)}
               onRemove={() => removeMapping(i)}
+              onDragStart={() => { dragSrc.current = i; }}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(i); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragSrc.current !== null) moveMapping(dragSrc.current, i);
+                dragSrc.current = null;
+                setDragOver(null);
+              }}
+              onDragEnd={() => { dragSrc.current = null; setDragOver(null); }}
             />
           ))}
           {config.field_mappings.length === 0 && (
@@ -245,6 +342,19 @@ export function SplunkConfigPanel({
               No mappings — all notification fields will be forwarded.
             </p>
           )}
+        </div>
+
+        {/* Payload preview */}
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[11px] text-muted-foreground font-medium">
+            Preview{" "}
+            <span className="font-normal opacity-70">
+              (sample data — reflects current mappings and metadata)
+            </span>
+          </p>
+          <pre className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-[11px] font-mono text-foreground overflow-x-auto whitespace-pre leading-relaxed">
+            {JSON.stringify(previewPayload, null, 2)}
+          </pre>
         </div>
       </div>
 

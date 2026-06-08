@@ -9,7 +9,7 @@
  * so the /about page can flag a mismatch between the frontend and backend.
  */
 
-export const FRONTEND_VERSION = "1.0.0";
+export const FRONTEND_VERSION = "0.2.0";
 
 /**
  * The API version this frontend build was written against.
