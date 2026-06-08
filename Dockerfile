@@ -110,15 +110,20 @@ RUN RESOLVED_HASH="${GIT_HASH:-dev}" \
     && echo "==> version metadata:" && cat _version_meta.py
 
 # ---- Frontend (Next.js standalone) ----
-WORKDIR /app/frontend
+# Building from the pnpm workspace root (see frontend-builder above) makes
+# Next.js emit the standalone bundle mirroring the workspace layout —
+# server.js lands at .next/standalone/frontend/server.js with a hoisted
+# node_modules as its sibling, not at the standalone root. Copy the whole
+# tree into /app so that relative structure (and Node's module resolution
+# walk-up) is preserved, landing server.js at /app/frontend/server.js.
+WORKDIR /app
 COPY --from=frontend-builder /build/frontend/.next/standalone ./
-COPY --from=frontend-builder /build/frontend/.next/static ./.next/static
+COPY --from=frontend-builder /build/frontend/.next/static ./frontend/.next/static
 # Trailing slash on source turns this into a "copy contents if dir exists" –
 # Docker will not error if public/ is empty, but the .gitkeep ensures it exists.
-COPY --from=frontend-builder /build/frontend/public/ ./public/
+COPY --from=frontend-builder /build/frontend/public/ ./frontend/public/
 
 # ---- Entrypoint ----
-WORKDIR /app
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
