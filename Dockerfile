@@ -51,7 +51,7 @@ RUN pip install --upgrade pip \
         "asyncpg>=0.30.0" \
         "sqlalchemy[asyncio]>=2.0.0" \
         "alembic>=1.14.0" \
-        "python-jose[cryptography]>=3.3.0" \
+        "pyjwt[crypto]>=2.10.0" \
         "httpx>=0.28.0" \
         "python-multipart>=0.0.20" \
         "pydantic-settings>=2.7.0"

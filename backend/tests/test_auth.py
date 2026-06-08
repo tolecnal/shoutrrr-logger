@@ -5,9 +5,9 @@ These are pure unit tests with no database or HTTP involvement.
 
 import time
 
+import jwt
 import pytest
 from fastapi import HTTPException
-from jose import jwt
 
 from auth import (
     SESSION_ALGORITHM,
@@ -80,7 +80,7 @@ class TestSessionJWT:
 
     def test_expiry_claim_is_set(self):
         token = create_session_jwt("user-abc", "viewer")
-        raw_payload = jwt.get_unverified_claims(token)
+        raw_payload = jwt.decode(token, options={"verify_signature": False})
         assert "exp" in raw_payload
         # Should expire roughly SESSION_TTL_MINUTES from now
         expected_exp = time.time() + SESSION_TTL_MINUTES * 60

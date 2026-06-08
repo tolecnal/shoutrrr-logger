@@ -9,10 +9,10 @@ import urllib.parse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import jwt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from jose import jwt as jose_jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import (
@@ -220,7 +220,7 @@ async def oidc_callback(
     # expose on the UserInfo endpoint unless a protocol mapper is configured.
     # Merging gives _extract_role_from_claims the full picture.
     try:
-        token_claims: dict = jose_jwt.get_unverified_claims(access_token)
+        token_claims: dict = jwt.decode(access_token, options={"verify_signature": False})
     except Exception:
         token_claims = {}
 
