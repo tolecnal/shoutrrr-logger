@@ -10,6 +10,13 @@ import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
 import { cn } from "@/lib/utils";
@@ -19,6 +26,13 @@ const PAGE_SIZE = 20;
 // client-side filtering we still have enough rows to fill the view.
 const FILTERED_FETCH_SIZE = 100;
 
+/** Stringifies a custom field value for comparison/display in the group-by UI. */
+function customFieldValue(n: NotificationOut, key: string): string | null {
+  const v = n.custom_fields?.[key];
+  if (v === undefined || v === null) return null;
+  return typeof v === "object" ? JSON.stringify(v) : String(v);
+}
+
 export function NotificationLog() {
   const [serverPage, setServerPage] = useState(1);
   const [clientPage, setClientPage] = useState(1);
@@ -26,13 +40,16 @@ export function NotificationLog() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<NotificationOut | null>(null);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [groupField, setGroupField] = useState<string | null>(null);
+  const [groupValues, setGroupValues] = useState<Set<string>>(new Set());
 
   const { formatTimestamp, formatTime } = usePreferences();
   const { rules, classify } = useTagRules();
 
   // Are any client-side filters active?
   const hasExclude = useMemo(() => rules.some((r) => r.enabled && r.exclude), [rules]);
-  const filtersActive = hasExclude || activeTag !== null;
+  const groupingActive = groupField !== null && groupValues.size > 0;
+  const filtersActive = hasExclude || activeTag !== null || groupingActive;
 
   // When filters are active we fetch a large page so client-side filtering
   // has enough raw material. When filters are off, use normal server pagination.
@@ -62,8 +79,41 @@ export function NotificationLog() {
     return classifiedItems.filter(({ tags }) => tags.includes(activeTag));
   }, [classifiedItems, activeTag]);
 
-  // Client-side pagination over filteredItems when filters are active
-  const clientPageCount = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  // Custom field keys present across the currently (tag-)filtered items —
+  // populates the "Group by" field selector.
+  const availableGroupFields = useMemo(() => {
+    const keys = new Set<string>();
+    for (const { notification: n } of filteredItems) {
+      for (const k of Object.keys(n.custom_fields ?? {})) keys.add(k);
+    }
+    return Array.from(keys).sort();
+  }, [filteredItems]);
+
+  // Distinct values of the selected group field across the currently
+  // (tag-)filtered items — populates the value chips. Computed independently
+  // of the selected values themselves so toggling one doesn't shrink the list.
+  const availableGroupValues = useMemo(() => {
+    if (!groupField) return [];
+    const values = new Set<string>();
+    for (const { notification: n } of filteredItems) {
+      const v = customFieldValue(n, groupField);
+      if (v !== null) values.add(v);
+    }
+    return Array.from(values).sort();
+  }, [filteredItems, groupField]);
+
+  // Narrow down to notifications whose selected group field matches one of
+  // the chosen values — this is the actual "group by" filter.
+  const groupFilteredItems = useMemo(() => {
+    if (!groupingActive || !groupField) return filteredItems;
+    return filteredItems.filter(({ notification: n }) => {
+      const v = customFieldValue(n, groupField);
+      return v !== null && groupValues.has(v);
+    });
+  }, [filteredItems, groupingActive, groupField, groupValues]);
+
+  // Client-side pagination over groupFilteredItems when filters are active
+  const clientPageCount = Math.max(1, Math.ceil(groupFilteredItems.length / PAGE_SIZE));
 
   // If the current client page exceeds available pages (e.g. filter was just
   // enabled and fewer items are visible), reset to page 1.
@@ -71,11 +121,11 @@ export function NotificationLog() {
     if (clientPage > clientPageCount) setClientPage(1);
   }, [clientPage, clientPageCount]);
 
-  // When filters are active we slice filteredItems for display; otherwise
-  // the server already returned exactly one page worth.
+  // When filters are active we slice groupFilteredItems for display;
+  // otherwise the server already returned exactly one page worth.
   const visibleItems = filtersActive
-    ? filteredItems.slice((clientPage - 1) * PAGE_SIZE, clientPage * PAGE_SIZE)
-    : filteredItems;
+    ? groupFilteredItems.slice((clientPage - 1) * PAGE_SIZE, clientPage * PAGE_SIZE)
+    : groupFilteredItems;
 
   // Pagination metadata shown in the UI
   // When filters are active: client-side page over filtered results + a
@@ -84,7 +134,7 @@ export function NotificationLog() {
   const displayPages = filtersActive
     ? clientPageCount
     : data?.pages ?? 1;
-  const displayTotal = filtersActive ? filteredItems.length : data?.total ?? 0;
+  const displayTotal = filtersActive ? groupFilteredItems.length : data?.total ?? 0;
   // True when filters are active, we've consumed all locally-fetched items,
   // and the server has more pages.
   const serverHasMore =
@@ -148,6 +198,23 @@ export function NotificationLog() {
     () => rules.filter((r) => r.enabled).map((r) => r.name),
     [rules]
   );
+
+  // Section the visible page by the selected group field's value, in the
+  // order values were selected. Only built when grouping is active.
+  const groupedSections = useMemo(() => {
+    if (!groupingActive || !groupField) return null;
+    const sections = new Map<string, typeof visibleItems>();
+    for (const item of visibleItems) {
+      // groupFilteredItems already guarantees a non-null matching value here.
+      const v = customFieldValue(item.notification, groupField)!;
+      const bucket = sections.get(v);
+      if (bucket) bucket.push(item);
+      else sections.set(v, [item]);
+    }
+    return Array.from(groupValues)
+      .filter((v) => sections.has(v))
+      .map((v) => ({ value: v, items: sections.get(v)! }));
+  }, [groupingActive, groupField, groupValues, visibleItems]);
 
   return (
     <div className="flex flex-1 h-full">
@@ -256,6 +323,75 @@ export function NotificationLog() {
           </div>
         )}
 
+        {/* Group-by bar: choose a custom field, then which of its values to group on */}
+        {availableGroupFields.length > 0 && (
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
+            <span className="text-[11px] text-muted-foreground shrink-0">Group by:</span>
+            <Select
+              value={groupField ?? "__none"}
+              onValueChange={(v) => {
+                const next = v === "__none" ? null : v;
+                setGroupField(next);
+                setGroupValues(new Set());
+                setServerPage(1);
+                setClientPage(1);
+              }}
+            >
+              <SelectTrigger className="h-7 w-40 text-xs bg-input shrink-0">
+                <SelectValue placeholder="Field…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">None</SelectItem>
+                {availableGroupFields.map((key) => (
+                  <SelectItem key={key} value={key}>
+                    {key}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {groupField && availableGroupValues.length > 0 && (
+              <>
+                <span className="text-[11px] text-muted-foreground shrink-0 ml-1">Values:</span>
+                {availableGroupValues.map((value) => {
+                  const isActive = groupValues.has(value);
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => {
+                        setGroupValues((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(value)) next.delete(value);
+                          else next.add(value);
+                          return next;
+                        });
+                        setClientPage(1);
+                      }}
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full text-xs border font-mono transition-colors shrink-0",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+                      )}
+                    >
+                      {value}
+                    </button>
+                  );
+                })}
+                {groupValues.size > 0 && (
+                  <button
+                    onClick={() => { setGroupValues(new Set()); setClientPage(1); }}
+                    className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                    Clear values
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Table */}
         <div className="flex-1 overflow-auto">
           {isLoading ? (
@@ -274,6 +410,8 @@ export function NotificationLog() {
               <p className="text-sm text-muted-foreground">
                 {activeTag
                   ? `No notifications tagged "${activeTag}".`
+                  : groupingActive
+                  ? `No notifications match the selected ${groupField} value(s).`
                   : hasExclude
                   ? "No notifications match the current filters."
                   : query
@@ -309,17 +447,41 @@ export function NotificationLog() {
                 </tr>
               </thead>
               <tbody>
-                {visibleItems.map(({ notification: n, tags }) => (
-                  <NotificationRow
-                    key={n.id}
-                    notification={n}
-                    tags={tags}
-                    rules={rules}
-                    isSelected={selected?.id === n.id}
-                    formatTime={formatTime}
-                    onClick={() => setSelected(selected?.id === n.id ? null : n)}
-                  />
-                ))}
+                {groupedSections
+                  ? groupedSections.flatMap(({ value, items }) => [
+                      <tr key={`group-${value}`} className="bg-muted/40">
+                        <td
+                          colSpan={4}
+                          className="px-4 py-1.5 text-[11px] font-medium text-muted-foreground"
+                        >
+                          <span className="font-mono">{groupField}</span> = {" "}
+                          <span className="font-mono text-foreground">{value}</span>{" "}
+                          <span className="text-muted-foreground/70">({items.length})</span>
+                        </td>
+                      </tr>,
+                      ...items.map(({ notification: n, tags }) => (
+                        <NotificationRow
+                          key={n.id}
+                          notification={n}
+                          tags={tags}
+                          rules={rules}
+                          isSelected={selected?.id === n.id}
+                          formatTime={formatTime}
+                          onClick={() => setSelected(selected?.id === n.id ? null : n)}
+                        />
+                      )),
+                    ])
+                  : visibleItems.map(({ notification: n, tags }) => (
+                      <NotificationRow
+                        key={n.id}
+                        notification={n}
+                        tags={tags}
+                        rules={rules}
+                        isSelected={selected?.id === n.id}
+                        formatTime={formatTime}
+                        onClick={() => setSelected(selected?.id === n.id ? null : n)}
+                      />
+                    ))}
               </tbody>
             </table>
           )}
