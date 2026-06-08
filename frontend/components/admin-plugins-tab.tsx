@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import useSWR from "swr";
 import { Puzzle, ChevronDown, ChevronRight, Save } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -59,21 +60,35 @@ function PluginCard({
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      {/* Header row */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <Switch
-          checked={enabled}
-          onCheckedChange={(v) => {
-            setEnabled(v);
-            setSaveMsg(null);
-          }}
-          aria-label={`Enable ${plugin.name}`}
-        />
+      {/* Header row — click anywhere except the switch/save to expand config */}
+      <div
+        className={cn(
+          "flex items-center gap-3 px-4 py-3",
+          ConfigPanel && "cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg",
+          ConfigPanel && expanded && "rounded-b-none"
+        )}
+        onClick={ConfigPanel ? () => setExpanded((v) => !v) : undefined}
+      >
+        {/* Stop propagation so toggling the switch doesn't also expand/collapse */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={enabled}
+            onCheckedChange={(v) => {
+              setEnabled(v);
+              setSaveMsg(null);
+            }}
+            aria-label={`Enable ${plugin.name}`}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground leading-none">{plugin.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{plugin.description}</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Stop propagation on the action area so Save doesn't toggle expansion */}
+        <div
+          className="flex items-center gap-2 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           {saveMsg && !dirty && (
             <span className="text-xs text-muted-foreground">{saveMsg}</span>
           )}
@@ -90,17 +105,12 @@ function PluginCard({
             </Button>
           )}
           {ConfigPanel && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={expanded ? "Collapse config" : "Expand config"}
-            >
-              {expanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                !expanded && "-rotate-90"
               )}
-            </button>
+            />
           )}
         </div>
       </div>
