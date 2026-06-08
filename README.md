@@ -458,14 +458,14 @@ The OpenAPI schema is served at `/api/openapi.json`.
 
 - Python 3.14+
 - Node.js 22+
-- pnpm 9+
+- pnpm 10+
 - PostgreSQL 17 running locally (or via Docker)
 
 ### Backend
 
 ```bash
 cd backend
-pip install -e ".[dev]"
+pip install -e ".[test]"
 
 # Set required env vars (or create a .env file in backend/)
 export DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/shoutrrr_logger"
@@ -500,7 +500,7 @@ App: http://localhost:4000
 
 The Dockerfile uses a three-stage build:
 
-1. **`frontend-builder`** — Node 22 slim, builds the Next.js standalone bundle.
+1. **`frontend-builder`** — Node 22 alpine, builds the Next.js standalone bundle.
 2. **`python-deps`** — Compiles Python dependency wheels (requires gcc/libpq-dev).
 3. **`runtime`** — `python:3.14-slim` (Debian trixie), installs pre-built wheels and copies both the Next.js standalone output and the FastAPI source. No build tools in the final image.
 

@@ -1,31 +1,44 @@
+# syntax=docker/dockerfile:1
+
 # ============================================================
 # Stage 1 – Build the Next.js frontend
 # ============================================================
 FROM node:22-alpine AS frontend-builder
 
-WORKDIR /build/frontend
+# `frontend/` is a member of the pnpm workspace rooted here — install MUST
+# run from the workspace root. Installing from frontend/ alone makes pnpm
+# treat it as a standalone project: it ignores pnpm-workspace.yaml (and the
+# `overrides` pin that keeps postcss off the vulnerable 8.4.x line bundled by
+# next/autoprefixer, GHSA-qx2v-qp2m-jg93) and ends up resolving against
+# frontend/'s own stale, untested lockfile instead of the real one.
+WORKDIR /build
 
 # Enable corepack so it reads packageManager from package.json automatically
 RUN corepack enable
 
-# Copy dependency manifests first — corepack will activate the pinned pnpm
-# version declared in package.json's "packageManager" field
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+# Copy workspace manifests first — this layer is cached independently of
+# source changes. corepack activates the pinned pnpm version declared in
+# the workspace root package.json's "packageManager" field.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY frontend/package.json frontend/
 
 # Install deps. --frozen-lockfile enforces lockfile integrity; the fallback
 # catches the rare case where the lockfile is slightly out of sync after a
-# shadcn component add without a manual `pnpm install` run.
-RUN corepack prepare --activate \
+# shadcn component add without a manual `pnpm install` run. The cache mount
+# persists pnpm's content-addressable store across builds so unchanged
+# dependencies are linked from cache instead of re-downloaded.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    corepack prepare --activate \
     && pnpm install --frozen-lockfile \
     || pnpm install --no-frozen-lockfile
 
 # Copy the rest of the frontend source
-COPY frontend/ ./
+COPY frontend/ frontend/
 
 # Build – output a standalone bundle for minimal image size
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-RUN pnpm build
+RUN pnpm --filter frontend build
 
 # ============================================================
 # Stage 2 – Python dependency wheel cache
@@ -42,9 +55,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY backend/pyproject.toml ./
 
-# Build wheels into a dedicated directory for clean copying
-RUN pip install --upgrade pip \
-    && pip wheel --no-cache-dir --wheel-dir=/wheels \
+# Build wheels into a dedicated directory for clean copying. The cache mount
+# persists pip's download/build cache across builds so unchanged dependencies
+# don't get re-downloaded and re-compiled every time.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip \
+    && pip wheel --wheel-dir=/wheels \
         "fastapi[standard]>=0.115.0" \
         "uvicorn[standard]>=0.32.0" \
         "gunicorn>=23.0.0" \

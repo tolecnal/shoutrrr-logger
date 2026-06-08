@@ -11,3 +11,8 @@
 **/docker-compose*.yml
 Dockerfile
 *.md
+backend/build
+backend/tests
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
