@@ -56,8 +56,8 @@ lint:frontend:
     - corepack enable
     - cd frontend && pnpm install --frozen-lockfile
   script:
-    - cd frontend && pnpm lint
-    - cd frontend && pnpm exec tsc --noEmit
+    - pnpm lint
+    - pnpm exec tsc --noEmit
   cache:
     key:
       files:
@@ -92,7 +92,7 @@ test:frontend:
     - corepack enable
     - cd frontend && pnpm install --frozen-lockfile
   script:
-    - cd frontend && pnpm test:run
+    - pnpm test:run
   cache:
     key:
       files:
