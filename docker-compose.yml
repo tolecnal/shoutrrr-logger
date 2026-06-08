@@ -10,9 +10,12 @@ services:
         GIT_HASH: ${GIT_HASH:-dev}
         BUILD_TIME: ${BUILD_TIME:-}
     restart: unless-stopped
-    ports:
-      - "4000:4000"   # Next.js frontend
-      - "9000:9000"   # FastAPI backend / Swagger UI at :9000/api/docs
+    # Not published to the host — only the nginx reverse proxy talks to these
+    # ports (over the internal compose network). All external traffic must go
+    # through nginx; the app and database are otherwise unreachable from outside.
+    expose:
+      - "4000"   # Next.js frontend
+      - "9000"   # FastAPI backend / Swagger UI at /api/docs
     env_file:
       - .env
     environment:
@@ -32,6 +35,27 @@ services:
       timeout: 10s
       retries: 5
       start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    # The only service exposed to the outside world. Terminates TLS and
+    # routes /api/* to the backend, everything else to the frontend.
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      NGINX_SERVER_NAME: "${NGINX_SERVER_NAME:?NGINX_SERVER_NAME is required}"
+    volumes:
+      - ./nginx-config/templates:/etc/nginx/templates:ro
+      # TLS certificate/key are expected to already exist on the host:
+      #   /etc/ssl/certs/<NGINX_SERVER_NAME>.crt
+      #   /etc/ssl/private/<NGINX_SERVER_NAME>.key
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - /etc/ssl/private:/etc/ssl/private:ro
+    depends_on:
+      app:
+        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine

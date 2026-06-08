@@ -1,0 +1,67 @@
+# Reverse proxy for shoutrrr-logger.
+#
+# Routing:
+#   /api/*  -> FastAPI backend  (app:9000)
+#   /*      -> Next.js frontend (app:4000)
+#
+# TLS material is expected to already exist on the host at:
+#   /etc/ssl/certs/${NGINX_SERVER_NAME}.crt
+#   /etc/ssl/private/${NGINX_SERVER_NAME}.key
+#
+# This file is processed by the official nginx image's entrypoint
+# (envsubst on /etc/nginx/templates/*.template -> /etc/nginx/conf.d/*.conf),
+# substituting ${NGINX_SERVER_NAME} from the container environment. nginx's
+# own request-time variables (e.g. $host, $remote_addr) are left untouched
+# since they are not set as container environment variables.
+
+# Plain HTTP — redirect everything to HTTPS.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${NGINX_SERVER_NAME};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS — terminate TLS and proxy to the backend/frontend.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${NGINX_SERVER_NAME};
+
+    ssl_certificate     /etc/ssl/certs/${NGINX_SERVER_NAME}.crt;
+    ssl_certificate_key /etc/ssl/private/${NGINX_SERVER_NAME}.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    client_max_body_size 10m;
+
+    # FastAPI backend — REST API, Swagger/ReDoc, OIDC callback, shoutrrr ingest.
+    location /api/ {
+        proxy_pass http://app:9000;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Next.js frontend — everything else.
+    location / {
+        proxy_pass http://app:4000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Required for Next.js HMR / websocket-based features.
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

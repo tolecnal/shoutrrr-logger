@@ -22,6 +22,7 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
 - [API reference](#api-reference)
 - [Development setup](#development-setup)
 - [Building the Docker image](#building-the-docker-image)
+- [Reverse proxy (nginx)](#reverse-proxy-nginx)
 
 ---
 
@@ -31,13 +32,16 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
 browser
   │
   ▼
-Next.js  :4000   ──/api/*──▶  FastAPI  :9000
-                                  │
-                                  ▼
-                           PostgreSQL 17
+nginx  :443 (TLS) / :80 (→ 443)
+  │
+  ├──/api/*──▶  FastAPI  :9000  ──▶  PostgreSQL 17
+  │
+  └──/*──────▶  Next.js  :4000  ──/api/*──▶  FastAPI  :9000
 ```
 
-The container runs both processes. The Next.js rewrite rule transparently proxies every `/api/*` request to the FastAPI backend, so the browser only ever talks to port 4000.
+In `docker-compose`, nginx is the **only** service published to the host. It terminates TLS and routes `/api/*` to the FastAPI backend and everything else to the Next.js frontend; the `app` (frontend+backend) and `postgres` containers are reachable only over the internal compose network — see [`nginx-config/`](nginx-config/) and the `NGINX_SERVER_NAME` variable below.
+
+The `app` container runs both the frontend and backend processes. The Next.js rewrite rule also transparently proxies every `/api/*` request to the FastAPI backend — this remains useful when running the frontend directly (without nginx) during development.
 
 FastAPI runs under Gunicorn with multiple Uvicorn workers (default: 4, controlled by `WORKERS`).
 
@@ -49,6 +53,7 @@ FastAPI runs under Gunicorn with multiple Uvicorn workers (default: 4, controlle
 
 - Docker 24+ with Compose v2
 - An OIDC provider (Keycloak, Auth0, Authentik, Dex, …) — see [OpenID Connect setup](#openid-connect-setup)
+- A TLS certificate and key for the hostname you'll serve the app under, placed at `/etc/ssl/certs/<hostname>.crt` and `/etc/ssl/private/<hostname>.key` on the Docker host — see [Reverse proxy](#reverse-proxy-nginx)
 
 ### 1. Clone and configure
 
@@ -58,13 +63,22 @@ cd shoutrrr-logger
 cp .env.example .env
 ```
 
-Edit `.env` — at minimum set these four values:
+Edit `.env` — at minimum set these values:
 
 ```dotenv
 POSTGRES_PASSWORD=a-strong-password-here
 SECRET_KEY=                # output of: openssl rand -hex 32
 OIDC_CLIENT_SECRET=        # from your OIDC provider
 OIDC_DISCOVERY_URL=        # see OpenID Connect setup below
+NGINX_SERVER_NAME=         # public hostname, e.g. shoutrrr-logger.example.com
+APP_BASE_URL=              # https://<NGINX_SERVER_NAME> — must match your OIDC redirect URI
+```
+
+Then place your TLS certificate and key on the Docker host at:
+
+```
+/etc/ssl/certs/<NGINX_SERVER_NAME>.crt
+/etc/ssl/private/<NGINX_SERVER_NAME>.key
 ```
 
 ### 2. Start
@@ -77,7 +91,7 @@ On first boot the database schema is created automatically.
 
 ### 3. Open
 
-Navigate to **http://localhost:4000**. You will be redirected to your OIDC provider to sign in.
+Navigate to **https://\<NGINX_SERVER_NAME\>**. You will be redirected to your OIDC provider to sign in.
 
 ---
 
@@ -95,7 +109,8 @@ All variables are read from `.env` (or from the process environment). The `.env.
 | `OIDC_DISCOVERY_URL` | **yes** | Keycloak master realm | The `/.well-known/openid-configuration` URL of your provider. |
 | `OIDC_CLIENT_ID` | yes | `shoutrrr-logger` | OIDC client / app ID. |
 | `OIDC_CLIENT_SECRET` | **yes** | _(empty)_ | OIDC client secret. |
-| `APP_BASE_URL` | yes | `http://localhost:4000` | Public URL the browser uses to reach the app. Used to build the redirect URI. Must match what you register in your OIDC provider. |
+| `APP_BASE_URL` | yes | `http://localhost:4000` | Public URL the browser uses to reach the app. Used to build the redirect URI. Must match what you register in your OIDC provider. Behind the bundled nginx reverse proxy this is `https://<NGINX_SERVER_NAME>` (no port). |
+| `NGINX_SERVER_NAME` | **yes** (docker-compose) | _(none)_ | Public hostname nginx serves. Used as the `server_name` and to locate the TLS cert/key — see [Reverse proxy](#reverse-proxy-nginx) below. |
 | `WORKERS` | no | `4` | Number of Gunicorn/Uvicorn worker processes. |
 | `OIDC_ROLES_CLAIM` | no | `realm_access.roles` | Dot-separated path into the UserInfo JSON that contains the list of role strings. Use `roles` for flat claims (Auth0, Authentik, etc.). |
 | `OIDC_ROLE_VIEWER` | no | `viewer` | The role string that maps to the viewer role. |
@@ -299,11 +314,7 @@ The shoutrrr `generic` service supports injecting arbitrary HTTP headers via `@H
 generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
 ```
 
-For plain HTTP (e.g. internal network, no TLS):
-
-```
-generic+http://shoutrrr-logger.example.com:9000/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN&disabletls=Yes
-```
+> Behind the bundled nginx reverse proxy, port 9000 is **not** reachable from outside the Docker host — always send notifications to the public HTTPS URL above (port 443). For Watchtower running in the same compose stack, see [Running on the same host](#running-on-the-same-host-as-shoutrrr-logger) below for the internal-network URL.
 
 Replace `YOUR_TOKEN` with the raw token value shown once when creating a token in **Admin → Access Tokens**.
 
@@ -481,10 +492,36 @@ docker run --rm \
   shoutrrr-logger:latest
 ```
 
-Or use docker-compose which also starts a Postgres 17 sidecar:
+Or use docker-compose which also starts a Postgres 17 sidecar and the nginx reverse proxy described below:
 
 ```bash
 docker compose up --build
 ```
 
 Port 5432 is not exposed externally by default. Uncomment the `ports` block in `docker-compose.yml` if you need direct database access.
+
+---
+
+## Reverse proxy (nginx)
+
+`docker-compose` runs an nginx container as the **only** service published to the host (ports 80/443). It terminates TLS and reverse-proxies:
+
+- `/api/*` → the FastAPI backend (`app:9000`) — REST API, Swagger/ReDoc, the OIDC callback, and the `/api/shoutrrr` ingest endpoint
+- everything else → the Next.js frontend (`app:4000`)
+
+The `app` and `postgres` containers are **not** published to the host (see `expose:` in `docker-compose.yml`) — they're reachable only from nginx over the internal compose network. All external traffic must go through nginx.
+
+The nginx config is generated from the template at [`nginx-config/templates/default.conf.template`](nginx-config/templates/default.conf.template) using the official nginx image's `envsubst`-on-templates mechanism, substituting `${NGINX_SERVER_NAME}` from the environment. Edit that file to change routing or TLS settings; `docker compose up` regenerates the rendered config on container start.
+
+### Requirements
+
+1. Set `NGINX_SERVER_NAME` in `.env` to the public hostname (e.g. `shoutrrr-logger.example.com`).
+2. Place a TLS certificate and private key on the **Docker host** at:
+   ```
+   /etc/ssl/certs/<NGINX_SERVER_NAME>.crt
+   /etc/ssl/private/<NGINX_SERVER_NAME>.key
+   ```
+   These paths are bind-mounted read-only into the nginx container (`/etc/ssl/certs` and `/etc/ssl/private`), and the filenames must match `NGINX_SERVER_NAME` exactly.
+3. Set `APP_BASE_URL=https://<NGINX_SERVER_NAME>` (no port — nginx terminates TLS on 443) and update the redirect URI registered with your OIDC provider to match (`https://<NGINX_SERVER_NAME>/api/auth/callback`).
+
+Plain HTTP requests on port 80 are redirected to HTTPS.
