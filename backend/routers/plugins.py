@@ -71,6 +71,7 @@ async def test_plugin(
     plugin_id: str,
     db: AsyncSession = Depends(get_db),
     _user=Depends(_require_admin),
-) -> dict:
+) -> dict[str, str]:
     """Fire a synthetic test notification through the plugin."""
     await plugin_service.test_plugin(db, plugin_id)
+    return {"detail": f"Test notification sent to plugin '{plugin_id}'"}

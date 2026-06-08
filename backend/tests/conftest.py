@@ -28,11 +28,20 @@ def _compile_jsonb_as_json_on_sqlite(element, compiler, **kw):
 
 
 # ---------------------------------------------------------------------------
-# Engine / session — SQLite in-memory per test session
+# Engine / session — fresh SQLite in-memory database per test
 # ---------------------------------------------------------------------------
+#
+# Scoped per-test (rather than per-session) so each test gets its own private
+# in-memory database. Service code calls `session.commit()` mid-request, and
+# `services.notifications.dispatch_plugins` opens a second, independent
+# session straight off `database.engine` for its background-task work — both
+# would permanently persist rows into a shared database, defeating any
+# rollback-based isolation and leaking fixtures (e.g. the seeded admin user)
+# across tests. A fresh engine/database per test sidesteps that entirely: commits
+# are harmless because the whole database is torn down with the test.
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def engine():
     eng = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
@@ -55,18 +64,15 @@ async def engine():
 
     yield eng
 
-    async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
     await eng.dispose()
 
 
 @pytest_asyncio.fixture
 async def db(engine) -> AsyncGenerator[AsyncSession, None]:
-    """Fresh database session per test, rolled back afterwards."""
+    """Database session bound to this test's private in-memory engine."""
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     async with factory() as session:
         yield session
-        await session.rollback()
 
 
 # ---------------------------------------------------------------------------
