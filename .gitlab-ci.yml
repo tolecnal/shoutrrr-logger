@@ -1,16 +1,19 @@
 # ---------------------------------------------------------------------------
 # shoutrrr-logger — GitLab CI/CD
 #
-# Mirrors the GitHub Actions workflows (lint.yml + docker-publish.yml).
-#
 # Stages:
 #   lint    — ruff (Python) + ESLint + tsc (TypeScript)
 #   test    — pytest (Python) + vitest (TypeScript)
-#   build   — multi-platform Docker image pushed to Docker Hub
+#   build   — multi-platform Docker image
+#               build:gitlab    automatic  → GitLab Container Registry
+#               build:dockerhub manual     → Docker Hub
 #
 # Required CI/CD variables (Settings → CI/CD → Variables):
-#   DOCKERHUB_USER     Docker Hub username
-#   DOCKERHUB_TOKEN    Docker Hub access token (read/write scope)
+#   DOCKERHUB_USER     Docker Hub username          (for build:dockerhub only)
+#   DOCKERHUB_TOKEN    Docker Hub access token       (for build:dockerhub only)
+#
+# GitLab registry variables (CI_REGISTRY, CI_REGISTRY_IMAGE,
+# CI_REGISTRY_USER, CI_REGISTRY_PASSWORD) are set automatically by GitLab.
 # ---------------------------------------------------------------------------
 
 default:
@@ -21,7 +24,6 @@ default:
 variables:
   DOCKER_BUILDKIT: "1"
   DOCKER_TLS_CERTDIR: "/certs"
-  IMAGE: $DOCKERHUB_USER/shoutrrr-logger
 
 stages:
   - lint
@@ -101,33 +103,31 @@ test:frontend:
     - when: always
 
 # ---------------------------------------------------------------------------
-# Build & Publish — Docker image (Docker Hub)
+# Build & Publish — GitLab Container Registry (automatic)
 #
-# Runs on pushes to the default branch, on version tags (v*.*.*),
-# or when triggered manually from the GitLab UI.
+# Triggered automatically on every push to the default branch and on
+# version tags (v*.*.*).  Also runs when triggered from the GitLab UI.
 #
-# Tag strategy (mirrors docker/metadata-action in the GitHub workflow):
+# Tag strategy:
 #   :sha-<short-sha>        every run
-#   :<branch-name>          branch builds  (e.g. :main)
+#   :<branch-name>          branch builds (e.g. :main)
 #   :latest                 default branch only
 #   :1.2.3 / :1.2          semver tags (v stripped)
 #
-# Layer cache is stored as a separate Docker Hub tag (:buildcache) using
-# BuildKit registry cache — equivalent to the GitHub Actions GHA cache.
+# Layer cache is stored in the GitLab registry as :buildcache.
 # ---------------------------------------------------------------------------
-build:publish:
+build:gitlab:
   stage: build
   before_script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
-    # Register QEMU handlers so the buildkit daemon can emit arm64 layers
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
     - docker run --privileged --rm tonistiigi/binfmt --install all
-    # Create a docker-container buildx builder (required for --platform + --push)
     - docker buildx create --use --name multiarch --driver docker-container
     - docker buildx inspect --bootstrap
   script:
     - GIT_HASH=$(git rev-parse --short HEAD)
     - BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     - |
+      IMAGE="$CI_REGISTRY_IMAGE"
       TAGS="-t ${IMAGE}:sha-${CI_COMMIT_SHORT_SHA}"
 
       if [ -n "$CI_COMMIT_BRANCH" ]; then
@@ -149,8 +149,8 @@ build:publish:
         --platform linux/amd64,linux/arm64 \
         --build-arg GIT_HASH="${GIT_HASH}" \
         --build-arg BUILD_TIME="${BUILD_TIME}" \
-        --cache-from "type=registry,ref=${IMAGE}:buildcache" \
-        --cache-to   "type=registry,ref=${IMAGE}:buildcache,mode=max" \
+        --cache-from "type=registry,ref=${CI_REGISTRY_IMAGE}:buildcache" \
+        --cache-to   "type=registry,ref=${CI_REGISTRY_IMAGE}:buildcache,mode=max" \
         --push \
         ${TAGS} \
         .
@@ -158,3 +158,60 @@ build:publish:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
     - if: '$CI_PIPELINE_SOURCE == "web"'
+
+# ---------------------------------------------------------------------------
+# Build & Publish — Docker Hub (manual trigger only)
+#
+# Appears as a play button in the pipeline UI after lint + test pass.
+# Must be triggered explicitly — it will never run automatically.
+# Requires DOCKERHUB_USER and DOCKERHUB_TOKEN CI/CD variables.
+#
+# Uses the same tag strategy and multi-platform target as build:gitlab.
+# Layer cache is stored in Docker Hub as :buildcache.
+# ---------------------------------------------------------------------------
+build:dockerhub:
+  stage: build
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
+    - docker run --privileged --rm tonistiigi/binfmt --install all
+    - docker buildx create --use --name multiarch --driver docker-container
+    - docker buildx inspect --bootstrap
+  script:
+    - GIT_HASH=$(git rev-parse --short HEAD)
+    - BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - |
+      IMAGE="${DOCKERHUB_USER}/shoutrrr-logger"
+      TAGS="-t ${IMAGE}:sha-${CI_COMMIT_SHORT_SHA}"
+
+      if [ -n "$CI_COMMIT_BRANCH" ]; then
+        TAGS="$TAGS -t ${IMAGE}:${CI_COMMIT_BRANCH}"
+      fi
+
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        TAGS="$TAGS -t ${IMAGE}:latest"
+      fi
+
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        VERSION="${CI_COMMIT_TAG#v}"
+        TAGS="$TAGS -t ${IMAGE}:${VERSION}"
+        MAJOR_MINOR=$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+' || true)
+        [ -n "$MAJOR_MINOR" ] && TAGS="$TAGS -t ${IMAGE}:${MAJOR_MINOR}"
+      fi
+    - |
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --build-arg GIT_HASH="${GIT_HASH}" \
+        --build-arg BUILD_TIME="${BUILD_TIME}" \
+        --cache-from "type=registry,ref=${DOCKERHUB_USER}/shoutrrr-logger:buildcache" \
+        --cache-to   "type=registry,ref=${DOCKERHUB_USER}/shoutrrr-logger:buildcache,mode=max" \
+        --push \
+        ${TAGS} \
+        .
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - when: never
