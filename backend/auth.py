@@ -36,6 +36,7 @@ from repositories.users import user_repository
 # has no length limit, and is orders of magnitude faster under load.
 # ---------------------------------------------------------------------------
 
+
 def hash_token(raw: str) -> str:
     """Return a hex-encoded HMAC-SHA256 of the raw token."""
     return hashlib.sha256(raw.encode()).hexdigest()
@@ -71,7 +72,9 @@ def decode_session_jwt(token: str) -> dict:
     try:
         return jwt.decode(token, settings.secret_key, algorithms=[SESSION_ALGORITHM])
     except PyJWTError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +133,7 @@ def _extract_raw_token_from_request(request: Request) -> str | None:
     """Extract the raw Bearer token from the Authorization header."""
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
-        return auth[len("Bearer "):]
+        return auth[len("Bearer ") :]
     return None
 
 
@@ -152,7 +155,9 @@ async def get_current_user_from_session(
     user_id = payload.get("sub")
     user = await user_repository.get_by_id(db, user_id)
     if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive"
+        )
     return user
 
 
@@ -180,7 +185,9 @@ async def verify_bearer_access_token(
     """
     raw = _extract_raw_token_from_request(request)
     if not raw:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required"
+        )
 
     now = datetime.now(UTC)
 
@@ -197,7 +204,9 @@ async def verify_bearer_access_token(
             break
 
     if matched is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
 
     # Update last_used_at asynchronously (fire-and-forget style via the same session)
     matched.last_used_at = now

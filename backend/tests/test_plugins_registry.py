@@ -2,7 +2,6 @@
 Tests for plugins/registry.py — discovery, retrieval, and listing.
 """
 
-
 from plugins import registry
 from plugins.splunk.plugin import SplunkPlugin
 

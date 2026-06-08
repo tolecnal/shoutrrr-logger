@@ -54,6 +54,7 @@ class TestGenerateRawToken:
 
     def test_url_safe_characters_only(self):
         import re
+
         token = generate_raw_token()
         # URL-safe base64 uses A-Z, a-z, 0-9, -, _
         assert re.match(r"^[A-Za-z0-9_-]+$", token)

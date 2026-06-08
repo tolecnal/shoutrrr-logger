@@ -33,7 +33,12 @@ async def get_user(
     return UserOut.model_validate(await user_service.get_user(db, user_id))
 
 
-@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user manually")
+@router.post(
+    "",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a user manually",
+)
 async def create_user(
     body: UserCreate,
     _admin: User = Depends(require_admin),

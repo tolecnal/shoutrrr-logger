@@ -4,7 +4,6 @@ backward-compat 308 redirect middleware.
 """
 
 
-
 class TestHealth:
     async def test_health_returns_ok(self, client):
         resp = await client.get("/api/health")

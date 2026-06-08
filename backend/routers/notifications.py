@@ -30,7 +30,9 @@ async def list_notifications(
     _user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[NotificationOut]:
-    return await notification_service.list_notifications(db, query=q, page=page, page_size=page_size)
+    return await notification_service.list_notifications(
+        db, query=q, page=page, page_size=page_size
+    )
 
 
 @router.get(
@@ -43,4 +45,6 @@ async def get_notification(
     _user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationOut:
-    return NotificationOut.model_validate(await notification_service.get_notification(db, notification_id))
+    return NotificationOut.model_validate(
+        await notification_service.get_notification(db, notification_id)
+    )

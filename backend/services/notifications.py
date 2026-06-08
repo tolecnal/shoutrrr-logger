@@ -32,7 +32,9 @@ class NotificationService:
         page: int,
         page_size: int,
     ) -> PaginatedResponse[NotificationOut]:
-        rows, total = await self._repo.search_paginated(session, query=query, page=page, page_size=page_size)
+        rows, total = await self._repo.search_paginated(
+            session, query=query, page=page, page_size=page_size
+        )
         return PaginatedResponse(
             items=[NotificationOut.model_validate(r) for r in rows],
             total=total,
@@ -41,10 +43,14 @@ class NotificationService:
             pages=max(1, math.ceil(total / page_size)),
         )
 
-    async def get_notification(self, session: AsyncSession, notification_id: uuid.UUID | str) -> Notification:
+    async def get_notification(
+        self, session: AsyncSession, notification_id: uuid.UUID | str
+    ) -> Notification:
         notification = await self._repo.get_by_id(session, notification_id)
         if notification is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
+            )
         return notification
 
     async def custom_field_keys(self, session: AsyncSession, *, limit: int) -> list[str]:

@@ -65,9 +65,9 @@ def _to_epoch(value: Any) -> float | None:
 
 def _resolve_field(notification: dict[str, Any], source_field: str) -> Any:
     if source_field.startswith("literal:"):
-        return source_field[len("literal:"):]
+        return source_field[len("literal:") :]
     if source_field.startswith("custom_fields."):
-        key = source_field[len("custom_fields."):]
+        key = source_field[len("custom_fields.") :]
         return (notification.get("custom_fields") or {}).get(key)
     value = notification.get(source_field)
     # received_at is always stored as an ISO string; convert to epoch float
@@ -122,11 +122,11 @@ class SplunkPlugin(BasePlugin):
             "source": "shoutrrr-logger",
             "sourcetype": "_json",
             "field_mappings": [
-                {"output_key": "timestamp",  "source_field": "received_at"},
-                {"output_key": "host",       "source_field": "sender_name"},
-                {"output_key": "message",    "source_field": "message"},
-                {"output_key": "title",      "source_field": "title"},
-                {"output_key": "id",         "source_field": "id"},
+                {"output_key": "timestamp", "source_field": "received_at"},
+                {"output_key": "host", "source_field": "sender_name"},
+                {"output_key": "message", "source_field": "message"},
+                {"output_key": "title", "source_field": "title"},
+                {"output_key": "id", "source_field": "id"},
             ],
             "verify_tls": True,
         }

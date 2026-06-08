@@ -25,11 +25,15 @@ class AccessTokenService:
     async def list_tokens(self, session: AsyncSession) -> Sequence[AccessToken]:
         return await self._repo.list_all(session)
 
-    async def create_token(self, session: AsyncSession, body: AccessTokenCreate) -> tuple[AccessToken, str]:
+    async def create_token(
+        self, session: AsyncSession, body: AccessTokenCreate
+    ) -> tuple[AccessToken, str]:
         """Create a token, returning ``(token, raw_value)``. The raw value is shown once."""
         user = await self._user_repo.get_by_id(session, body.user_id)
         if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found"
+            )
 
         raw = generate_raw_token()
         token = AccessToken(
@@ -65,5 +69,6 @@ class AccessTokenService:
         if token is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
         await self._repo.delete(session, token)
+
 
 access_token_service = AccessTokenService()

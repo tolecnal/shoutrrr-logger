@@ -2,13 +2,14 @@
 Integration tests for GET /api/v1/notifications — pagination and search.
 """
 
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Notification
 
 
-async def _seed(db: AsyncSession, token_id, count: int, base_msg: str = "msg") -> list[Notification]:
+async def _seed(
+    db: AsyncSession, token_id, count: int, base_msg: str = "msg"
+) -> list[Notification]:
     rows = []
     for i in range(count):
         n = Notification(
@@ -118,7 +119,9 @@ class TestGetNotification:
         )
         assert resp.status_code == 404
 
-    async def test_custom_fields_populated(self, client, viewer_session_headers, sample_notification):
+    async def test_custom_fields_populated(
+        self, client, viewer_session_headers, sample_notification
+    ):
         """sample_notification has a raw_payload with hostname and severity."""
         resp = await client.get(
             f"/api/v1/notifications/{sample_notification.id}",

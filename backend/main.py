@@ -68,8 +68,14 @@ app.add_middleware(
 # This keeps existing shoutrrr webhook URLs working after the versioning change.
 # Excluded paths are those that will never be versioned.
 # ---------------------------------------------------------------------------
-_UNVERSIONED_PREFIXES = {"/api/docs", "/api/redoc", "/api/openapi.json",
-                         "/api/health", "/api/version", "/api/auth"}
+_UNVERSIONED_PREFIXES = {
+    "/api/docs",
+    "/api/redoc",
+    "/api/openapi.json",
+    "/api/health",
+    "/api/version",
+    "/api/auth",
+}
 
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from starlette.responses import Response as StarletteResponse  # noqa: E402
@@ -81,7 +87,7 @@ class _VersionRedirectMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api/") and not path.startswith(f"/api/{API_VERSION}/"):
             # Skip permanently-unversioned paths
             if not any(path.startswith(p) for p in _UNVERSIONED_PREFIXES):
-                new_path = f"/api/{API_VERSION}" + path[len("/api"):]
+                new_path = f"/api/{API_VERSION}" + path[len("/api") :]
                 qs = f"?{request.url.query}" if request.url.query else ""
                 return StarletteResponse(
                     status_code=308,
@@ -89,17 +95,18 @@ class _VersionRedirectMiddleware(BaseHTTPMiddleware):
                 )
         return await call_next(request)
 
+
 app.add_middleware(_VersionRedirectMiddleware)
 
 # ---------------------------------------------------------------------------
 # Routers  (all versioned under /api/v1)
 # ---------------------------------------------------------------------------
 _V1 = f"/api/{API_VERSION}"
-app.include_router(shoutrrr.router,       prefix=_V1)
-app.include_router(notifications.router,  prefix=_V1)
-app.include_router(users.router,          prefix=f"{_V1}/admin")
-app.include_router(tokens.router,         prefix=f"{_V1}/admin")
-app.include_router(plugins.router,        prefix=_V1)
+app.include_router(shoutrrr.router, prefix=_V1)
+app.include_router(notifications.router, prefix=_V1)
+app.include_router(users.router, prefix=f"{_V1}/admin")
+app.include_router(tokens.router, prefix=f"{_V1}/admin")
+app.include_router(plugins.router, prefix=_V1)
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +158,11 @@ def _extract_role_from_claims(userinfo: dict) -> tuple[UserRole | None, str]:
     val1_roles: list[str] = [str(r) for r in val] if val1_found else []
     checked.append(
         f"'{settings.oidc_roles_claim}' → "
-        + (f"found list {val1_roles}" if val1_found else f"not found (got {type(val).__name__}: {val!r})")
+        + (
+            f"found list {val1_roles}"
+            if val1_found
+            else f"not found (got {type(val).__name__}: {val!r})"
+        )
     )
 
     if val1_found:
@@ -168,7 +179,11 @@ def _extract_role_from_claims(userinfo: dict) -> tuple[UserRole | None, str]:
         val2_roles: list[str] = [str(r) for r in val2] if val2_found else []
         checked.append(
             f"'{client_roles_path}' → "
-            + (f"found list {val2_roles}" if val2_found else f"not found (got {type(val2).__name__}: {val2!r})")
+            + (
+                f"found list {val2_roles}"
+                if val2_found
+                else f"not found (got {type(val2).__name__}: {val2!r})"
+            )
         )
 
         if val2_found:

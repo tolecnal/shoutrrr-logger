@@ -6,6 +6,7 @@ GIT_HASH and BUILD_TIME are injected at image build time by the Dockerfile
 via a generated _version_meta.py module.  When running outside Docker (e.g.
 local development) sensible fallback values are used.
 """
+
 from datetime import UTC
 
 APP_VERSION = "1.0.0"
@@ -44,9 +45,7 @@ except ImportError:
     _git_root = _find_git_root()
     BUILD_GIT_HASH = _git(["rev-parse", "--short", "HEAD"], _git_root) or "dev"
     BUILD_TIME = (
-        datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        if BUILD_GIT_HASH != "dev"
-        else "unknown"
+        datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if BUILD_GIT_HASH != "dev" else "unknown"
     )
 
 __all__ = ["API_VERSION", "APP_VERSION", "BUILD_GIT_HASH", "BUILD_TIME"]

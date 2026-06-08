@@ -56,6 +56,9 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                 raise
             logger.warning(
                 "Database not ready (attempt %d/%d): %s — retrying in %.0fs…",
-                attempt, retries, exc, delay,
+                attempt,
+                retries,
+                exc,
+                delay,
             )
             await asyncio.sleep(delay)

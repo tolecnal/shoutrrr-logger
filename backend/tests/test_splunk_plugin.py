@@ -22,6 +22,7 @@ from plugins.splunk.plugin import (
 # _to_epoch
 # ---------------------------------------------------------------------------
 
+
 class TestToEpoch:
     def test_none_returns_none(self):
         assert _to_epoch(None) is None
@@ -58,6 +59,7 @@ class TestToEpoch:
 # ---------------------------------------------------------------------------
 # _resolve_field
 # ---------------------------------------------------------------------------
+
 
 class TestResolveField:
     _notif = {
@@ -100,6 +102,7 @@ class TestResolveField:
 # ---------------------------------------------------------------------------
 # _build_event
 # ---------------------------------------------------------------------------
+
 
 class TestBuildEvent:
     _notif = {
@@ -182,7 +185,7 @@ CONFIG = {
     "sourcetype": "_json",
     "field_mappings": [
         {"output_key": "timestamp", "source_field": "received_at"},
-        {"output_key": "message",   "source_field": "message"},
+        {"output_key": "message", "source_field": "message"},
     ],
     "verify_tls": False,
 }

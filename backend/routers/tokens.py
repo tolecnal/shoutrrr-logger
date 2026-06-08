@@ -44,10 +44,14 @@ async def create_token(
 ) -> AccessTokenCreated:
     token, raw = await access_token_service.create_token(db, body)
     out = AccessTokenCreated.model_validate(token)
-    return out.model_copy(update={"raw_token": raw, "owner_username": token.user.username if token.user else None})
+    return out.model_copy(
+        update={"raw_token": raw, "owner_username": token.user.username if token.user else None}
+    )
 
 
-@router.patch("/{token_id}", response_model=AccessTokenOut, summary="Update a token (rename or deactivate)")
+@router.patch(
+    "/{token_id}", response_model=AccessTokenOut, summary="Update a token (rename or deactivate)"
+)
 async def update_token(
     token_id: uuid.UUID,
     name: str | None = None,
@@ -59,7 +63,9 @@ async def update_token(
     return _token_out(token)
 
 
-@router.delete("/{token_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete an access token")
+@router.delete(
+    "/{token_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete an access token"
+)
 async def delete_token(
     token_id: uuid.UUID,
     _admin: User = Depends(require_admin),

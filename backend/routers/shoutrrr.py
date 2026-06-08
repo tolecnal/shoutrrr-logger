@@ -58,8 +58,14 @@ async def receive_notification(
     # We also collect any non-shoutrrr-internal params (those that don't start
     # with "@", which are shoutrrr options like @Authorization, disabletls etc.)
     # Internal shoutrrr params to skip (not custom fields):
-    _SHOUTRRR_INTERNAL = {"disabletls", "template", "title", "splitlines",
-                          "contenttype", "messagelength"}
+    _SHOUTRRR_INTERNAL = {
+        "disabletls",
+        "template",
+        "title",
+        "splitlines",
+        "contenttype",
+        "messagelength",
+    }
     for key, value in request.query_params.items():
         if key.startswith("@"):
             # shoutrrr header injection — skip
@@ -93,7 +99,9 @@ async def receive_notification(
     sender_name = token.name if token.name else (token.user.username if token.user else None)
 
     raw_payload = json.dumps(extra) if extra else None
-    source_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else None)
+    source_ip = request.headers.get(
+        "X-Forwarded-For", request.client.host if request.client else None
+    )
 
     notification = await notification_service.store_incoming(
         db,

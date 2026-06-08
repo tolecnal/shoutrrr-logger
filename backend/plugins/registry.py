@@ -53,12 +53,16 @@ def _register_from_module(mod: object, source: str) -> None:
                     _REGISTRY[pid] = instance
                     logger.info(
                         "Registered plugin '%s' (%s) from %s",
-                        pid, instance.name, source,
+                        pid,
+                        instance.name,
+                        source,
                     )
             except Exception as exc:
                 logger.error(
                     "Failed to instantiate plugin class %s from %s: %s",
-                    attr.__name__, source, exc,
+                    attr.__name__,
+                    source,
+                    exc,
                 )
 
 
@@ -93,18 +97,14 @@ def discover() -> None:
                     plugin_mod = importlib.import_module(plugin_mod_name)
                     _register_from_module(plugin_mod, source=f"{name}/plugin.py")
             except Exception as exc:
-                logger.error(
-                    "Failed to import plugin package '%s': %s", name, exc
-                )
+                logger.error("Failed to import plugin package '%s': %s", name, exc)
         else:
             # Flat .py file — legacy / simple plugin.
             try:
                 mod = importlib.import_module(full_name)
                 _register_from_module(mod, source=f"{name}.py")
             except Exception as exc:
-                logger.error(
-                    "Failed to import plugin module '%s': %s", name, exc
-                )
+                logger.error("Failed to import plugin module '%s': %s", name, exc)
 
 
 def all_plugins() -> list[BasePlugin]:

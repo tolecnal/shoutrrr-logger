@@ -27,10 +27,14 @@ class UserService:
     async def create_user(self, session: AsyncSession, body: UserCreate) -> User:
         existing = await self._repo.get_by_sub(session, body.sub)
         if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with this sub already exists")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="User with this sub already exists"
+            )
         return await self._repo.add(session, User(**body.model_dump()))
 
-    async def update_user(self, session: AsyncSession, user_id: uuid.UUID, body: UserUpdate) -> User:
+    async def update_user(
+        self, session: AsyncSession, user_id: uuid.UUID, body: UserUpdate
+    ) -> User:
         user = await self.get_user(session, user_id)
         for field, value in body.model_dump(exclude_none=True).items():
             setattr(user, field, value)
@@ -38,9 +42,13 @@ class UserService:
         await session.refresh(user)
         return user
 
-    async def delete_user(self, session: AsyncSession, user_id: uuid.UUID, current_user: User) -> None:
+    async def delete_user(
+        self, session: AsyncSession, user_id: uuid.UUID, current_user: User
+    ) -> None:
         if str(user_id) == str(current_user.id):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
+            )
         user = await self.get_user(session, user_id)
         await self._repo.delete(session, user)
 

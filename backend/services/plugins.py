@@ -30,7 +30,9 @@ class PluginService:
             plugin = plugin_registry.get_plugin(plugin_id)
             if plugin is None:
                 raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
-            row = await self._repo.add(session, PluginConfig(id=plugin_id, enabled=False, config={}))
+            row = await self._repo.add(
+                session, PluginConfig(id=plugin_id, enabled=False, config={})
+            )
         return row
 
     def _to_out(self, plugin_id: str, row: PluginConfig) -> PluginOut:
@@ -59,7 +61,9 @@ class PluginService:
         await session.commit()
         return self._to_out(plugin_id, row)
 
-    async def update_plugin(self, session: AsyncSession, plugin_id: str, body: PluginUpdate) -> PluginOut:
+    async def update_plugin(
+        self, session: AsyncSession, plugin_id: str, body: PluginUpdate
+    ) -> PluginOut:
         plugin = plugin_registry.get_plugin(plugin_id)
         if not plugin:
             raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")

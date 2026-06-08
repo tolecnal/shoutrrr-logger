@@ -31,6 +31,7 @@ def _compile_jsonb_as_json_on_sqlite(element, compiler, **kw):
 # Engine / session — SQLite in-memory per test session
 # ---------------------------------------------------------------------------
 
+
 @pytest_asyncio.fixture(scope="session")
 async def engine():
     eng = create_async_engine(
@@ -46,6 +47,7 @@ async def engine():
 
     # Patch the models to remove PG-only kwargs before DDL is emitted
     from models import Notification as _Notif  # noqa: PLC0415
+
     _Notif.__table_args__ = ()
 
     async with eng.begin() as conn:
@@ -70,6 +72,7 @@ async def db(engine) -> AsyncGenerator[AsyncSession, None]:
 # ---------------------------------------------------------------------------
 # FastAPI app with DB override
 # ---------------------------------------------------------------------------
+
 
 @pytest_asyncio.fixture
 async def app(db: AsyncSession, engine, monkeypatch):
@@ -105,6 +108,7 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 # ---------------------------------------------------------------------------
 # Pre-seeded database objects
 # ---------------------------------------------------------------------------
+
 
 @pytest_asyncio.fixture
 async def admin_user(db: AsyncSession) -> User:

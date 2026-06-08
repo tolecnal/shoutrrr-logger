@@ -63,10 +63,18 @@ class NotificationOut(BaseModel):
                     else:
                         # For ORM objects, inject via __dict__ manipulation isn't safe;
                         # return a dict representation instead
-                        d = {c: getattr(values, c, None) for c in [
-                            "id", "sender_name", "title", "message",
-                            "received_at", "source_ip", "raw_payload",
-                        ]}
+                        d = {
+                            c: getattr(values, c, None)
+                            for c in [
+                                "id",
+                                "sender_name",
+                                "title",
+                                "message",
+                                "received_at",
+                                "source_ip",
+                                "raw_payload",
+                            ]
+                        }
                         d["custom_fields"] = parsed
                         return d
             except (json.JSONDecodeError, TypeError):
@@ -132,6 +140,7 @@ class AccessTokenOut(BaseModel):
 
 class AccessTokenCreated(AccessTokenOut):
     """Includes the raw token – only returned once at creation time."""
+
     raw_token: str = ""
 
 
