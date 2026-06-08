@@ -97,6 +97,16 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
 #   docker build --build-arg GIT_HASH=$(git rev-parse --short HEAD) .
 ARG GIT_HASH=dev
 ARG BUILD_TIME=
+ARG APP_VERSION=dev
+
+LABEL org.opencontainers.image.title="shoutrrr-logger" \
+      org.opencontainers.image.description="Self-hosted notification logging service for shoutrrr" \
+      org.opencontainers.image.url="https://github.com/tolecnal/shoutrrr-logger" \
+      org.opencontainers.image.source="https://github.com/tolecnal/shoutrrr-logger" \
+      org.opencontainers.image.documentation="https://github.com/tolecnal/shoutrrr-logger#readme" \
+      org.opencontainers.image.revision="${GIT_HASH}" \
+      org.opencontainers.image.created="${BUILD_TIME}" \
+      org.opencontainers.image.version="${APP_VERSION}"
 
 # ---- Backend ----
 WORKDIR /app/backend

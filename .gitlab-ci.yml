@@ -127,6 +127,7 @@ build:gitlab:
   script:
     - GIT_HASH=$(git rev-parse --short HEAD)
     - BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - VERSION="${CI_COMMIT_TAG#v}"
     - |
       IMAGE="$CI_REGISTRY_IMAGE"
       TAGS="-t ${IMAGE}:sha-${CI_COMMIT_SHORT_SHA}"
@@ -139,8 +140,7 @@ build:gitlab:
         TAGS="$TAGS -t ${IMAGE}:latest"
       fi
 
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        VERSION="${CI_COMMIT_TAG#v}"
+      if [ -n "$VERSION" ]; then
         TAGS="$TAGS -t ${IMAGE}:${VERSION}"
         MAJOR_MINOR=$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+' || true)
         [ -n "$MAJOR_MINOR" ] && TAGS="$TAGS -t ${IMAGE}:${MAJOR_MINOR}"
@@ -150,6 +150,7 @@ build:gitlab:
         --platform linux/amd64,linux/arm64 \
         --build-arg GIT_HASH="${GIT_HASH}" \
         --build-arg BUILD_TIME="${BUILD_TIME}" \
+        --build-arg APP_VERSION="${VERSION:-dev}" \
         --cache-from "type=registry,ref=${CI_REGISTRY_IMAGE}:buildcache" \
         --cache-to   "type=registry,ref=${CI_REGISTRY_IMAGE}:buildcache,mode=max" \
         --push \
@@ -181,6 +182,7 @@ build:dockerhub:
   script:
     - GIT_HASH=$(git rev-parse --short HEAD)
     - BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    - VERSION="${CI_COMMIT_TAG#v}"
     - |
       IMAGE="${DOCKERHUB_USER}/shoutrrr-logger"
       TAGS="-t ${IMAGE}:sha-${CI_COMMIT_SHORT_SHA}"
@@ -193,8 +195,7 @@ build:dockerhub:
         TAGS="$TAGS -t ${IMAGE}:latest"
       fi
 
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        VERSION="${CI_COMMIT_TAG#v}"
+      if [ -n "$VERSION" ]; then
         TAGS="$TAGS -t ${IMAGE}:${VERSION}"
         MAJOR_MINOR=$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+' || true)
         [ -n "$MAJOR_MINOR" ] && TAGS="$TAGS -t ${IMAGE}:${MAJOR_MINOR}"
@@ -204,11 +205,25 @@ build:dockerhub:
         --platform linux/amd64,linux/arm64 \
         --build-arg GIT_HASH="${GIT_HASH}" \
         --build-arg BUILD_TIME="${BUILD_TIME}" \
+        --build-arg APP_VERSION="${VERSION:-dev}" \
         --cache-from "type=registry,ref=${DOCKERHUB_USER}/shoutrrr-logger:buildcache" \
         --cache-to   "type=registry,ref=${DOCKERHUB_USER}/shoutrrr-logger:buildcache,mode=max" \
         --push \
         ${TAGS} \
         .
+    # Push DOCKER_HUB.md as the repository description
+    - apk add --no-cache curl jq
+    - |
+      HUB_TOKEN=$(curl -s -X POST "https://hub.docker.com/v2/users/login" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\":\"$DOCKERHUB_USER\",\"password\":\"$DOCKERHUB_TOKEN\"}" \
+        | jq -r .token)
+      curl -s -X PATCH \
+        "https://hub.docker.com/v2/repositories/$DOCKERHUB_USER/shoutrrr-logger/" \
+        -H "Authorization: Bearer $HUB_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$(jq -n --rawfile desc DOCKER_HUB.md \
+              '{"full_description":$desc,"description":"Self-hosted notification logging service for shoutrrr"}')"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
