@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint --dir app --dir components --dir lib --dir tests",
+    "lint": "eslint app components lib tests",
     "test": "vitest",
     "test:run": "vitest run",
     "test:cov": "vitest run --coverage"
