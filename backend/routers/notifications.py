@@ -3,6 +3,8 @@
 Requires at minimum viewer role.
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,11 +29,17 @@ async def list_notifications(
     q: str | None = Query(None, description="Search query – matches title and message"),
     page: int = Query(1, ge=1),
     page_size: int = Query(PAGE_SIZE, ge=1, le=100),
+    after: datetime | None = Query(
+        None, description="Only return notifications received after this datetime (ISO 8601)"
+    ),
+    before: datetime | None = Query(
+        None, description="Only return notifications received before this datetime (ISO 8601)"
+    ),
     _user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[NotificationOut]:
     return await notification_service.list_notifications(
-        db, query=q, page=page, page_size=page_size
+        db, query=q, page=page, page_size=page_size, after=after, before=before
     )
 
 

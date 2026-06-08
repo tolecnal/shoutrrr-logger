@@ -65,7 +65,7 @@ class MyPlugin(BasePlugin):
 
     async def on_notification(
         self,
-        notification: dict[str, Any],
+        notification: dict[str, Any],  # always NotificationOut.model_dump(mode="json")
         config: dict[str, Any],
     ) -> None:
         """
@@ -103,10 +103,16 @@ __all__ = ["MyPlugin"]
 
 ### Discovery
 
-At startup `registry.discover()` scans every sub-package (directory with
-`__init__.py`) and every flat `.py` file inside `backend/plugins/`.  It
-instantiates any concrete `BasePlugin` subclass it finds.  No registration
-call is needed — just place the folder there and restart.
+At startup `registry.discover()` scans `backend/plugins/` and instantiates
+any concrete `BasePlugin` subclass it finds.  No registration call is needed —
+just place the folder there and restart.
+
+Two discovery paths are supported:
+
+| Path | When to use |
+|------|-------------|
+| Sub-package (`<id>/` folder with `__init__.py` + `plugin.py`) | **Recommended** — self-contained, supports a frontend config panel |
+| Flat module (`<id>.py` file directly in `plugins/`) | Legacy / simple plugins with no frontend panel |
 
 ### Accessing `custom_fields`
 
@@ -116,6 +122,29 @@ stripped of their `$` prefix and stored under `notification["custom_fields"]`:
 ```python
 hostname = (notification.get("custom_fields") or {}).get("hostname")
 ```
+
+### Built-in helpers
+
+`BasePlugin` provides two convenience methods available to all plugins:
+
+**`self.log(message, level="info")`** — emits a structured log line prefixed
+with the plugin id.  Prefer this over `logging.getLogger()` directly.
+
+```python
+self.log("Event forwarded successfully")
+self.log(f"HEC returned unexpected status {resp.status_code}", "error")
+```
+
+**`self.get_config_value(config, key, default=None)`** — returns
+`config[key]`, falling back to `self.default_config[key]`, then `default`.
+Useful when you want to access a config key that might not be present in
+older stored configs (e.g. after adding a new key to `default_config`).
+
+```python
+timeout = self.get_config_value(config, "timeout_seconds", default=10)
+```
+
+---
 
 ### Source field syntax (for field-mapping plugins like Splunk)
 

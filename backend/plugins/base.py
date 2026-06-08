@@ -57,7 +57,7 @@ class BasePlugin(ABC):
     @abstractmethod
     async def on_notification(
         self,
-        notification: Any,  # schemas.NotificationOut
+        notification: dict[str, Any],
         config: dict[str, Any],
     ) -> None:
         """
@@ -67,7 +67,8 @@ class BasePlugin(ABC):
         ----------
         notification:
             The fully serialised ``NotificationOut`` dict for the saved
-            notification, including ``custom_fields``.
+            notification, including ``custom_fields``.  Always a plain
+            ``dict`` (produced by ``NotificationOut.model_dump(mode="json")``).
         config:
             The merged config dict (``default_config`` overridden by the
             values stored in the database for this plugin).

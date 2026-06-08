@@ -3,6 +3,7 @@
 import logging
 import math
 import uuid
+from datetime import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -31,9 +32,11 @@ class NotificationService:
         query: str | None,
         page: int,
         page_size: int,
+        after: datetime | None = None,
+        before: datetime | None = None,
     ) -> PaginatedResponse[NotificationOut]:
         rows, total = await self._repo.search_paginated(
-            session, query=query, page=page, page_size=page_size
+            session, query=query, page=page, page_size=page_size, after=after, before=before
         )
         return PaginatedResponse(
             items=[NotificationOut.model_validate(r) for r in rows],

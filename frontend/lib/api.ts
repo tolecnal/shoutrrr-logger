@@ -49,8 +49,18 @@ export const fetchVersion = () =>
   );
 
 // ---- Notifications ----
-export function notificationsKey(page: number, q: string, pageSize = 20) {
-  return `/notifications?page=${page}&page_size=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+export function notificationsKey(
+  page: number,
+  q: string,
+  pageSize = 20,
+  after?: string,
+  before?: string
+) {
+  let url = `/notifications?page=${page}&page_size=${pageSize}`;
+  if (q) url += `&q=${encodeURIComponent(q)}`;
+  if (after) url += `&after=${encodeURIComponent(after)}`;
+  if (before) url += `&before=${encodeURIComponent(before)}`;
+  return url;
 }
 // notificationsKey returns a path relative to BASE (e.g. "/notifications?...")
 // so we pass it directly to apiFetch without any stripping needed.

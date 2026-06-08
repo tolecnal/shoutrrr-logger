@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +31,8 @@ class NotificationRepository:
         query: str | None,
         page: int,
         page_size: int,
+        after: datetime | None = None,
+        before: datetime | None = None,
     ) -> tuple[Sequence[Notification], int]:
         """Return ``(rows, total)`` for a search-and-paginate query, newest first."""
         base_query = select(Notification)
@@ -43,6 +46,11 @@ class NotificationRepository:
                     Notification.sender_name.ilike(term),
                 )
             )
+
+        if after:
+            base_query = base_query.where(Notification.received_at >= after)
+        if before:
+            base_query = base_query.where(Notification.received_at <= before)
 
         count_query = select(func.count()).select_from(base_query.subquery())
         total: int = (await session.execute(count_query)).scalar_one()

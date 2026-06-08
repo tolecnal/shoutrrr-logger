@@ -12,8 +12,10 @@ Source field syntax
 - A key inside custom_fields:  ``custom_fields.<key>``
 - A literal constant (prefixed with ``literal:``): ``literal:my-value``
 
-This file is self-contained: adding this plugin to a deployment requires
-only this folder — no changes to any core application files.
+This file is self-contained: adding the backend half of this plugin
+requires only this folder — no changes to any core backend files.
+The frontend config panel lives in ``frontend/plugins/splunk/`` and
+requires one additional line in ``frontend/plugins/registry.tsx``.
 """
 
 from __future__ import annotations

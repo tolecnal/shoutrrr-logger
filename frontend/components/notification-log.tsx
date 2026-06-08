@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X, ListFilter } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
 import { fetchNotifications, notificationsKey } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
@@ -24,10 +24,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
 import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Time range helpers
+// ---------------------------------------------------------------------------
+
+const PRESETS = [
+  { value: "all", label: "All time" },
+  { value: "15m", label: "Last 15 minutes" },
+  { value: "1h", label: "Last hour" },
+  { value: "3h", label: "Last 3 hours" },
+  { value: "12h", label: "Last 12 hours" },
+  { value: "24h", label: "Last 24 hours" },
+  { value: "7d", label: "Last week" },
+  { value: "custom", label: "Custom range…" },
+] as const;
+
+type Preset = (typeof PRESETS)[number]["value"];
+
+function resolveTimeRange(
+  preset: Preset,
+  customAfter: string,
+  customBefore: string
+): { after?: string; before?: string } {
+  const now = new Date();
+  const ms = (n: number) => new Date(now.getTime() - n).toISOString();
+  const M = 60_000;
+  const H = 3_600_000;
+  switch (preset) {
+    case "15m": return { after: ms(15 * M) };
+    case "1h":  return { after: ms(H) };
+    case "3h":  return { after: ms(3 * H) };
+    case "12h": return { after: ms(12 * H) };
+    case "24h": return { after: ms(24 * H) };
+    case "7d":  return { after: ms(7 * 24 * H) };
+    case "custom": return {
+      after:  customAfter  ? new Date(customAfter).toISOString()  : undefined,
+      before: customBefore ? new Date(customBefore).toISOString() : undefined,
+    };
+    default: return {};
+  }
+}
 
 const PAGE_SIZE = 20;
 // When filters are active we need a larger server page so that after
@@ -50,6 +96,12 @@ export function NotificationLog() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [groupField, setGroupField] = useState<string | null>(null);
   const [groupValues, setGroupValues] = useState<Set<string>>(new Set());
+  // Time range filter
+  const [timeRange, setTimeRange] = useState<Preset>("all");
+  const [customAfter, setCustomAfter] = useState("");
+  const [customBefore, setCustomBefore] = useState("");
+  // Bumped by the Refresh button so that preset "after" times recompute to now
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const { formatTimestamp, formatTime } = usePreferences();
   const { rules, classify } = useTagRules();
@@ -64,9 +116,18 @@ export function NotificationLog() {
   const fetchSize = filtersActive ? FILTERED_FETCH_SIZE : PAGE_SIZE;
   const fetchPage = filtersActive ? serverPage : serverPage;
 
+  // Resolve the currently selected time range to ISO strings. Depends on
+  // refreshNonce so clicking Refresh slides the preset window to "now".
+  const { after: timeAfter, before: timeBefore } = useMemo(
+    () => resolveTimeRange(timeRange, customAfter, customBefore),
+    // refreshNonce intentionally included so preset windows recompute on Refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [timeRange, customAfter, customBefore, refreshNonce]
+  );
+
   const swrKey = useMemo(
-    () => notificationsKey(fetchPage, query, fetchSize),
-    [fetchPage, query, fetchSize]
+    () => notificationsKey(fetchPage, query, fetchSize, timeAfter, timeBefore),
+    [fetchPage, query, fetchSize, timeAfter, timeBefore]
   );
 
   const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
@@ -160,6 +221,12 @@ export function NotificationLog() {
     },
     [search]
   );
+
+  const handleTimeRangeChange = useCallback((preset: Preset) => {
+    setTimeRange(preset);
+    setServerPage(1);
+    setClientPage(1);
+  }, []);
 
   const handleClearSearch = () => {
     setSearch("");
@@ -259,7 +326,7 @@ export function NotificationLog() {
             size="sm"
             variant="ghost"
             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-            onClick={() => mutate()}
+            onClick={() => { setRefreshNonce((n) => n + 1); mutate(); }}
             title="Refresh"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -273,102 +340,113 @@ export function NotificationLog() {
           )}
         </div>
 
-        {/* Filter bar: tag filter on the left, group-by control pinned to the right */}
-        {(enabledTags.length > 0 || availableGroupFields.length > 0) && (
-          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
-            {enabledTags.length > 0 && (
-              <>
-                <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Filter:</span>
-                <button
-                  onClick={() => setActiveTag(null)}
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
-                    activeTag === null
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                  )}
-                >
-                  All
-                </button>
-                {rules
-                  .filter((r) => r.enabled)
-                  .map((rule) => {
-                    const colors = TAG_COLOR_CLASSES[rule.color];
-                    const isActive = activeTag === rule.name;
-                    return (
-                      <button
-                        key={rule.id}
-                        onClick={() => {
-                          if (rule.exclude) return;
-                          setActiveTag(isActive ? null : rule.name);
-                          setClientPage(1);
-                        }}
-                        title={
-                          rule.exclude
-                            ? `"${rule.name}" is an exclude rule — matching messages are hidden`
-                            : undefined
-                        }
-                        className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
-                          rule.exclude
-                            ? `${colors.bg} ${colors.text} ${colors.border} opacity-60 cursor-default line-through`
-                            : isActive
-                            ? `${colors.bg} ${colors.text} ${colors.border}`
-                            : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                        )}
-                      >
-                        {rule.name}
-                      </button>
-                    );
-                  })}
-                {activeTag && (
-                  <button
-                    onClick={() => { setActiveTag(null); setClientPage(1); }}
-                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
-                  >
-                    <X className="h-3 w-3" />
-                    Clear filter
-                  </button>
+        {/* Filter bar: always visible — tag chips on the left, time range + group-by on the right */}
+        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
+          {enabledTags.length > 0 && (
+            <>
+              <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Filter:</span>
+              <button
+                onClick={() => setActiveTag(null)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
+                  activeTag === null
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
                 )}
-              </>
-            )}
+              >
+                All
+              </button>
+              {rules
+                .filter((r) => r.enabled)
+                .map((rule) => {
+                  const colors = TAG_COLOR_CLASSES[rule.color];
+                  const isActive = activeTag === rule.name;
+                  return (
+                    <button
+                      key={rule.id}
+                      onClick={() => {
+                        if (rule.exclude) return;
+                        setActiveTag(isActive ? null : rule.name);
+                        setClientPage(1);
+                      }}
+                      title={
+                        rule.exclude
+                          ? `"${rule.name}" is an exclude rule — matching messages are hidden`
+                          : undefined
+                      }
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
+                        rule.exclude
+                          ? `${colors.bg} ${colors.text} ${colors.border} opacity-60 cursor-default line-through`
+                          : isActive
+                          ? `${colors.bg} ${colors.text} ${colors.border}`
+                          : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+                      )}
+                    >
+                      {rule.name}
+                    </button>
+                  );
+                })}
+              {activeTag && (
+                <button
+                  onClick={() => { setActiveTag(null); setClientPage(1); }}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                  Clear filter
+                </button>
+              )}
+            </>
+          )}
 
-            {/* Pushes the group-by control to the rightmost edge of the bar */}
-            <span className="flex-1" />
+          {/* Pushes time range + group-by controls to the right */}
+          <span className="flex-1" />
 
-            {availableGroupFields.length > 0 && (
-              <GroupByControl
-                groupField={groupField}
-                groupValues={groupValues}
-                availableGroupFields={availableGroupFields}
-                availableGroupValues={availableGroupValues}
-                onFieldChange={(next) => {
-                  setGroupField(next);
-                  setGroupValues(new Set());
-                  setServerPage(1);
-                  setClientPage(1);
-                }}
-                onToggleValue={(value) => {
-                  setGroupValues((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(value)) next.delete(value);
-                    else next.add(value);
-                    return next;
-                  });
-                  setClientPage(1);
-                }}
-                onSelectValues={(values) => {
-                  setGroupValues((prev) => new Set([...prev, ...values]));
-                  setClientPage(1);
-                }}
-                onClearValues={() => {
-                  setGroupValues(new Set());
-                  setClientPage(1);
-                }}
-              />
-            )}
-          </div>
-        )}
+          <TimeRangeControl
+            value={timeRange}
+            customAfter={customAfter}
+            customBefore={customBefore}
+            onChange={handleTimeRangeChange}
+            onCustomChange={(after, before) => {
+              setCustomAfter(after);
+              setCustomBefore(before);
+              setServerPage(1);
+              setClientPage(1);
+            }}
+          />
+
+          {availableGroupFields.length > 0 && (
+            <GroupByControl
+              groupField={groupField}
+              groupValues={groupValues}
+              availableGroupFields={availableGroupFields}
+              availableGroupValues={availableGroupValues}
+              onFieldChange={(next) => {
+                setGroupField(next);
+                setGroupValues(new Set());
+                setServerPage(1);
+                setClientPage(1);
+              }}
+              onToggleValue={(value) => {
+                setGroupValues((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(value)) next.delete(value);
+                  else next.add(value);
+                  return next;
+                });
+                setClientPage(1);
+              }}
+              onSelectValues={(values) => {
+                setGroupValues((prev) => new Set([...prev, ...values]));
+                setClientPage(1);
+              }}
+              onClearValues={() => {
+                setGroupValues(new Set());
+                setClientPage(1);
+              }}
+            />
+          )}
+        </div>
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
@@ -505,6 +583,121 @@ export function NotificationLog() {
           formatTimestamp={formatTimestamp}
           onClose={() => setSelected(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function TimeRangeControl({
+  value,
+  customAfter,
+  customBefore,
+  onChange,
+  onCustomChange,
+}: {
+  value: Preset;
+  customAfter: string;
+  customBefore: string;
+  onChange: (preset: Preset) => void;
+  onCustomChange: (after: string, before: string) => void;
+}) {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [draftAfter, setDraftAfter] = useState(customAfter);
+  const [draftBefore, setDraftBefore] = useState(customBefore);
+
+  const handlePresetChange = (v: string) => {
+    if (v === "custom") {
+      setDraftAfter(customAfter);
+      setDraftBefore(customBefore);
+      setCustomOpen(true);
+      onChange("custom");
+    } else {
+      onChange(v as Preset);
+    }
+  };
+
+  const applyCustom = () => {
+    onCustomChange(draftAfter, draftBefore);
+    setCustomOpen(false);
+  };
+
+  const label = PRESETS.find((p) => p.value === value)?.label ?? "All time";
+  const isActive = value !== "all";
+
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+      <Select value={value} onValueChange={handlePresetChange}>
+        <SelectTrigger
+          className={cn(
+            "h-7 w-36 text-xs shrink-0",
+            isActive ? "bg-primary/10 border-primary/40 text-foreground" : "bg-input"
+          )}
+        >
+          <SelectValue>{label}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {PRESETS.map((p) => (
+            <SelectItem key={p.value} value={p.value}>
+              {p.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {value === "custom" && (
+        <Popover open={customOpen} onOpenChange={setCustomOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              size="sm"
+              variant={customAfter || customBefore ? "secondary" : "ghost"}
+              className="h-7 px-2 text-xs shrink-0"
+            >
+              {customAfter || customBefore ? "Edit range" : "Set range…"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-4 bg-card border-border" align="end">
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-foreground">Custom time range</p>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground">From</label>
+                <Input
+                  type="datetime-local"
+                  value={draftAfter}
+                  onChange={(e) => setDraftAfter(e.target.value)}
+                  className="h-8 text-xs bg-input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground">To</label>
+                <Input
+                  type="datetime-local"
+                  value={draftBefore}
+                  onChange={(e) => setDraftBefore(e.target.value)}
+                  className="h-8 text-xs bg-input"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    setDraftAfter("");
+                    setDraftBefore("");
+                    onCustomChange("", "");
+                    setCustomOpen(false);
+                  }}
+                >
+                  Clear
+                </Button>
+                <Button size="sm" className="h-7 text-xs" onClick={applyCustom}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   );
