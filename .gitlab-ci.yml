@@ -77,7 +77,7 @@ test:backend:
   before_script:
     - cd backend && pip install -e ".[test]" --quiet
   script:
-    - cd backend && pytest tests/ -v --tb=short
+    - pytest tests/ -v --tb=short
   rules:
     - when: always
 
