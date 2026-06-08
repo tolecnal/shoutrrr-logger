@@ -190,6 +190,7 @@ export function PreferencesDialog() {
       color: "blue",
       patterns: [],
       enabled: true,
+      exclude: false,
     });
   };
 

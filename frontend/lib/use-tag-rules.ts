@@ -117,7 +117,9 @@ function loadRules(): TagRule[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_RULES;
-    const parsed = JSON.parse(raw) as TagRule[];
+    // Rules saved before `exclude` existed won't have that field at runtime,
+    // even though the persisted shape is asserted as TagRule[] here.
+    const parsed = JSON.parse(raw) as (Omit<TagRule, "exclude"> & { exclude?: boolean })[];
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_RULES;
     return parsed.map((r) => {
       const def = DEFAULT_RULES_BY_ID.get(r.id);
