@@ -121,7 +121,8 @@ build:gitlab:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
     - docker run --privileged --rm tonistiigi/binfmt --install all
-    - docker buildx create --use --name multiarch --driver docker-container
+    - docker context create tls-env
+    - docker buildx create --use --name multiarch --driver docker-container tls-env
     - docker buildx inspect --bootstrap
   script:
     - GIT_HASH=$(git rev-parse --short HEAD)
@@ -174,7 +175,8 @@ build:dockerhub:
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
     - docker run --privileged --rm tonistiigi/binfmt --install all
-    - docker buildx create --use --name multiarch --driver docker-container
+    - docker context create tls-env
+    - docker buildx create --use --name multiarch --driver docker-container tls-env
     - docker buildx inspect --bootstrap
   script:
     - GIT_HASH=$(git rev-parse --short HEAD)
