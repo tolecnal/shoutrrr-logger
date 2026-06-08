@@ -10,8 +10,17 @@ from models import Notification
 
 
 class NotificationRepository:
-    async def get_by_id(self, session: AsyncSession, notification_id: uuid.UUID | str) -> Notification | None:
-        result = await session.execute(select(Notification).where(Notification.id == notification_id))
+    async def get_by_id(
+        self, session: AsyncSession, notification_id: uuid.UUID | str
+    ) -> Notification | None:
+        if isinstance(notification_id, str):
+            try:
+                notification_id = uuid.UUID(notification_id)
+            except ValueError:
+                return None
+        result = await session.execute(
+            select(Notification).where(Notification.id == notification_id)
+        )
         return result.scalar_one_or_none()
 
     async def search_paginated(

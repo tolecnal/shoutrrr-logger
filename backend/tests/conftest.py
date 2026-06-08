@@ -10,12 +10,22 @@ from collections.abc import AsyncGenerator
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import event
+from sqlalchemy import JSON, event
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
 
 from auth import create_session_jwt, generate_raw_token, hash_token
 from database import get_db
 from models import AccessToken, Base, Notification, User, UserRole
+
+
+# SQLite has no native JSONB type; compile it as plain JSON so
+# Base.metadata.create_all() can build the plugin_configs table.
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_as_json_on_sqlite(element, compiler, **kw):
+    return compiler.process(JSON(), **kw)
+
 
 # ---------------------------------------------------------------------------
 # Engine / session — SQLite in-memory per test session
@@ -62,13 +72,20 @@ async def db(engine) -> AsyncGenerator[AsyncSession, None]:
 # ---------------------------------------------------------------------------
 
 @pytest_asyncio.fixture
-async def app(db: AsyncSession):
+async def app(db: AsyncSession, engine, monkeypatch):
     """FastAPI app with the database dependency overridden to use the test DB."""
     # Import here to avoid triggering lifespan (init_db) at collection time
+    import database  # noqa: PLC0415
     from main import app as _app  # noqa: PLC0415
     from plugins import registry  # noqa: PLC0415
 
     registry.discover()  # ensure plugins are loaded
+
+    # services.notifications.dispatch_plugins opens its own session straight off
+    # database.engine (it runs as a background task, after the request-scoped
+    # session has closed). Point it at the in-memory test engine so it doesn't
+    # try to reach a real PostgreSQL instance.
+    monkeypatch.setattr(database, "engine", engine)
 
     async def _override_db():
         yield db

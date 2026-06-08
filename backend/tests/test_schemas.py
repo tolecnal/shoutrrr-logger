@@ -5,7 +5,7 @@ Tests for schemas.py — Pydantic model validation and custom_fields parsing.
 import json
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -70,19 +70,16 @@ class TestNotificationOutCustomFields:
         assert out.custom_fields == {}
 
     def test_orm_object_with_raw_payload(self):
-        """Simulates reading from SQLAlchemy ORM row."""
-        orm_obj = MagicMock()
-        orm_obj.__dict__ = {
-            "id": uuid.UUID(self._base["id"]),
-            "sender_name": "host1",
-            "title": "Test",
-            "message": "A message",
-            "received_at": datetime.now(UTC),
-            "source_ip": "127.0.0.1",
-            "raw_payload": json.dumps({"region": "eu-west-1"}),
-        }
-        # Make hasattr(..., "__dict__") return True
-        orm_obj.__class__.__dict__ = {}
+        """Simulates reading from a SQLAlchemy ORM row (a plain object with a __dict__)."""
+        orm_obj = SimpleNamespace(
+            id=uuid.UUID(self._base["id"]),
+            sender_name="host1",
+            title="Test",
+            message="A message",
+            received_at=datetime.now(UTC),
+            source_ip="127.0.0.1",
+            raw_payload=json.dumps({"region": "eu-west-1"}),
+        )
         out = NotificationOut.model_validate(orm_obj)
         assert out.custom_fields.get("region") == "eu-west-1"
 

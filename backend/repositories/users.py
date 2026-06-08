@@ -11,6 +11,11 @@ from models import User
 
 class UserRepository:
     async def get_by_id(self, session: AsyncSession, user_id: uuid.UUID | str) -> User | None:
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except ValueError:
+                return None
         result = await session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 

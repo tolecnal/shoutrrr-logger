@@ -235,7 +235,7 @@ class TestSplunkPluginOnNotification:
             text="<html><body>Forbidden</body></html>",
         )
         plugin = self._plugin()
-        with pytest.raises(RuntimeError, match="html"):
+        with pytest.raises(RuntimeError, match="HTML"):
             await plugin.on_notification(NOTIF, CONFIG)
 
     async def test_non_200_raises_runtime_error(self, httpx_mock: HTTPXMock):
