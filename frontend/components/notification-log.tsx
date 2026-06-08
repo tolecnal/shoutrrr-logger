@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X, ListFilter } from "lucide-react";
 import { fetchNotifications, notificationsKey } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
@@ -17,6 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
 import { cn } from "@/lib/utils";
@@ -265,129 +273,99 @@ export function NotificationLog() {
           )}
         </div>
 
-        {/* Tag filter bar */}
-        {enabledTags.length > 0 && (
+        {/* Filter bar: tag filter on the left, group-by control pinned to the right */}
+        {(enabledTags.length > 0 || availableGroupFields.length > 0) && (
           <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
-            <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Filter:</span>
-            <button
-              onClick={() => setActiveTag(null)}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
-                activeTag === null
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-              )}
-            >
-              All
-            </button>
-            {rules
-              .filter((r) => r.enabled)
-              .map((rule) => {
-                const colors = TAG_COLOR_CLASSES[rule.color];
-                const isActive = activeTag === rule.name;
-                return (
-                  <button
-                    key={rule.id}
-                    onClick={() => {
-                      if (rule.exclude) return;
-                      setActiveTag(isActive ? null : rule.name);
-                      setClientPage(1);
-                    }}
-                    title={
-                      rule.exclude
-                        ? `"${rule.name}" is an exclude rule — matching messages are hidden`
-                        : undefined
-                    }
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
-                      rule.exclude
-                        ? `${colors.bg} ${colors.text} ${colors.border} opacity-60 cursor-default line-through`
-                        : isActive
-                        ? `${colors.bg} ${colors.text} ${colors.border}`
-                        : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                    )}
-                  >
-                    {rule.name}
-                  </button>
-                );
-              })}
-            {activeTag && (
-              <button
-                onClick={() => { setActiveTag(null); setClientPage(1); }}
-                className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <X className="h-3 w-3" />
-                Clear filter
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Group-by bar: choose a custom field, then which of its values to group on */}
-        {availableGroupFields.length > 0 && (
-          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
-            <span className="text-[11px] text-muted-foreground shrink-0">Group by:</span>
-            <Select
-              value={groupField ?? "__none"}
-              onValueChange={(v) => {
-                const next = v === "__none" ? null : v;
-                setGroupField(next);
-                setGroupValues(new Set());
-                setServerPage(1);
-                setClientPage(1);
-              }}
-            >
-              <SelectTrigger className="h-7 w-40 text-xs bg-input shrink-0">
-                <SelectValue placeholder="Field…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">None</SelectItem>
-                {availableGroupFields.map((key) => (
-                  <SelectItem key={key} value={key}>
-                    {key}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {groupField && availableGroupValues.length > 0 && (
+            {enabledTags.length > 0 && (
               <>
-                <span className="text-[11px] text-muted-foreground shrink-0 ml-1">Values:</span>
-                {availableGroupValues.map((value) => {
-                  const isActive = groupValues.has(value);
-                  return (
-                    <button
-                      key={value}
-                      onClick={() => {
-                        setGroupValues((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(value)) next.delete(value);
-                          else next.add(value);
-                          return next;
-                        });
-                        setClientPage(1);
-                      }}
-                      className={cn(
-                        "px-2.5 py-0.5 rounded-full text-xs border font-mono transition-colors shrink-0",
-                        isActive
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
-                      )}
-                    >
-                      {value}
-                    </button>
-                  );
-                })}
-                {groupValues.size > 0 && (
+                <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Filter:</span>
+                <button
+                  onClick={() => setActiveTag(null)}
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
+                    activeTag === null
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+                  )}
+                >
+                  All
+                </button>
+                {rules
+                  .filter((r) => r.enabled)
+                  .map((rule) => {
+                    const colors = TAG_COLOR_CLASSES[rule.color];
+                    const isActive = activeTag === rule.name;
+                    return (
+                      <button
+                        key={rule.id}
+                        onClick={() => {
+                          if (rule.exclude) return;
+                          setActiveTag(isActive ? null : rule.name);
+                          setClientPage(1);
+                        }}
+                        title={
+                          rule.exclude
+                            ? `"${rule.name}" is an exclude rule — matching messages are hidden`
+                            : undefined
+                        }
+                        className={cn(
+                          "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
+                          rule.exclude
+                            ? `${colors.bg} ${colors.text} ${colors.border} opacity-60 cursor-default line-through`
+                            : isActive
+                            ? `${colors.bg} ${colors.text} ${colors.border}`
+                            : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+                        )}
+                      >
+                        {rule.name}
+                      </button>
+                    );
+                  })}
+                {activeTag && (
                   <button
-                    onClick={() => { setGroupValues(new Set()); setClientPage(1); }}
-                    className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
+                    onClick={() => { setActiveTag(null); setClientPage(1); }}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
                   >
                     <X className="h-3 w-3" />
-                    Clear values
+                    Clear filter
                   </button>
                 )}
               </>
+            )}
+
+            {/* Pushes the group-by control to the rightmost edge of the bar */}
+            <span className="flex-1" />
+
+            {availableGroupFields.length > 0 && (
+              <GroupByControl
+                groupField={groupField}
+                groupValues={groupValues}
+                availableGroupFields={availableGroupFields}
+                availableGroupValues={availableGroupValues}
+                onFieldChange={(next) => {
+                  setGroupField(next);
+                  setGroupValues(new Set());
+                  setServerPage(1);
+                  setClientPage(1);
+                }}
+                onToggleValue={(value) => {
+                  setGroupValues((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(value)) next.delete(value);
+                    else next.add(value);
+                    return next;
+                  });
+                  setClientPage(1);
+                }}
+                onSelectValues={(values) => {
+                  setGroupValues((prev) => new Set([...prev, ...values]));
+                  setClientPage(1);
+                }}
+                onClearValues={() => {
+                  setGroupValues(new Set());
+                  setClientPage(1);
+                }}
+              />
             )}
           </div>
         )}
@@ -527,6 +505,139 @@ export function NotificationLog() {
           formatTimestamp={formatTimestamp}
           onClose={() => setSelected(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function GroupByControl({
+  groupField,
+  groupValues,
+  availableGroupFields,
+  availableGroupValues,
+  onFieldChange,
+  onToggleValue,
+  onSelectValues,
+  onClearValues,
+}: {
+  groupField: string | null;
+  groupValues: Set<string>;
+  availableGroupFields: string[];
+  availableGroupValues: string[];
+  onFieldChange: (field: string | null) => void;
+  onToggleValue: (value: string) => void;
+  onSelectValues: (values: string[]) => void;
+  onClearValues: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [valueSearch, setValueSearch] = useState("");
+
+  const filteredValues = useMemo(() => {
+    const term = valueSearch.trim().toLowerCase();
+    if (!term) return availableGroupValues;
+    return availableGroupValues.filter((v) => v.toLowerCase().includes(term));
+  }, [availableGroupValues, valueSearch]);
+
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <span className="text-[11px] text-muted-foreground shrink-0">Group by:</span>
+      <Select
+        value={groupField ?? "__none"}
+        onValueChange={(v) => onFieldChange(v === "__none" ? null : v)}
+      >
+        <SelectTrigger className="h-7 w-40 text-xs bg-input shrink-0">
+          <SelectValue placeholder="Field…" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none">None</SelectItem>
+          {availableGroupFields.map((key) => (
+            <SelectItem key={key} value={key}>
+              {key}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {groupField && (
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setValueSearch("");
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs gap-1.5 shrink-0">
+              <ListFilter className="h-3 w-3" />
+              {groupValues.size > 0
+                ? `${groupValues.size} value${groupValues.size === 1 ? "" : "s"}`
+                : "Select values…"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-card border-border">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">
+                Group by <span className="font-mono">{groupField}</span>
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={valueSearch}
+                onChange={(e) => setValueSearch(e.target.value)}
+                placeholder="Search values..."
+                className="pl-8 h-8 text-sm bg-input"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {groupValues.size} of {availableGroupValues.length} selected
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
+                  disabled={filteredValues.length === 0}
+                  onClick={() => onSelectValues(filteredValues)}
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
+                  disabled={groupValues.size === 0}
+                  onClick={onClearValues}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto rounded-md border border-border divide-y divide-border">
+              {filteredValues.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No matching values.
+                </p>
+              ) : (
+                filteredValues.map((value) => (
+                  <label
+                    key={value}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={groupValues.has(value)}
+                      onCheckedChange={() => onToggleValue(value)}
+                    />
+                    <span className="font-mono text-foreground truncate">{value}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
