@@ -19,12 +19,13 @@ import httpx
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
 from models import AccessToken, User, UserRole
+from repositories.tokens import access_token_repository
+from repositories.users import user_repository
 
 # ---------------------------------------------------------------------------
 # Token hashing
@@ -148,8 +149,7 @@ async def get_current_user_from_session(
 
     payload = decode_session_jwt(token)
     user_id = payload.get("sub")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    user = await user_repository.get_by_id(db, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     return user
@@ -185,12 +185,7 @@ async def verify_bearer_access_token(
 
     # Load all active, non-expired tokens and verify against the hash.
     # We intentionally avoid a DB-side plaintext comparison for security.
-    result = await db.execute(
-        select(AccessToken).where(
-            AccessToken.is_active == True,  # noqa: E712
-        )
-    )
-    tokens = result.scalars().all()
+    tokens = await access_token_repository.list_active(db)
 
     matched: AccessToken | None = None
     for tok in tokens:

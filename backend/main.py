@@ -13,7 +13,6 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from jose import jwt as jose_jwt
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import (
@@ -29,6 +28,7 @@ from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import notifications, plugins, shoutrrr, tokens, users
 from schemas import OIDCCallbackResponse, UserOut
+from services.users import user_service
 from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 
 
@@ -241,24 +241,10 @@ async def oidc_callback(
             detail=diagnostic,
         )
 
-    result = await db.execute(select(User).where(User.sub == sub))
-    user: User | None = result.scalar_one_or_none()
-
-    if user is None:
-        # Auto-provision: create the user record on first login.
-        user = User(sub=sub, email=email, username=username, full_name=full_name, role=role)
-        db.add(user)
-        await db.flush()
-        await db.refresh(user)
-    else:
-        if not user.is_active:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
-        # Sync profile fields and role from SSO on every login.
-        user.email = email
-        user.username = username
-        user.full_name = full_name
-        user.role = role
-        await db.flush()
+    # Auto-provisions the user on first login, or syncs profile/role from SSO.
+    user = await user_service.upsert_from_oidc(
+        db, sub=sub, email=email, username=username, full_name=full_name, role=role
+    )
 
     session_token = create_session_jwt(str(user.id), user.role.value)
 

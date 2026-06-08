@@ -14,51 +14,17 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import verify_bearer_access_token
 from database import get_db
-from models import AccessToken, Notification, PluginConfig
-from plugins import registry as plugin_registry
+from models import AccessToken
 from schemas import NotificationOut
+from services.notifications import notification_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/shoutrrr", tags=["shoutrrr"])
-
-
-async def _dispatch_plugins(notification_dict: dict, db_url: str) -> None:
-    """
-    Run all enabled plugins against the saved notification.
-    Each plugin gets its own try/except so one failure doesn't block others.
-    Runs as a FastAPI BackgroundTask — DB session obtained fresh here.
-    """
-    from sqlalchemy.ext.asyncio import async_sessionmaker  # noqa: PLC0415
-
-    from database import engine  # noqa: PLC0415
-
-    async_session = async_sessionmaker(engine, expire_on_commit=False)
-    async with async_session() as db:
-        result = await db.execute(select(PluginConfig).where(PluginConfig.enabled == True))  # noqa: E712
-        rows: list[PluginConfig] = list(result.scalars().all())
-
-    plugin_configs = {row.id: row for row in rows}
-
-    for plugin in plugin_registry.all_plugins():
-        row = plugin_configs.get(plugin.plugin_id)
-        if not row or not row.enabled:
-            continue
-        merged_config = {**plugin.default_config, **row.config}
-        try:
-            await plugin.on_notification(notification_dict, merged_config)
-        except Exception as exc:
-            logger.error(
-                "[plugin:%s] on_notification raised: %s",
-                plugin.plugin_id,
-                exc,
-                exc_info=True,
-            )
 
 
 @router.post(
@@ -129,19 +95,16 @@ async def receive_notification(
     raw_payload = json.dumps(extra) if extra else None
     source_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else None)
 
-    notification = Notification(
-        token_id=token.id,
+    notification = await notification_service.store_incoming(
+        db,
+        token=token,
         sender_name=sender_name,
         title=title,
         message=message,
         raw_payload=raw_payload,
         source_ip=source_ip,
     )
-    db.add(notification)
-    await db.flush()
-    await db.refresh(notification)
     out = NotificationOut.model_validate(notification)
     # Dispatch enabled plugins as a background task (non-blocking)
-    from config import settings as _settings  # noqa: PLC0415
-    background_tasks.add_task(_dispatch_plugins, out.model_dump(mode="json"), _settings.database_url)
+    background_tasks.add_task(notification_service.dispatch_plugins, out.model_dump(mode="json"))
     return out
