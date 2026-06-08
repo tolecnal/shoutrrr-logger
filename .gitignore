@@ -17,8 +17,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files (but ship the template so users have something to copy from)
 .env*
+!.env.example
 
 # vercel
 .vercel
