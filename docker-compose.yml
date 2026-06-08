@@ -37,7 +37,7 @@ services:
       start_period: 15s
 
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.31.1-trixie
     restart: unless-stopped
     # The only service exposed to the outside world. Terminates TLS and
     # routes /api/* to the backend, everything else to the frontend.
