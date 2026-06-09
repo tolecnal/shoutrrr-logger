@@ -27,7 +27,9 @@ async def get_settings_public(
     return [SettingOut.model_validate(s) for s in await settings_service.get_all(db)]
 
 
-@admin_router.get("", response_model=list[SettingOut], summary="Get all application settings (admin)")
+@admin_router.get(
+    "", response_model=list[SettingOut], summary="Get all application settings (admin)"
+)
 async def get_settings_admin(
     _user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),

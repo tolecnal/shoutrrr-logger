@@ -78,8 +78,7 @@ class SettingsService:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    f"Setting '{meta.key}' must be between {meta.min_value} "
-                    f"and {meta.max_value}"
+                    f"Setting '{meta.key}' must be between {meta.min_value} and {meta.max_value}"
                 ),
             )
         return v
@@ -104,9 +103,7 @@ class SettingsService:
             )
         return result
 
-    async def get_int(
-        self, session: AsyncSession, key: str, *, default: int | None = None
-    ) -> int:
+    async def get_int(self, session: AsyncSession, key: str, *, default: int | None = None) -> int:
         meta = _META_BY_KEY.get(key)
         fallback = default if default is not None else (meta.default if meta else 0)
         row = await self._repo.get(session, key)

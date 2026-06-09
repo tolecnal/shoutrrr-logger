@@ -90,9 +90,7 @@ class NotificationRepository:
             base_query = base_query.where(Notification.received_at >= after)
         if before:
             base_query = base_query.where(Notification.received_at <= before)
-        result = await session.execute(
-            base_query.order_by(Notification.received_at.desc())
-        )
+        result = await session.execute(base_query.order_by(Notification.received_at.desc()))
         return result.scalars().all()
 
     async def delete_older_than(self, session: AsyncSession, cutoff: datetime) -> int:
@@ -101,9 +99,7 @@ class NotificationRepository:
         )
         return result.rowcount  # type: ignore[return-value]
 
-    async def stats_summary(
-        self, session: AsyncSession, *, days: int = 30
-    ) -> dict:
+    async def stats_summary(self, session: AsyncSession, *, days: int = 30) -> dict:
         now = datetime.now(UTC)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today_start - timedelta(days=today_start.weekday())
@@ -113,17 +109,13 @@ class NotificationRepository:
 
         today_count: int = (
             await session.execute(
-                select(func.count(Notification.id)).where(
-                    Notification.received_at >= today_start
-                )
+                select(func.count(Notification.id)).where(Notification.received_at >= today_start)
             )
         ).scalar_one()
 
         week_count: int = (
             await session.execute(
-                select(func.count(Notification.id)).where(
-                    Notification.received_at >= week_start
-                )
+                select(func.count(Notification.id)).where(Notification.received_at >= week_start)
             )
         ).scalar_one()
 
@@ -144,9 +136,7 @@ class NotificationRepository:
         by_day = [
             {
                 "date": str((today_start - timedelta(days=i)).date()),
-                "count": day_counts.get(
-                    str((today_start - timedelta(days=i)).date()), 0
-                ),
+                "count": day_counts.get(str((today_start - timedelta(days=i)).date()), 0),
             }
             for i in range(days - 1, -1, -1)
         ]
