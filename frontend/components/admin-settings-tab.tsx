@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdminSettings, updateSettings } from "@/lib/api";
@@ -37,6 +37,9 @@ export function SettingsTab() {
     try {
       const updated = await updateSettings(draft);
       await mutate(updated, { revalidate: false });
+      // Invalidate the public /settings cache so stats panel and notification
+      // log pick up the new values without a full page reload.
+      await globalMutate("/settings");
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");
