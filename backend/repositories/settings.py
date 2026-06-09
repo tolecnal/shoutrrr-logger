@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ class SettingsRepository:
             .values(key=key, value=value)
             .on_conflict_do_update(
                 index_elements=["key"],
-                set_={"value": value, "updated_at": AppSetting.updated_at.default.arg},  # type: ignore[union-attr]
+                set_={"value": value, "updated_at": func.now()},
             )
             .returning(AppSetting)
         )
