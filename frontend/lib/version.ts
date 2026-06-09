@@ -1,15 +1,13 @@
 /**
- * Single source of truth for the frontend application version.
+ * FRONTEND_VERSION is read from package.json at build time via
+ * NEXT_PUBLIC_APP_VERSION (injected by next.config.mjs).
+ * To bump the version, update package.json only — this file never changes.
  *
- * FRONTEND_VERSION follows semantic versioning (MAJOR.MINOR.PATCH).
- * Bump this manually in tandem with package.json when shipping a release.
- *
- * API_VERSION_PREFIX must match the API_VERSION in backend/version.py.
- * Update it here when you upgrade the backend API to a new major version,
- * so the /about page can flag a mismatch between the frontend and backend.
+ * API_VERSION_PREFIX must match API_VERSION in backend/version.py.
+ * Update it here when the backend REST API moves to a new major version.
  */
 
-export const FRONTEND_VERSION = "0.2.1";
+export const FRONTEND_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
 
 /**
  * The API version this frontend build was written against.

@@ -1,5 +1,12 @@
+import { readFileSync } from "fs";
+
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url)));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: version,
+  },
   // Standalone output is required for the Docker image (copies only the files
   // needed to run, skipping node_modules not used at runtime).
   // Disabled in development so the v0 preview dev server works normally.

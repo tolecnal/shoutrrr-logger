@@ -1,15 +1,24 @@
 """
 Single source of truth for the application version.
 
-APP_VERSION follows semantic versioning (MAJOR.MINOR.PATCH).
+APP_VERSION is read from pyproject.toml at import time using the stdlib
+tomllib module (Python 3.11+).  Bump the version in pyproject.toml only
+— this file never needs touching.
+
 GIT_HASH and BUILD_TIME are injected at image build time by the Dockerfile
 via a generated _version_meta.py module.  When running outside Docker (e.g.
 local development) sensible fallback values are used.
 """
 
+import tomllib
 from datetime import UTC
+from pathlib import Path
 
-APP_VERSION = "0.2.1"
+try:
+    with open(Path(__file__).parent / "pyproject.toml", "rb") as _f:
+        APP_VERSION: str = tomllib.load(_f)["project"]["version"]
+except (FileNotFoundError, KeyError):
+    APP_VERSION = "0.0.0"
 
 # The current API version prefix. Increment this (v2, v3…) when making
 # breaking changes to the REST API. Non-breaking additions stay on v1.
