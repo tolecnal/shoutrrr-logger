@@ -27,4 +27,10 @@ describe("version constants", () => {
   it("API_VERSION_PREFIX matches expected current value", () => {
     expect(API_VERSION_PREFIX).toBe("v1");
   });
+
+  it("FRONTEND_VERSION is read from env, not the fallback", () => {
+    // vitest.config.ts injects NEXT_PUBLIC_APP_VERSION from package.json;
+    // if it were missing the fallback "0.0.0" would be returned instead.
+    expect(FRONTEND_VERSION).not.toBe("0.0.0");
+  });
 });

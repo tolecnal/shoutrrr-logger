@@ -3,6 +3,19 @@ Tests for the /api/health, /api/version endpoints and the
 backward-compat 308 redirect middleware.
 """
 
+import tomllib
+from pathlib import Path
+
+
+class TestAppVersionSource:
+    def test_app_version_matches_pyproject_toml(self):
+        """APP_VERSION must be read from pyproject.toml, not a hardcoded string."""
+        with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as f:
+            expected = tomllib.load(f)["project"]["version"]
+        from version import APP_VERSION
+
+        assert APP_VERSION == expected
+
 
 class TestHealth:
     async def test_health_returns_ok(self, client):

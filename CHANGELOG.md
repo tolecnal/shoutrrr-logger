@@ -31,6 +31,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `AccessToken` model gains an `is_global` column (`BOOLEAN NOT NULL DEFAULT TRUE`). Existing databases are migrated automatically via an idempotent `ALTER TABLE IF EXISTS … ADD COLUMN IF NOT EXISTS` in `init_db()`.
 - Admin token create response no longer requires selecting an owner; the creating admin is used automatically.
 - `GET /api/v1/notifications` gains a `scope` query parameter (`all` | `global` | `mine`). Default is `all`. For non-admin users `all` shows global + own private; for admins it shows everything.
+- **Version strings are now derived from package manifests** — no more duplicate hardcoded constants. `backend/version.py` reads `APP_VERSION` from `pyproject.toml` at import time via stdlib `tomllib`; `frontend/lib/version.ts` exports `FRONTEND_VERSION` from `NEXT_PUBLIC_APP_VERSION`, injected at Next.js build time by `next.config.mjs` from `package.json`. Bumping either manifest is now sufficient to update the About page.
 
 ### Fixed
 
