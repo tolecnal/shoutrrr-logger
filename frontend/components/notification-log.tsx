@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
 import { fetchNotifications, notificationsKey } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
@@ -392,10 +392,11 @@ export function NotificationLog() {
               {activeTag && (
                 <button
                   onClick={() => { setActiveTag(null); setClientPage(1); }}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0"
+                  className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  title="Clear tag filter"
+                  aria-label="Clear tag filter"
                 >
                   <X className="h-3 w-3" />
-                  Clear filter
                 </button>
               )}
             </>
@@ -603,103 +604,142 @@ function TimeRangeControl({
   onChange: (preset: Preset) => void;
   onCustomChange: (after: string, before: string) => void;
 }) {
-  const [customOpen, setCustomOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [draftAfter, setDraftAfter] = useState(customAfter);
   const [draftBefore, setDraftBefore] = useState(customBefore);
 
-  const handlePresetChange = (v: string) => {
-    if (v === "custom") {
+  // Sync draft values whenever the popover opens
+  useEffect(() => {
+    if (open) {
       setDraftAfter(customAfter);
       setDraftBefore(customBefore);
-      setCustomOpen(true);
-      onChange("custom");
-    } else {
-      onChange(v as Preset);
     }
-  };
+  }, [open, customAfter, customBefore]);
 
-  const applyCustom = () => {
-    onCustomChange(draftAfter, draftBefore);
-    setCustomOpen(false);
-  };
+  const displayLabel = useMemo(() => {
+    if (value === "custom" && (customAfter || customBefore)) {
+      const fmt = (s: string) =>
+        s
+          ? new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+          : "…";
+      return `${fmt(customAfter)} – ${fmt(customBefore)}`;
+    }
+    return PRESETS.find((p) => p.value === value)?.label ?? "All time";
+  }, [value, customAfter, customBefore]);
 
-  const label = PRESETS.find((p) => p.value === value)?.label ?? "All time";
   const isActive = value !== "all";
 
-  return (
-    <div className="flex items-center gap-1 shrink-0">
-      <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-      <Select value={value} onValueChange={handlePresetChange}>
-        <SelectTrigger
-          className={cn(
-            "h-7 w-36 text-xs shrink-0",
-            isActive ? "bg-primary/10 border-primary/40 text-foreground" : "bg-input"
-          )}
-        >
-          <SelectValue>{label}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {PRESETS.map((p) => (
-            <SelectItem key={p.value} value={p.value}>
-              {p.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+  const handleClear = () => {
+    onChange("all");
+    onCustomChange("", "");
+  };
 
-      {value === "custom" && (
-        <Popover open={customOpen} onOpenChange={setCustomOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              size="sm"
-              variant={customAfter || customBefore ? "secondary" : "ghost"}
-              className="h-7 px-2 text-xs shrink-0"
-            >
-              {customAfter || customBefore ? "Edit range" : "Set range…"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72 p-4 bg-card border-border" align="end">
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-foreground">Custom time range</p>
-              <div className="space-y-1.5">
-                <label className="text-[11px] text-muted-foreground">From</label>
-                <Input
-                  type="datetime-local"
-                  value={draftAfter}
-                  onChange={(e) => setDraftAfter(e.target.value)}
-                  className="h-8 text-xs bg-input"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] text-muted-foreground">To</label>
-                <Input
-                  type="datetime-local"
-                  value={draftBefore}
-                  onChange={(e) => setDraftBefore(e.target.value)}
-                  className="h-8 text-xs bg-input"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setDraftAfter("");
-                    setDraftBefore("");
-                    onCustomChange("", "");
-                    setCustomOpen(false);
-                  }}
-                >
-                  Clear
-                </Button>
-                <Button size="sm" className="h-7 text-xs" onClick={applyCustom}>
-                  Apply
-                </Button>
-              </div>
+  return (
+    <div className="flex items-center gap-0.5 shrink-0">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              "h-7 text-xs px-2 gap-1.5 shrink-0 max-w-[160px]",
+              isActive
+                ? "bg-primary/10 border border-primary/40 text-foreground hover:bg-primary/15"
+                : "bg-input border border-input text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock className="h-3 w-3 shrink-0" />
+            <span className="truncate">{displayLabel}</span>
+            <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-0 bg-card border-border" align="end">
+          {/* Preset list */}
+          <div className="p-1.5 space-y-0.5">
+            {PRESETS.filter((p) => p.value !== "custom").map((p) => (
+              <button
+                key={p.value}
+                onClick={() => {
+                  onChange(p.value as Preset);
+                  onCustomChange("", "");
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left px-2.5 py-1.5 text-xs rounded transition-colors",
+                  value === p.value
+                    ? "bg-primary/10 text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {/* Custom range — always visible, no extra click required */}
+          <div className="border-t border-border p-3 space-y-2">
+            <p className="text-[11px] font-medium text-muted-foreground">Custom range</p>
+            <div className="space-y-1">
+              <label htmlFor="time-range-from" className="text-[11px] text-muted-foreground">From</label>
+              <Input
+                id="time-range-from"
+                name="time-range-from"
+                type="datetime-local"
+                value={draftAfter}
+                onChange={(e) => setDraftAfter(e.target.value)}
+                className="h-7 text-xs bg-input"
+              />
             </div>
-          </PopoverContent>
-        </Popover>
+            <div className="space-y-1">
+              <label htmlFor="time-range-to" className="text-[11px] text-muted-foreground">To</label>
+              <Input
+                id="time-range-to"
+                name="time-range-to"
+                type="datetime-local"
+                value={draftBefore}
+                onChange={(e) => setDraftBefore(e.target.value)}
+                className="h-7 text-xs bg-input"
+              />
+            </div>
+            <div className="flex justify-end gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={() => {
+                  handleClear();
+                  setDraftAfter("");
+                  setDraftBefore("");
+                  setOpen(false);
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!draftAfter && !draftBefore}
+                onClick={() => {
+                  onChange("custom");
+                  onCustomChange(draftAfter, draftBefore);
+                  setOpen(false);
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {isActive && (
+        <button
+          onClick={handleClear}
+          className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          title="Clear time filter"
+          aria-label="Clear time filter"
+        >
+          <X className="h-3 w-3" />
+        </button>
       )}
     </div>
   );
@@ -726,6 +766,16 @@ function GroupByControl({
 }) {
   const [open, setOpen] = useState(false);
   const [valueSearch, setValueSearch] = useState("");
+  const prevGroupField = useRef<string | null>(null);
+
+  // Auto-open the value picker whenever a new field is selected
+  useEffect(() => {
+    if (groupField !== null && groupField !== prevGroupField.current) {
+      setOpen(true);
+    }
+    if (groupField === null) setOpen(false);
+    prevGroupField.current = groupField;
+  }, [groupField]);
 
   const filteredValues = useMemo(() => {
     const term = valueSearch.trim().toLowerCase();
@@ -734,13 +784,18 @@ function GroupByControl({
   }, [availableGroupValues, valueSearch]);
 
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
-      <span className="text-[11px] text-muted-foreground shrink-0">Group by:</span>
+    <div className="flex items-center gap-0.5 shrink-0">
+      <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Group by:</span>
       <Select
         value={groupField ?? "__none"}
         onValueChange={(v) => onFieldChange(v === "__none" ? null : v)}
       >
-        <SelectTrigger className="h-7 w-40 text-xs bg-input shrink-0">
+        <SelectTrigger
+          className={cn(
+            "h-7 w-36 text-xs shrink-0",
+            groupField ? "bg-primary/10 border-primary/40 text-foreground" : "bg-input"
+          )}
+        >
           <SelectValue placeholder="Field…" />
         </SelectTrigger>
         <SelectContent>
@@ -754,86 +809,107 @@ function GroupByControl({
       </Select>
 
       {groupField && (
-        <Dialog
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) setValueSearch("");
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs gap-1.5 shrink-0">
-              <ListFilter className="h-3 w-3" />
-              {groupValues.size > 0
-                ? `${groupValues.size} value${groupValues.size === 1 ? "" : "s"}`
-                : "Select values…"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-card border-border">
-            <DialogHeader>
-              <DialogTitle className="text-foreground">
-                Group by <span className="font-mono">{groupField}</span>
-              </DialogTitle>
-            </DialogHeader>
+        <>
+          {/* Values chip — click to reopen the picker */}
+          <button
+            onClick={() => setOpen(true)}
+            className={cn(
+              "flex items-center gap-1 h-7 px-2 rounded border text-xs transition-colors shrink-0",
+              groupValues.size > 0
+                ? "bg-primary/10 border-primary/40 text-foreground hover:bg-primary/15"
+                : "bg-input border-input text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ListFilter className="h-3 w-3 shrink-0" />
+            {groupValues.size > 0
+              ? `${groupValues.size} value${groupValues.size === 1 ? "" : "s"}`
+              : "Select values…"}
+          </button>
 
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={valueSearch}
-                onChange={(e) => setValueSearch(e.target.value)}
-                placeholder="Search values..."
-                className="pl-8 h-8 text-sm bg-input"
-                autoFocus
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {groupValues.size} of {availableGroupValues.length} selected
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
-                  disabled={filteredValues.length === 0}
-                  onClick={() => onSelectValues(filteredValues)}
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
-                  disabled={groupValues.size === 0}
-                  onClick={onClearValues}
-                >
-                  Clear all
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto rounded-md border border-border divide-y divide-border">
-              {filteredValues.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No matching values.
-                </p>
-              ) : (
-                filteredValues.map((value) => (
-                  <label
-                    key={value}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <Checkbox
-                      checked={groupValues.has(value)}
-                      onCheckedChange={() => onToggleValue(value)}
-                    />
-                    <span className="font-mono text-foreground truncate">{value}</span>
-                  </label>
-                ))
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+          {/* Clear group-by entirely */}
+          <button
+            onClick={() => { onFieldChange(null); onClearValues(); }}
+            className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title="Clear group-by filter"
+            aria-label="Clear group-by filter"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </>
       )}
+
+      {/* Controlled dialog — no DialogTrigger needed */}
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setValueSearch("");
+        }}
+      >
+        <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Group by <span className="font-mono">{groupField}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={valueSearch}
+              onChange={(e) => setValueSearch(e.target.value)}
+              placeholder="Search values..."
+              className="pl-8 h-8 text-sm bg-input"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {groupValues.size} of {availableGroupValues.length} selected
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
+                disabled={filteredValues.length === 0}
+                onClick={() => onSelectValues(filteredValues)}
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                className="hover:text-foreground transition-colors disabled:opacity-40 disabled:hover:text-muted-foreground"
+                disabled={groupValues.size === 0}
+                onClick={onClearValues}
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto rounded-md border border-border divide-y divide-border">
+            {filteredValues.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No matching values.
+              </p>
+            ) : (
+              filteredValues.map((value) => (
+                <label
+                  key={value}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={groupValues.has(value)}
+                    onCheckedChange={() => onToggleValue(value)}
+                  />
+                  <span className="font-mono text-foreground truncate">{value}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
