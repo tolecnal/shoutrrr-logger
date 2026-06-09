@@ -3,7 +3,7 @@
 A self-hosted notification logging service for [shoutrrr](https://containrrr.dev/shoutrrr/). It exposes an HTTP endpoint that accepts notifications from shoutrrr, stores them in PostgreSQL 17, and provides a web UI for searching, browsing, filtering, and managing them.
 
 **Stack:** FastAPI (Python 3.14) · Next.js 16 · PostgreSQL 17 · OpenID Connect · Docker  
-**Version:** 0.2.0
+**Version:** 0.3.0
 
 ---
 
@@ -335,7 +335,8 @@ Any additional JSON fields are stored verbatim and accessible as `custom_fields`
 
 **Creating an access token:**
 
-Log in as an admin, go to **Admin → Access Tokens**, create a token, and copy the raw value — it is shown **only once**.
+- **Global token** (shared): log in as an admin, go to **Admin → Access Tokens**, create a token, and copy the raw value — it is shown **only once**.
+- **Personal token** (private): go to **Preferences → My Tokens**, create a token, and copy the raw value — also shown **only once**.
 
 **curl example:**
 
@@ -461,8 +462,8 @@ Without the flag it sends individual log lines as separate notifications. Both f
 
 | Role | Access |
 |---|---|
-| `viewer` | `/log` — browse, search, and inspect notifications |
-| `admin` | `/log` + `/admin` — manage users, access tokens, and plugins |
+| `viewer` | `/log` — browse, search, and inspect notifications; **Preferences → My Tokens** to create personal tokens |
+| `admin` | `/log` + `/admin` — manage users, access tokens, plugins, and settings; `/stats` and `/performance` dashboards |
 
 **Roles are controlled entirely by your SSO provider.** On every login the backend re-reads the role claim from the merged token/UserInfo claims and syncs it to the local user record. There is no role management inside shoutrrr-logger — the Admin → Users page is read-only with respect to roles.
 
@@ -476,11 +477,27 @@ A user who has neither role is refused at login with a diagnostic message.
 
 Access tokens are opaque bearer tokens used to authenticate ingest requests to `POST /api/shoutrrr`. They are stored as HMAC-SHA256 hashes — the plaintext is shown only once at creation time.
 
-Each token can optionally be:
-- Linked to a specific user for auditing
-- Given an expiry date — expired tokens are rejected immediately
+### Global tokens (admin-managed)
 
-Manage tokens in **Admin → Access Tokens**.
+Created in **Admin → Access Tokens**. Global tokens are visible to all users — any notification received through a global token appears in every user's log view. Global tokens are auto-assigned to the creating admin.
+
+### Personal tokens (user-managed)
+
+Any authenticated user can create personal tokens from **Preferences → My Tokens**. Notifications received through a personal token are only visible to the token's owner (and admins). The number of personal tokens per user is capped by the `max_private_tokens` setting (default: 3).
+
+### Filtering by scope
+
+The notification log has a **Scope** filter:
+
+| Scope | What you see |
+|---|---|
+| **All** | Global token notifications + your own personal token notifications (admins see everything) |
+| **Global** | Only notifications from global tokens |
+| **My tokens** | Only notifications from your own personal tokens |
+
+### Token lifecycle
+
+Each token can optionally be given an expiry date — expired tokens are rejected immediately. Tokens can be activated/deactivated without deleting them.
 
 ---
 

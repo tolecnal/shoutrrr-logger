@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] — 2026-06-09
+
+### Added
+
+- **Two-tier access tokens** — global tokens (admin-created, visible to all users in the log) and private tokens (user-created, scoped to the owner).
+  - Admin panel creates global tokens only; the Owner field is removed from the create form (auto-assigned to the creating admin). Rows display a "Global" badge.
+  - Users create and manage personal tokens from **Preferences → My Tokens**. The raw token value is shown in a reveal-once banner and never exposed again.
+  - `max_private_tokens` application setting (default: 3, range: 0–50) enforced at creation time.
+  - Notification log gains a **Scope** filter: **All** / **Global** / **My tokens** — applied server-side.
+  - `POST /api/v1/me/tokens`, `GET /api/v1/me/tokens`, `PATCH /api/v1/me/tokens/{id}`, `DELETE /api/v1/me/tokens/{id}` endpoints for personal token management (viewer+ role).
+
+- **API performance monitoring** — new admin-only `/performance` page showing request latency and error rates.
+  - `PerformanceMiddleware` instruments every `/api/v1/*` request (excludes health, version, docs, auth, and the performance endpoint itself). Latency is persisted asynchronously via `asyncio.create_task` to avoid adding overhead.
+  - `api_metric_logs` table stores path template, method, status code, duration in ms, and timestamp.
+  - `GET /api/v1/admin/performance?window_hours=<1–168>` returns p50/p95/p99 latency, error rate, requests-per-hour time series, and per-endpoint breakdowns (PostgreSQL `PERCENTILE_CONT`).
+  - Frontend `/performance` page: window selector (1 h / 6 h / 24 h / 48 h / 7 d), four summary cards, requests-per-hour area chart (Recharts), endpoint table with colour-coded latency and error-rate columns.
+
+- **Admin-only statistics pages** — both `/stats` and `/performance` now redirect non-admin users to `/log`.
+
+- **CI: tag-only Docker publishing** — all three pipelines (GitHub Actions `docker-publish.yml`, GitHub Actions `build-publish.yml`, GitLab CI `.gitlab-ci.yml`) no longer trigger Docker builds on branch pushes. Images are only built and published when a version tag (`v*.*.*`) is pushed.
+
+### Changed
+
+- `AccessToken` model gains an `is_global` column (`BOOLEAN NOT NULL DEFAULT TRUE`). Existing databases are migrated automatically via an idempotent `ALTER TABLE IF EXISTS … ADD COLUMN IF NOT EXISTS` in `init_db()`.
+- Admin token create response no longer requires selecting an owner; the creating admin is used automatically.
+- `GET /api/v1/notifications` gains a `scope` query parameter (`all` | `global` | `mine`). Default is `all`. For non-admin users `all` shows global + own private; for admins it shows everything.
+
+### Fixed
+
+- Deprecated `HTTP_422_UNPROCESSABLE_ENTITY` constant replaced with `HTTP_422_UNPROCESSABLE_CONTENT` in `services/tokens.py`.
+
+---
+
 ## [0.2.1] — 2026-06-09
 
 ### Added

@@ -96,7 +96,7 @@ class AccessTokenService:
             count = await self._repo.count_by_user(session, user_id, is_global=False)
             if count >= max_tokens:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=(
                         f"You have reached the maximum of {max_tokens} private token(s). "
                         "Delete an existing token to create a new one."

@@ -1,10 +1,11 @@
 """
-Integration tests for GET /api/v1/notifications — pagination and search.
+Integration tests for GET /api/v1/notifications — pagination, search, and scope filtering.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Notification
+from auth import generate_raw_token, hash_token
+from models import AccessToken, Notification
 
 
 async def _seed(
@@ -131,3 +132,155 @@ class TestGetNotification:
         data = resp.json()
         assert data["custom_fields"]["hostname"] == "test-host"
         assert data["custom_fields"]["severity"] == "info"
+
+
+# ---------------------------------------------------------------------------
+# Scope filtering: scope=global / scope=mine / scope=all
+# ---------------------------------------------------------------------------
+
+
+async def _private_token(db: AsyncSession, user):
+    """Helper: insert and return an is_global=False token for the given user."""
+    raw = generate_raw_token()
+    tok = AccessToken(
+        user_id=user.id,
+        name=f"priv-{user.username}",
+        token_hash=hash_token(raw),
+        is_global=False,
+    )
+    db.add(tok)
+    await db.flush()
+    return tok
+
+
+class TestNotificationScope:
+    """GET /api/v1/notifications?scope=... filtering behaviour."""
+
+    async def test_scope_global_shows_global_token_notifications(
+        self, client, viewer_session_headers, db, access_token
+    ):
+        """scope=global must include notifications from global tokens."""
+        _, global_tok = access_token
+        db.add(Notification(token_id=global_tok.id, message="global-visible"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "global"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 200
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "global-visible" in msgs
+
+    async def test_scope_global_excludes_private_notifications(
+        self, client, viewer_session_headers, db, viewer_user
+    ):
+        """scope=global must NOT include notifications from private tokens."""
+        priv = await _private_token(db, viewer_user)
+        db.add(Notification(token_id=priv.id, message="private-hidden"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "global"},
+            headers=viewer_session_headers,
+        )
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "private-hidden" not in msgs
+
+    async def test_scope_mine_shows_own_private_notifications(
+        self, client, viewer_session_headers, db, viewer_user
+    ):
+        """scope=mine must return notifications from the caller's private tokens."""
+        priv = await _private_token(db, viewer_user)
+        db.add(Notification(token_id=priv.id, message="my-private"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "mine"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["items"][0]["message"] == "my-private"
+
+    async def test_scope_mine_excludes_global_notifications(
+        self, client, viewer_session_headers, db, access_token
+    ):
+        """scope=mine must NOT include notifications from global tokens."""
+        _, global_tok = access_token
+        db.add(Notification(token_id=global_tok.id, message="global-excluded"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "mine"},
+            headers=viewer_session_headers,
+        )
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "global-excluded" not in msgs
+
+    async def test_scope_all_viewer_sees_global_and_own_private(
+        self, client, viewer_session_headers, db, viewer_user, access_token
+    ):
+        """Viewer with scope=all sees both global and own private notifications."""
+        _, global_tok = access_token
+        priv = await _private_token(db, viewer_user)
+        db.add(Notification(token_id=global_tok.id, message="global-ok"))
+        db.add(Notification(token_id=priv.id, message="mine-ok"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "all"},
+            headers=viewer_session_headers,
+        )
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "global-ok" in msgs
+        assert "mine-ok" in msgs
+
+    async def test_scope_all_viewer_excluded_from_others_private(
+        self, client, viewer_session_headers, db, admin_user
+    ):
+        """Viewer with scope=all must not see another user's private notifications."""
+        priv = await _private_token(db, admin_user)
+        db.add(Notification(token_id=priv.id, message="admin-private"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "all"},
+            headers=viewer_session_headers,
+        )
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "admin-private" not in msgs
+
+    async def test_scope_all_admin_sees_everything(
+        self, client, admin_session_headers, db, viewer_user, access_token
+    ):
+        """Admin with scope=all sees all notifications regardless of token scope."""
+        _, global_tok = access_token
+        priv = await _private_token(db, viewer_user)
+        db.add(Notification(token_id=global_tok.id, message="global-for-all"))
+        db.add(Notification(token_id=priv.id, message="viewer-private-for-admin"))
+        await db.flush()
+
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "all"},
+            headers=admin_session_headers,
+        )
+        msgs = [n["message"] for n in resp.json()["items"]]
+        assert "global-for-all" in msgs
+        assert "viewer-private-for-admin" in msgs
+
+    async def test_invalid_scope_rejected(self, client, viewer_session_headers):
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"scope": "invalid"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 422
