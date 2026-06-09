@@ -58,12 +58,14 @@ export function notificationsKey(
   q: string,
   pageSize = 20,
   after?: string,
-  before?: string
+  before?: string,
+  scope?: string,
 ) {
   let url = `/notifications?page=${page}&page_size=${pageSize}`;
   if (q) url += `&q=${encodeURIComponent(q)}`;
   if (after) url += `&after=${encodeURIComponent(after)}`;
   if (before) url += `&before=${encodeURIComponent(before)}`;
+  if (scope && scope !== "all") url += `&scope=${scope}`;
   return url;
 }
 // notificationsKey returns a path relative to BASE (e.g. "/notifications?...")
@@ -113,7 +115,7 @@ export const fetchTokens = () => apiFetch<AccessTokenOut[]>("/admin/tokens");
 
 export const createToken = (body: {
   name: string;
-  user_id: string;
+  user_id?: string;
   expires_at?: string | null;
 }) => apiFetch<AccessTokenCreated>("/admin/tokens", { method: "POST", body: JSON.stringify(body) });
 
@@ -150,6 +152,25 @@ export const updateSettings = (values: Record<string, number>) =>
     method: "PATCH",
     body: JSON.stringify({ values }),
   });
+
+// ---- Personal tokens ----
+export const fetchMyTokens = () => apiFetch<AccessTokenOut[]>("/me/tokens");
+
+export const createMyToken = (body: { name: string; expires_at?: string | null }) =>
+  apiFetch<AccessTokenCreated>("/me/tokens", { method: "POST", body: JSON.stringify(body) });
+
+export const updateMyToken = (
+  id: string,
+  params: { name?: string; is_active?: boolean },
+) => {
+  const sp = new URLSearchParams();
+  if (params.name !== undefined) sp.set("name", params.name);
+  if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
+  return apiFetch<AccessTokenOut>(`/me/tokens/${id}?${sp}`, { method: "PATCH" });
+};
+
+export const deleteMyToken = (id: string) =>
+  apiFetch<void>(`/me/tokens/${id}`, { method: "DELETE" });
 
 // ---- API Performance ----
 export const fetchApiPerformance = (windowHours = 24) =>

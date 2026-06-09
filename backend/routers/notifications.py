@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_viewer
 from database import get_db
-from models import User
+from models import User, UserRole
 from schemas import NotificationOut, NotificationStats, PaginatedResponse
 from services.notifications import notification_service
 
@@ -77,11 +77,24 @@ async def list_notifications(
     before: datetime | None = Query(
         None, description="Only return notifications received before this datetime (ISO 8601)"
     ),
-    _user: User = Depends(require_viewer),
+    scope: str = Query(
+        "all",
+        pattern="^(all|global|mine)$",
+        description="all=visible to caller, global=global tokens only, mine=own private tokens only",
+    ),
+    user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[NotificationOut]:
     return await notification_service.list_notifications(
-        db, query=q, page=page, page_size=page_size, after=after, before=before
+        db,
+        query=q,
+        page=page,
+        page_size=page_size,
+        after=after,
+        before=before,
+        scope=scope,
+        user_id=user.id,
+        is_admin=(user.role == UserRole.admin),
     )
 
 

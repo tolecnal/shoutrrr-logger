@@ -102,6 +102,8 @@ export function NotificationLog() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [groupField, setGroupField] = useState<string | null>(null);
   const [groupValues, setGroupValues] = useState<Set<string>>(new Set());
+  // Scope filter: all = global + own private, global = global only, mine = own private only
+  const [scope, setScope] = useState<"all" | "global" | "mine">("all");
   // Time range filter
   const [timeRange, setTimeRange] = useState<Preset>("all");
   const [customAfter, setCustomAfter] = useState("");
@@ -143,8 +145,8 @@ export function NotificationLog() {
   );
 
   const swrKey = useMemo(
-    () => notificationsKey(fetchPage, query, fetchSize, timeAfter, timeBefore),
-    [fetchPage, query, fetchSize, timeAfter, timeBefore]
+    () => notificationsKey(fetchPage, query, fetchSize, timeAfter, timeBefore, scope),
+    [fetchPage, query, fetchSize, timeAfter, timeBefore, scope]
   );
 
   const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
@@ -238,6 +240,12 @@ export function NotificationLog() {
     },
     [search]
   );
+
+  const handleScopeChange = useCallback((s: "all" | "global" | "mine") => {
+    setScope(s);
+    setServerPage(1);
+    setClientPage(1);
+  }, []);
 
   const handleTimeRangeChange = useCallback((preset: Preset) => {
     setTimeRange(preset);
@@ -437,11 +445,28 @@ export function NotificationLog() {
           )}
         </div>
 
-        {/* Filter bar: always visible — tag chips on the left, time range + group-by on the right */}
+        {/* Filter bar: always visible — scope + tag chips on the left, time range + group-by on the right */}
         <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
+          {/* Scope filter */}
+          <span className="text-[11px] text-muted-foreground shrink-0">Scope:</span>
+          {(["all", "global", "mine"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => handleScopeChange(s)}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
+                scope === s
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+              )}
+            >
+              {s === "all" ? "All" : s === "global" ? "Global" : "My tokens"}
+            </button>
+          ))}
+
           {enabledTags.length > 0 && (
             <>
-              <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Filter:</span>
+              <span className="text-[11px] text-muted-foreground shrink-0 ml-1 mr-1">Filter:</span>
               <button
                 onClick={() => setActiveTag(null)}
                 className={cn(

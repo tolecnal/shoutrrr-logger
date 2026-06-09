@@ -4,10 +4,10 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, func, or_, select, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Notification
+from models import AccessToken, Notification
 
 
 class NotificationRepository:
@@ -33,9 +33,51 @@ class NotificationRepository:
         page_size: int,
         after: datetime | None = None,
         before: datetime | None = None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
     ) -> tuple[Sequence[Notification], int]:
-        """Return ``(rows, total)`` for a search-and-paginate query, newest first."""
+        """Return ``(rows, total)`` for a search-and-paginate query, newest first.
+
+        scope="all"    admin → everything; viewer → global + own private
+        scope="global" → notifications from global tokens (or orphaned)
+        scope="mine"   → notifications from the caller's own private tokens
+        """
         base_query = select(Notification)
+
+        # Apply scope visibility filter before full-text / date filters
+        if scope == "mine":
+            # Inner join: only notifications that have a matching private token owned by this user
+            base_query = base_query.join(
+                AccessToken, Notification.token_id == AccessToken.id
+            ).where(
+                AccessToken.user_id == user_id,
+                AccessToken.is_global == False,  # noqa: E712
+            )
+        elif scope == "global":
+            base_query = base_query.outerjoin(
+                AccessToken, Notification.token_id == AccessToken.id
+            ).where(
+                or_(
+                    Notification.token_id.is_(None),
+                    AccessToken.is_global == True,  # noqa: E712
+                )
+            )
+        elif not is_admin:
+            # scope="all" for a regular viewer: global + own private + orphaned
+            base_query = base_query.outerjoin(
+                AccessToken, Notification.token_id == AccessToken.id
+            ).where(
+                or_(
+                    Notification.token_id.is_(None),
+                    AccessToken.is_global == True,  # noqa: E712
+                    and_(
+                        AccessToken.user_id == user_id,
+                        AccessToken.is_global == False,  # noqa: E712
+                    ),
+                )
+            )
+        # else: scope="all" for admin → no filter, sees everything
 
         if query:
             term = f"%{query}%"

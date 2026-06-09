@@ -120,18 +120,28 @@ class UserCreate(BaseModel):
 # ---------------------------------------------------------------------------
 class AccessTokenCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    user_id: uuid.UUID
+    # When None the creating admin's user_id is used automatically
+    user_id: uuid.UUID | None = None
+    expires_at: datetime | None = None
+    is_global: bool = True
+
+
+class PersonalTokenCreate(BaseModel):
+    """Payload for a user creating their own private token."""
+
+    name: str = Field(..., min_length=1, max_length=255)
     expires_at: datetime | None = None
 
 
 class AccessTokenOut(BaseModel):
     id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: uuid.UUID | None
     name: str
     expires_at: datetime | None
     created_at: datetime
     last_used_at: datetime | None
     is_active: bool
+    is_global: bool = True
     # owner username for display
     owner_username: str | None = None
 

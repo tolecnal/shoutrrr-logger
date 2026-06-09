@@ -48,6 +48,15 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
             async with engine.begin() as conn:
                 await conn.execute(sqlalchemy.text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
                 await conn.run_sync(Base.metadata.create_all)
+                # Idempotent column migrations for databases created before this column existed.
+                # Existing tokens default to is_global=TRUE (backward-compatible: all old tokens
+                # were shared/system tokens, so they behave like global tokens for all users).
+                await conn.execute(
+                    sqlalchemy.text(
+                        "ALTER TABLE IF EXISTS access_tokens "
+                        "ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
+                )
             logger.info("Database initialised successfully.")
             return
         except Exception as exc:

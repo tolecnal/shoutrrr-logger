@@ -57,6 +57,15 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         max_value=365,
         unit="days",
     ),
+    SettingMeta(
+        key="max_private_tokens",
+        label="Max private tokens per user",
+        description="Maximum number of private access tokens each user may create. Set to 0 for unlimited.",
+        default=3,
+        min_value=0,
+        max_value=50,
+        unit="tokens",
+    ),
 ]
 
 _META_BY_KEY: dict[str, SettingMeta] = {s.key: s for s in KNOWN_SETTINGS}

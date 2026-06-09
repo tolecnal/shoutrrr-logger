@@ -124,12 +124,13 @@ export interface PaginatedResponse<T> {
 
 export interface AccessTokenOut {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   expires_at: string | null;
   created_at: string;
   last_used_at: string | null;
   is_active: boolean;
+  is_global: boolean;
   owner_username: string | null;
 }
 

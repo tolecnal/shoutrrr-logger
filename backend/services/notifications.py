@@ -37,9 +37,20 @@ class NotificationService:
         page_size: int,
         after: datetime | None = None,
         before: datetime | None = None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
     ) -> PaginatedResponse[NotificationOut]:
         rows, total = await self._repo.search_paginated(
-            session, query=query, page=page, page_size=page_size, after=after, before=before
+            session,
+            query=query,
+            page=page,
+            page_size=page_size,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
         )
         return PaginatedResponse(
             items=[NotificationOut.model_validate(r) for r in rows],

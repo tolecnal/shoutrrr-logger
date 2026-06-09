@@ -34,15 +34,17 @@ async def list_tokens(
     "",
     response_model=AccessTokenCreated,
     status_code=status.HTTP_201_CREATED,
-    summary="Create an access token",
-    description="Creates a new access token and returns the raw token value **once**. Store it securely.",
+    summary="Create a global access token",
+    description="Creates a global access token and returns the raw value **once**. Store it securely.",
 )
 async def create_token(
     body: AccessTokenCreate,
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AccessTokenCreated:
-    token, raw = await access_token_service.create_token(db, body)
+    # Default owner to the creating admin when not explicitly specified
+    effective = body if body.user_id is not None else body.model_copy(update={"user_id": admin.id})
+    token, raw = await access_token_service.create_token(db, effective)
     out = AccessTokenCreated.model_validate(token)
     return out.model_copy(
         update={"raw_token": raw, "owner_username": token.user.username if token.user else None}

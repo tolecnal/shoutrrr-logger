@@ -3,7 +3,7 @@
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -42,6 +42,38 @@ class AccessTokenRepository:
 
     async def delete(self, session: AsyncSession, token: AccessToken) -> None:
         await session.delete(token)
+
+    async def list_by_user(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        *,
+        is_global: bool = False,
+    ) -> Sequence[AccessToken]:
+        result = await session.execute(
+            select(AccessToken)
+            .where(
+                AccessToken.user_id == user_id,
+                AccessToken.is_global == is_global,  # noqa: E712
+            )
+            .order_by(AccessToken.created_at.desc())
+        )
+        return result.scalars().all()
+
+    async def count_by_user(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        *,
+        is_global: bool = False,
+    ) -> int:
+        result = await session.execute(
+            select(func.count(AccessToken.id)).where(
+                AccessToken.user_id == user_id,
+                AccessToken.is_global == is_global,  # noqa: E712
+            )
+        )
+        return result.scalar_one()
 
 
 access_token_repository = AccessTokenRepository()

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, Plus, Trash2, GripVertical } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check } from "lucide-react";
+import useSWR from "swr";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { fetchMyTokens, createMyToken, deleteMyToken, updateMyToken } from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
   useTagRules,
@@ -184,6 +186,59 @@ export function PreferencesDialog() {
   const { rules, addRule, updateRule, deleteRule } = useTagRules();
   const [open, setOpen] = useState(false);
 
+  // Personal tokens state
+  const [tokenName, setTokenName] = useState("");
+  const [tokenExpiry, setTokenExpiry] = useState("");
+  const [tokenCreating, setTokenCreating] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [newRawToken, setNewRawToken] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data: myTokens, mutate: mutateTokens } = useSWR(
+    open ? "/me/tokens" : null,
+    fetchMyTokens,
+    { revalidateOnFocus: false },
+  );
+
+  const handleCreateToken = async () => {
+    const name = tokenName.trim();
+    if (!name) return;
+    setTokenCreating(true);
+    setTokenError(null);
+    try {
+      const created = await createMyToken({
+        name,
+        expires_at: tokenExpiry ? new Date(tokenExpiry).toISOString() : null,
+      });
+      setNewRawToken(created.raw_token);
+      setTokenName("");
+      setTokenExpiry("");
+      await mutateTokens();
+    } catch (e) {
+      setTokenError(e instanceof Error ? e.message : "Failed to create token");
+    } finally {
+      setTokenCreating(false);
+    }
+  };
+
+  const handleDeleteToken = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteMyToken(id);
+      await mutateTokens();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCopyToken = () => {
+    if (!newRawToken) return;
+    navigator.clipboard.writeText(newRawToken);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2000);
+  };
+
   const handleAddRule = () => {
     addRule({
       name: "New tag",
@@ -212,9 +267,10 @@ export function PreferencesDialog() {
         </DialogHeader>
 
         <Tabs defaultValue="display" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2 bg-secondary">
+          <TabsList className="grid w-full grid-cols-3 bg-secondary">
             <TabsTrigger value="display">Display</TabsTrigger>
             <TabsTrigger value="tags">Tag Rules</TabsTrigger>
+            <TabsTrigger value="tokens">My Tokens</TabsTrigger>
           </TabsList>
 
           {/* ---- Display tab ---- */}
@@ -274,6 +330,126 @@ export function PreferencesDialog() {
                   onUpdate={(patch) => updateRule(rule.id, patch)}
                   onDelete={() => deleteRule(rule.id)}
                 />
+              ))}
+            </div>
+          </TabsContent>
+          {/* ---- My Tokens tab ---- */}
+          <TabsContent value="tokens" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4">
+            {/* Reveal-once raw token banner */}
+            {newRawToken && (
+              <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 space-y-2">
+                <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                  Token created — copy it now, it will not be shown again.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded bg-black/20 px-2 py-1.5 text-xs font-mono text-foreground break-all">
+                    {newRawToken}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0"
+                    onClick={handleCopyToken}
+                    aria-label="Copy token"
+                  >
+                    {copiedToken ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-xs text-muted-foreground px-0"
+                  onClick={() => setNewRawToken(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            )}
+
+            {/* Create form */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Create personal token</p>
+              <p className="text-xs text-muted-foreground">
+                Personal tokens are private — only notifications sent with them are visible to you.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  className="h-8 flex-1 text-sm bg-input"
+                  placeholder="Token name"
+                  value={tokenName}
+                  onChange={(e) => setTokenName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
+                />
+                <Input
+                  type="date"
+                  className="h-8 w-36 text-sm bg-input"
+                  title="Optional expiry date"
+                  value={tokenExpiry}
+                  onChange={(e) => setTokenExpiry(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  className="h-8 shrink-0"
+                  onClick={handleCreateToken}
+                  disabled={!tokenName.trim() || tokenCreating}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Create
+                </Button>
+              </div>
+              {tokenError && (
+                <p className="text-xs text-destructive">{tokenError}</p>
+              )}
+            </div>
+
+            <Separator className="bg-border" />
+
+            {/* Token list */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {!myTokens && (
+                <p className="text-sm text-muted-foreground text-center py-4">Loading…</p>
+              )}
+              {myTokens && myTokens.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No personal tokens yet.
+                </p>
+              )}
+              {myTokens?.map((tok) => (
+                <div
+                  key={tok.id}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2"
+                >
+                  <Key className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{tok.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tok.expires_at
+                        ? `Expires ${new Date(tok.expires_at).toLocaleDateString()}`
+                        : "No expiry"}
+                      {tok.last_used_at
+                        ? ` · Last used ${new Date(tok.last_used_at).toLocaleDateString()}`
+                        : ""}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={tok.is_active}
+                    onCheckedChange={async (v) => {
+                      await updateMyToken(tok.id, { is_active: v });
+                      await mutateTokens();
+                    }}
+                    aria-label={`${tok.is_active ? "Deactivate" : "Activate"} ${tok.name}`}
+                    className="shrink-0"
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => handleDeleteToken(tok.id)}
+                    disabled={deletingId === tok.id}
+                    aria-label={`Delete ${tok.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               ))}
             </div>
           </TabsContent>

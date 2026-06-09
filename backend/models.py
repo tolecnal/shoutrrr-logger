@@ -72,6 +72,9 @@ class AccessToken(Base):
     )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # True  → admin-managed, visible to all users in the notification feed
+    # False → private, visible only to the owning user
+    is_global: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     user: Mapped["User"] = relationship("User", back_populates="access_tokens")
 

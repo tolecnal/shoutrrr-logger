@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { format, isPast } from "date-fns";
 import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { fetchTokens, createToken, deleteToken, updateToken, fetchUsers } from "@/lib/api";
+import { fetchTokens, createToken, deleteToken, updateToken } from "@/lib/api";
 import type { AccessTokenCreated, AccessTokenOut } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,13 +30,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -60,7 +53,6 @@ function tokenStatus(t: AccessTokenOut) {
 
 export function TokensTab() {
   const { data: tokens, isLoading, mutate } = useSWR("/admin/tokens", fetchTokens);
-  const { data: users } = useSWR("/admin/users", fetchUsers);
 
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<AccessTokenCreated | null>(null);
@@ -70,7 +62,6 @@ export function TokensTab() {
 
   const [form, setForm] = useState({
     name: "",
-    user_id: "",
     expires_at: "",
   });
 
@@ -79,7 +70,6 @@ export function TokensTab() {
     try {
       const result = await createToken({
         name: form.name,
-        user_id: form.user_id,
         expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
       });
       setCreated(result);
@@ -118,10 +108,15 @@ export function TokensTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {tokens?.length ?? 0} token{tokens?.length !== 1 ? "s" : ""}
-        </p>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", user_id: "", expires_at: "" }); }}>
+        <div>
+          <p className="text-xs text-muted-foreground">
+            {tokens?.length ?? 0} token{tokens?.length !== 1 ? "s" : ""}
+          </p>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+            Admin-created tokens are global — visible to all users in the log.
+          </p>
+        </div>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", expires_at: "" }); }}>
           <Plus className="h-3.5 w-3.5" />
           Create Token
         </Button>
@@ -154,7 +149,12 @@ export function TokensTab() {
                   const status = tokenStatus(t);
                   return (
                     <tr key={t.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-xs font-medium text-foreground">{t.name}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-foreground">
+                        <span className="flex items-center gap-1.5">
+                          {t.name}
+                          <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Global</Badge>
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{t.owner_username ?? "—"}</td>
                       <td className="px-4 py-3">
                         <Badge variant={status.variant} className="text-[11px]">{status.label}</Badge>
@@ -198,9 +198,9 @@ export function TokensTab() {
       <Dialog open={creating} onOpenChange={(o) => !o && setCreating(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Create Access Token</DialogTitle>
+            <DialogTitle className="text-sm">Create Global Access Token</DialogTitle>
             <DialogDescription className="text-xs">
-              The raw token value is shown once after creation. Store it securely.
+              Global tokens are visible to all users. The raw value is shown once — store it securely.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -212,21 +212,6 @@ export function TokensTab() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Owner</Label>
-              <Select value={form.user_id} onValueChange={(v) => setForm({ ...form, user_id: v })}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select user…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users?.map((u) => (
-                    <SelectItem key={u.id} value={u.id} className="text-xs">
-                      {u.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Expiration date <span className="text-muted-foreground">(optional)</span></Label>
@@ -241,7 +226,7 @@ export function TokensTab() {
           </div>
           <DialogFooter>
             <Button size="sm" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleCreate} disabled={saving || !form.name || !form.user_id}>
+            <Button size="sm" onClick={handleCreate} disabled={saving || !form.name}>
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
               Create
             </Button>
