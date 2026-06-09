@@ -40,6 +40,27 @@ export interface VersionInfo {
   build_time: string;
 }
 
+// ---------------------------------------------------------------------------
+// Stats
+// ---------------------------------------------------------------------------
+export interface DayStat {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
+export interface SenderStat {
+  sender: string | null;
+  count: number;
+}
+
+export interface NotificationStats {
+  total: number;
+  today: number;
+  this_week: number;
+  by_day: DayStat[];
+  top_senders: SenderStat[];
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

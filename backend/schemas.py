@@ -163,6 +163,27 @@ class PluginUpdate(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+class DayStat(BaseModel):
+    date: str  # YYYY-MM-DD
+    count: int
+
+
+class SenderStat(BaseModel):
+    sender: str | None
+    count: int
+
+
+class NotificationStats(BaseModel):
+    total: int
+    today: int
+    this_week: int
+    by_day: list[DayStat]
+    top_senders: list[SenderStat]
+
+
+# ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
 class OIDCCallbackResponse(BaseModel):

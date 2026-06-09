@@ -5,15 +5,17 @@ Run locally:   uvicorn main:app --reload
 Production:    gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4
 """
 
+import asyncio
+import logging
 import urllib.parse
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from auth import (
     create_session_jwt,
@@ -28,15 +30,47 @@ from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import notifications, plugins, shoutrrr, tokens, users
 from schemas import OIDCCallbackResponse, UserOut
+from services.notifications import notification_service
 from services.users import user_service
 from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
+
+logger = logging.getLogger(__name__)
+
+
+async def _retention_loop(retention_days: int) -> None:
+    """Background task: purge notifications older than ``retention_days`` once per hour."""
+    from database import engine  # noqa: PLC0415
+
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            session_factory = async_sessionmaker(engine, expire_on_commit=False)
+            async with session_factory() as session:
+                count = await notification_service.purge_old(session, retention_days=retention_days)
+                if count:
+                    await session.commit()
+                    logger.info(
+                        "Retention: purged %d notification(s) older than %d day(s)",
+                        count,
+                        retention_days,
+                    )
+        except Exception:
+            logger.exception("Retention loop encountered an error")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
     plugin_registry.discover()
+    retention_task: asyncio.Task | None = None
+    if settings.retention_days > 0:
+        retention_task = asyncio.create_task(_retention_loop(settings.retention_days))
+        logger.info("Retention policy enabled: %d day(s)", settings.retention_days)
     yield
+    if retention_task:
+        retention_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await retention_task
 
 
 app = FastAPI(

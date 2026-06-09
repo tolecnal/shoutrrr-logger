@@ -2,6 +2,7 @@ import type {
   AccessTokenCreated,
   AccessTokenOut,
   NotificationOut,
+  NotificationStats,
   PaginatedResponse,
   PluginMeta,
   UserOut,
@@ -66,6 +67,22 @@ export function notificationsKey(
 // so we pass it directly to apiFetch without any stripping needed.
 export const fetchNotifications = (url: string) =>
   apiFetch<PaginatedResponse<NotificationOut>>(url);
+
+export const fetchStats = (days = 30) =>
+  apiFetch<NotificationStats>(`/notifications/stats?days=${days}`);
+
+export function exportNotificationsUrl(params: {
+  q?: string;
+  after?: string;
+  before?: string;
+}): string {
+  const sp = new URLSearchParams();
+  if (params.q) sp.set("q", params.q);
+  if (params.after) sp.set("after", params.after);
+  if (params.before) sp.set("before", params.before);
+  const qs = sp.toString();
+  return `/api/v1/notifications/export${qs ? `?${qs}` : ""}`;
+}
 
 // ---- Users ----
 export const fetchUsers = () => apiFetch<UserOut[]>("/admin/users");

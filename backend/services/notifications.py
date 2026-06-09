@@ -1,9 +1,12 @@
 """Business logic for storing, searching, and dispatching notifications."""
 
+import csv
+import io
+import json
 import logging
 import math
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -11,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from models import AccessToken, Notification
 from repositories.notifications import NotificationRepository, notification_repository
 from repositories.plugin_configs import PluginConfigRepository, plugin_config_repository
-from schemas import NotificationOut, PaginatedResponse
+from schemas import NotificationOut, NotificationStats, PaginatedResponse
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +82,50 @@ class NotificationService:
             source_ip=source_ip,
         )
         return await self._repo.add(session, notification)
+
+    async def get_stats(self, session: AsyncSession, *, days: int = 30) -> NotificationStats:
+        raw = await self._repo.stats_summary(session, days=days)
+        return NotificationStats.model_validate(raw)
+
+    async def export_csv(
+        self,
+        session: AsyncSession,
+        *,
+        query: str | None,
+        after: datetime | None,
+        before: datetime | None,
+    ) -> str:
+        rows = await self._repo.export_all(session, query=query, after=after, before=before)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            ["id", "received_at", "sender_name", "title", "message", "source_ip", "custom_fields"]
+        )
+        for n in rows:
+            custom = ""
+            if n.raw_payload:
+                try:
+                    parsed = json.loads(n.raw_payload)
+                    if isinstance(parsed, dict):
+                        custom = "; ".join(f"{k}={v}" for k, v in parsed.items())
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            writer.writerow(
+                [
+                    str(n.id),
+                    n.received_at.isoformat(),
+                    n.sender_name or "",
+                    n.title or "",
+                    n.message,
+                    n.source_ip or "",
+                    custom,
+                ]
+            )
+        return buf.getvalue()
+
+    async def purge_old(self, session: AsyncSession, *, retention_days: int) -> int:
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+        return await self._repo.delete_older_than(session, cutoff)
 
     async def dispatch_plugins(self, notification_dict: dict) -> None:
         """

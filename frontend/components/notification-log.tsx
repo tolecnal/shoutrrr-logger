@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
-import { fetchNotifications, notificationsKey } from "@/lib/api";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
+import { fetchNotifications, notificationsKey, exportNotificationsUrl } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
@@ -102,6 +102,8 @@ export function NotificationLog() {
   const [customBefore, setCustomBefore] = useState("");
   // Bumped by the Refresh button so that preset "after" times recompute to now
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { formatTimestamp, formatTime } = usePreferences();
   const { rules, classify } = useTagRules();
@@ -269,6 +271,49 @@ export function NotificationLog() {
     ? clientPage < clientPageCount || serverHasMore
     : serverPage < (data?.pages ?? 1);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const inInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+
+      // "/" — focus search (unless already in an input)
+      if (e.key === "/" && !inInput && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Escape — clear search / close detail panel / clear filters
+      if (e.key === "Escape") {
+        if (document.activeElement === searchInputRef.current) {
+          searchInputRef.current?.blur();
+          return;
+        }
+        if (selected) { setSelected(null); return; }
+        if (query) { handleClearSearch(); return; }
+        if (activeTag) { setActiveTag(null); setClientPage(1); return; }
+        if (timeRange !== "all") { handleTimeRangeChange("all"); return; }
+        return;
+      }
+
+      // Arrow keys — pagination (only when no input is focused)
+      if (inInput) return;
+      if (e.key === "ArrowLeft" && canGoPrev) { e.preventDefault(); handlePrev(); }
+      if (e.key === "ArrowRight" && canGoNext) { e.preventDefault(); handleNext(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [
+    selected, query, activeTag, timeRange,
+    canGoPrev, canGoNext, handlePrev, handleNext,
+    handleClearSearch, handleTimeRangeChange,
+  ]);
+
   const enabledTags = useMemo(
     () => rules.filter((r) => r.enabled).map((r) => r.name),
     [rules]
@@ -301,11 +346,12 @@ export function NotificationLog() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
+                ref={searchInputRef}
                 id="notification-search"
                 name="notification-search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search notifications..."
+                placeholder="Search… (press / to focus)"
                 className="pl-8 h-8 text-sm bg-input"
               />
             </div>
@@ -333,6 +379,14 @@ export function NotificationLog() {
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
+          <a
+            href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore })}
+            download="notifications.csv"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Export current view as CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </a>
           {data && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {filtersActive

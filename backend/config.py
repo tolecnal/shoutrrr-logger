@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:4000"
     workers: int = 4
 
+    # Retention: delete notifications older than this many days (0 = disabled)
+    retention_days: int = 0
+
     # Space-separated scopes to request at login. "roles" is required for
     # Keycloak to include role claims in the UserInfo response.
     oidc_scopes: str = "openid email profile roles"

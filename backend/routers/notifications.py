@@ -6,17 +6,51 @@ Requires at minimum viewer role.
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_viewer
 from database import get_db
 from models import User
-from schemas import NotificationOut, PaginatedResponse
+from schemas import NotificationOut, NotificationStats, PaginatedResponse
 from services.notifications import notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 PAGE_SIZE = 20
+
+
+@router.get(
+    "/stats",
+    response_model=NotificationStats,
+    summary="Notification statistics",
+)
+async def get_stats(
+    days: int = Query(30, ge=1, le=365, description="Number of days for the daily breakdown"),
+    _user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationStats:
+    return await notification_service.get_stats(db, days=days)
+
+
+@router.get(
+    "/export",
+    summary="Export notifications as CSV",
+    response_class=StreamingResponse,
+)
+async def export_notifications(
+    q: str | None = Query(None),
+    after: datetime | None = Query(None),
+    before: datetime | None = Query(None),
+    _user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    csv_data = await notification_service.export_csv(db, query=q, after=after, before=before)
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=notifications.csv"},
+    )
 
 
 @router.get(
