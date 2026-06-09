@@ -103,16 +103,15 @@ test:frontend:
     - when: always
 
 # ---------------------------------------------------------------------------
-# Build & Publish — GitLab Container Registry (automatic)
+# Build & Publish — GitLab Container Registry (automatic on release tags)
 #
-# Triggered automatically on every push to the default branch and on
-# version tags (v*.*.*).  Also runs when triggered from the GitLab UI.
+# Triggered automatically on version tags (v*.*.*) and when run from the
+# GitLab UI.  Does NOT trigger on branch pushes.
 #
 # Tag strategy:
 #   :sha-<short-sha>        every run
-#   :<branch-name>          branch builds (e.g. :main)
-#   :latest                 default branch only
 #   :1.2.3 / :1.2          semver tags (v stripped)
+#   :latest                 semver tag builds
 #
 # Layer cache is stored in the GitLab registry as :buildcache.
 # ---------------------------------------------------------------------------
@@ -157,7 +156,6 @@ build:gitlab:
         ${TAGS} \
         .
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
     - if: '$CI_PIPELINE_SOURCE == "web"'
 
@@ -225,8 +223,6 @@ build:dockerhub:
         -d "$(jq -n --rawfile desc DOCKER_HUB.md \
               '{"full_description":$desc,"description":"Self-hosted notification logging service for shoutrrr"}')"
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: manual
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "web"'
