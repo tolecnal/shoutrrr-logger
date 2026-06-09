@@ -153,8 +153,8 @@ export function TokensTab() {
                         <span className="flex items-center gap-1.5">
                           {t.name}
                           {t.is_global
-                            ? <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4">Global</Badge>
-                            : <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">Private</Badge>}
+                            ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-cyan-500/15 text-cyan-400 border-cyan-500/25">Global</Badge>
+                            : <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-violet-500/15 text-violet-400 border-violet-500/25">Private</Badge>}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{t.owner_username ?? "—"}</td>
