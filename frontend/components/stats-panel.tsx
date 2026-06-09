@@ -147,38 +147,38 @@ export function StatsPanel() {
             <AreaChart data={data?.by_day ?? []} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
+                stroke="#1e2433"
                 vertical={false}
               />
               <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 10, fill: "#64748b" }}
                 tickFormatter={(v: string) => format(parseISO(v), "MMM d")}
                 interval={Math.ceil((data?.by_day.length ?? 30) / 6) - 1}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fontSize: 10, fill: "#64748b" }}
                 allowDecimals={false}
               />
               <Tooltip content={<ChartTooltip />} />
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="hsl(var(--primary))"
+                stroke="#22d3ee"
                 strokeWidth={2}
                 fill="url(#areaGradient)"
                 dot={false}
-                activeDot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+                activeDot={{ r: 4, fill: "#22d3ee", strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -201,10 +201,10 @@ export function StatsPanel() {
                   <span className="w-40 truncate text-foreground font-mono text-xs shrink-0">
                     {s.sender ?? "(unknown)"}
                   </span>
-                  <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "#1e2433" }}>
                     <div
-                      className="h-full rounded-full bg-primary/60 transition-all"
-                      style={{ width: `${pct}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, background: i === 0 ? "#22d3ee" : "#0ea5e9" }}
                     />
                   </div>
                   <span className="text-xs text-muted-foreground tabular-nums w-12 text-right shrink-0">
