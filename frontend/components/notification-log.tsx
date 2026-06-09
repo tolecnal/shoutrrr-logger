@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock } from "lucide-react";
-import { fetchNotifications, notificationsKey, exportNotificationsUrl } from "@/lib/api";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet } from "lucide-react";
+import { fetchNotifications, fetchSettings, notificationsKey, exportNotificationsUrl, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
@@ -24,6 +24,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
@@ -75,7 +81,7 @@ function resolveTimeRange(
   }
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
 // When filters are active we need a larger server page so that after
 // client-side filtering we still have enough rows to fill the view.
 const FILTERED_FETCH_SIZE = 100;
@@ -105,6 +111,15 @@ export function NotificationLog() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Load app settings (page size, auto-refresh interval)
+  const { data: settingsList } = useSWR("/settings", fetchSettings, { revalidateOnFocus: false });
+  const appSettings = useMemo(
+    () => (settingsList ? settingsToMap(settingsList) : null),
+    [settingsList]
+  );
+  const pageSize = appSettings?.page_size ?? DEFAULT_PAGE_SIZE;
+  const autoRefreshMs = ((appSettings?.auto_refresh_interval ?? 30)) * 1000;
+
   const { formatTimestamp, formatTime } = usePreferences();
   const { rules, classify } = useTagRules();
 
@@ -115,7 +130,7 @@ export function NotificationLog() {
 
   // When filters are active we fetch a large page so client-side filtering
   // has enough raw material. When filters are off, use normal server pagination.
-  const fetchSize = filtersActive ? FILTERED_FETCH_SIZE : PAGE_SIZE;
+  const fetchSize = filtersActive ? FILTERED_FETCH_SIZE : pageSize;
   const fetchPage = filtersActive ? serverPage : serverPage;
 
   // Resolve the currently selected time range to ISO strings. Depends on
@@ -133,7 +148,7 @@ export function NotificationLog() {
   );
 
   const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
-    refreshInterval: 30_000,
+    refreshInterval: autoRefreshMs > 0 ? autoRefreshMs : 0,
   });
 
   // Classify + exclude on every page fetch
@@ -184,7 +199,7 @@ export function NotificationLog() {
   }, [filteredItems, groupingActive, groupField, groupValues]);
 
   // Client-side pagination over groupFilteredItems when filters are active
-  const clientPageCount = Math.max(1, Math.ceil(groupFilteredItems.length / PAGE_SIZE));
+  const clientPageCount = Math.max(1, Math.ceil(groupFilteredItems.length / pageSize));
 
   // If the current client page exceeds available pages (e.g. filter was just
   // enabled and fewer items are visible), reset to page 1.
@@ -195,7 +210,7 @@ export function NotificationLog() {
   // When filters are active we slice groupFilteredItems for display;
   // otherwise the server already returned exactly one page worth.
   const visibleItems = filtersActive
-    ? groupFilteredItems.slice((clientPage - 1) * PAGE_SIZE, clientPage * PAGE_SIZE)
+    ? groupFilteredItems.slice((clientPage - 1) * pageSize, clientPage * pageSize)
     : groupFilteredItems;
 
   // Pagination metadata shown in the UI
@@ -379,14 +394,40 @@ export function NotificationLog() {
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
-          <a
-            href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore })}
-            download="notifications.csv"
-            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title="Export current view as CSV"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </a>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                title="Export current view"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem asChild>
+                <a
+                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, format: "csv" })}
+                  download="notifications.csv"
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  Export as CSV
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, format: "json" })}
+                  download="notifications.json"
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <FileJson className="h-3.5 w-3.5" />
+                  Export as JSON
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {data && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {filtersActive

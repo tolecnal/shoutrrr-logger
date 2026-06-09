@@ -29,16 +29,18 @@ from database import get_db, init_db
 from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import notifications, plugins, shoutrrr, tokens, users
+from routers import settings as settings_router
 from schemas import OIDCCallbackResponse, UserOut
 from services.notifications import notification_service
+from services.settings import settings_service
 from services.users import user_service
 from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 
 logger = logging.getLogger(__name__)
 
 
-async def _retention_loop(retention_days: int) -> None:
-    """Background task: purge notifications older than ``retention_days`` once per hour."""
+async def _retention_loop() -> None:
+    """Background task: purge old notifications once per hour using the DB retention setting."""
     from database import engine  # noqa: PLC0415
 
     while True:
@@ -46,6 +48,9 @@ async def _retention_loop(retention_days: int) -> None:
         try:
             session_factory = async_sessionmaker(engine, expire_on_commit=False)
             async with session_factory() as session:
+                retention_days = await settings_service.get_int(session, "retention_days")
+                if retention_days <= 0:
+                    continue
                 count = await notification_service.purge_old(session, retention_days=retention_days)
                 if count:
                     await session.commit()
@@ -62,15 +67,12 @@ async def _retention_loop(retention_days: int) -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_db()
     plugin_registry.discover()
-    retention_task: asyncio.Task | None = None
-    if settings.retention_days > 0:
-        retention_task = asyncio.create_task(_retention_loop(settings.retention_days))
-        logger.info("Retention policy enabled: %d day(s)", settings.retention_days)
+    retention_task = asyncio.create_task(_retention_loop())
+    logger.info("Retention loop started (reads DB setting each hour)")
     yield
-    if retention_task:
-        retention_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await retention_task
+    retention_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await retention_task
 
 
 app = FastAPI(
@@ -141,6 +143,8 @@ app.include_router(notifications.router, prefix=_V1)
 app.include_router(users.router, prefix=f"{_V1}/admin")
 app.include_router(tokens.router, prefix=f"{_V1}/admin")
 app.include_router(plugins.router, prefix=_V1)
+app.include_router(settings_router.public_router, prefix=_V1)
+app.include_router(settings_router.admin_router, prefix=_V1)
 
 
 # ---------------------------------------------------------------------------

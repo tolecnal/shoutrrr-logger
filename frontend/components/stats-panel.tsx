@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -12,8 +13,8 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { Activity, BarChart2, CalendarDays, Clock } from "lucide-react";
-import { fetchStats } from "@/lib/api";
-import type { NotificationStats } from "@/lib/types";
+import { fetchSettings, fetchStats, settingsToMap } from "@/lib/api";
+import type { NotificationStats, SettingOut } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -84,13 +85,21 @@ function ChartTooltip({
 // Main panel
 // ---------------------------------------------------------------------------
 export function StatsPanel() {
+  const { data: settingsList } = useSWR<SettingOut[]>("/settings", fetchSettings, {
+    revalidateOnFocus: false,
+  });
+  const windowDays = useMemo(() => {
+    if (!settingsList) return 30;
+    return settingsToMap(settingsList).stats_window_days;
+  }, [settingsList]);
+
   const { data, isLoading, error } = useSWR<NotificationStats>(
-    "/notifications/stats",
-    () => fetchStats(30),
+    ["/notifications/stats", windowDays],
+    () => fetchStats(windowDays),
     { refreshInterval: 60_000 }
   );
 
-  const last30 = data?.by_day.reduce((sum, d) => sum + d.count, 0) ?? undefined;
+  const lastN = data?.by_day.reduce((sum, d) => sum + d.count, 0) ?? undefined;
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -121,8 +130,8 @@ export function StatsPanel() {
           icon={CalendarDays}
         />
         <StatCard
-          label="Last 30 days"
-          value={last30}
+          label={`Last ${windowDays} days`}
+          value={lastN}
           icon={Activity}
         />
       </div>
@@ -131,7 +140,7 @@ export function StatsPanel() {
       <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-sm font-medium text-foreground mb-4">
           Notifications over time
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">(last 30 days)</span>
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">(last {windowDays} days)</span>
         </h2>
 
         {isLoading ? (

@@ -41,6 +41,28 @@ export interface VersionInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+export interface SettingOut {
+  key: string;
+  value: number;
+  label: string;
+  description: string;
+  default: number;
+  min_value: number;
+  max_value: number;
+  unit: string;
+}
+
+// Convenience typed view of all known settings
+export interface AppSettings {
+  retention_days: number;
+  page_size: number;
+  auto_refresh_interval: number;
+  stats_window_days: number;
+}
+
+// ---------------------------------------------------------------------------
 // Stats
 // ---------------------------------------------------------------------------
 export interface DayStat {

@@ -115,3 +115,16 @@ class PluginConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
+
+
+class AppSetting(Base):
+    """Admin-configurable application settings stored as JSON values."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # Stored as JSONB so ints, booleans, and strings are all native
+    value: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )

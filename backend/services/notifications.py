@@ -123,6 +123,18 @@ class NotificationService:
             )
         return buf.getvalue()
 
+    async def export_json(
+        self,
+        session: AsyncSession,
+        *,
+        query: str | None,
+        after: datetime | None,
+        before: datetime | None,
+    ) -> str:
+        rows = await self._repo.export_all(session, query=query, after=after, before=before)
+        items = [NotificationOut.model_validate(r).model_dump(mode="json") for r in rows]
+        return json.dumps(items, indent=2, default=str)
+
     async def purge_old(self, session: AsyncSession, *, retention_days: int) -> int:
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
         return await self._repo.delete_older_than(session, cutoff)

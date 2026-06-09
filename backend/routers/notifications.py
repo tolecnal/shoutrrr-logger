@@ -35,16 +35,24 @@ async def get_stats(
 
 @router.get(
     "/export",
-    summary="Export notifications as CSV",
+    summary="Export notifications as CSV or JSON",
     response_class=StreamingResponse,
 )
 async def export_notifications(
     q: str | None = Query(None),
     after: datetime | None = Query(None),
     before: datetime | None = Query(None),
+    format: str = Query("csv", pattern="^(csv|json)$", description="Export format: csv or json"),
     _user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
+    if format == "json":
+        data = await notification_service.export_json(db, query=q, after=after, before=before)
+        return StreamingResponse(
+            iter([data]),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=notifications.json"},
+        )
     csv_data = await notification_service.export_csv(db, query=q, after=after, before=before)
     return StreamingResponse(
         iter([csv_data]),

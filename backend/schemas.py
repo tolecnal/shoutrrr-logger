@@ -163,6 +163,24 @@ class PluginUpdate(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+class SettingOut(BaseModel):
+    key: str
+    value: int
+    label: str
+    description: str
+    default: int
+    min_value: int
+    max_value: int
+    unit: str = ""
+
+
+class SettingsUpdate(BaseModel):
+    values: dict[str, int]
+
+
+# ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
 class DayStat(BaseModel):

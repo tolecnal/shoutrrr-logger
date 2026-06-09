@@ -1,10 +1,12 @@
 import type {
   AccessTokenCreated,
   AccessTokenOut,
+  AppSettings,
   NotificationOut,
   NotificationStats,
   PaginatedResponse,
   PluginMeta,
+  SettingOut,
   UserOut,
   VersionInfo,
 } from "./types";
@@ -75,11 +77,13 @@ export function exportNotificationsUrl(params: {
   q?: string;
   after?: string;
   before?: string;
+  format?: "csv" | "json";
 }): string {
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.after) sp.set("after", params.after);
   if (params.before) sp.set("before", params.before);
+  if (params.format && params.format !== "csv") sp.set("format", params.format);
   const qs = sp.toString();
   return `/api/v1/notifications/export${qs ? `?${qs}` : ""}`;
 }
@@ -121,6 +125,30 @@ export const updateToken = (id: string, params: { name?: string; is_active?: boo
 
 export const deleteToken = (id: string) =>
   apiFetch<void>(`/admin/tokens/${id}`, { method: "DELETE" });
+
+// ---- Settings ----
+export const fetchSettings = () =>
+  apiFetch<SettingOut[]>("/settings");
+
+export function settingsToMap(list: SettingOut[]): AppSettings {
+  const map: Record<string, number> = {};
+  for (const s of list) map[s.key] = s.value;
+  return {
+    retention_days: map.retention_days ?? 0,
+    page_size: map.page_size ?? 20,
+    auto_refresh_interval: map.auto_refresh_interval ?? 30,
+    stats_window_days: map.stats_window_days ?? 30,
+  };
+}
+
+export const fetchAdminSettings = () =>
+  apiFetch<SettingOut[]>("/admin/settings");
+
+export const updateSettings = (values: Record<string, number>) =>
+  apiFetch<SettingOut[]>("/admin/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ values }),
+  });
 
 // ---- Plugins ----
 export const fetchPlugins = () => apiFetch<PluginMeta[]>("/admin/plugins");
