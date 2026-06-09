@@ -202,6 +202,37 @@ class NotificationStats(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# API Performance
+# ---------------------------------------------------------------------------
+class EndpointStat(BaseModel):
+    path: str
+    method: str
+    request_count: int
+    avg_ms: float
+    p50_ms: float
+    p95_ms: float
+    p99_ms: float
+    error_count: int
+    error_rate: float
+
+
+class RequestTimeSeries(BaseModel):
+    time: str  # ISO datetime (truncated to hour)
+    count: int
+    avg_ms: float
+
+
+class ApiPerformanceStats(BaseModel):
+    total_requests: int
+    avg_ms: float
+    p95_ms: float
+    error_rate: float
+    by_endpoint: list[EndpointStat]
+    by_hour: list[RequestTimeSeries]
+    window_hours: int
+
+
+# ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
 class OIDCCallbackResponse(BaseModel):

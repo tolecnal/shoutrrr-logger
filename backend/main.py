@@ -26,9 +26,10 @@ from auth import (
 )
 from config import settings
 from database import get_db, init_db
+from middleware.performance import PerformanceMiddleware
 from models import User, UserRole
 from plugins import registry as plugin_registry
-from routers import notifications, plugins, shoutrrr, tokens, users
+from routers import api_metrics, notifications, plugins, shoutrrr, tokens, users
 from routers import settings as settings_router
 from schemas import OIDCCallbackResponse, UserOut
 from services.notifications import notification_service
@@ -133,6 +134,7 @@ class _VersionRedirectMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(_VersionRedirectMiddleware)
+app.add_middleware(PerformanceMiddleware)
 
 # ---------------------------------------------------------------------------
 # Routers  (all versioned under /api/v1)
@@ -145,6 +147,7 @@ app.include_router(tokens.router, prefix=f"{_V1}/admin")
 app.include_router(plugins.router, prefix=_V1)
 app.include_router(settings_router.public_router, prefix=_V1)
 app.include_router(settings_router.admin_router, prefix=_V1)
+app.include_router(api_metrics.router, prefix=_V1)
 
 
 # ---------------------------------------------------------------------------

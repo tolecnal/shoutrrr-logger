@@ -6,8 +6,10 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -127,4 +129,25 @@ class AppSetting(Base):
     value: Mapped[dict] = mapped_column(JSONB, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class ApiMetricLog(Base):
+    """One row per API request: method, route template, status, and latency."""
+
+    __tablename__ = "api_metric_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Route template, e.g. /api/v1/notifications/{notification_id}
+    path: Mapped[str] = mapped_column(String(256), nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    duration_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_api_metric_logs_created_at", "created_at"),
+        Index("ix_api_metric_logs_path", "path"),
     )

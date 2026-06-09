@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Spinner } from "@/components/ui/spinner";
-import { StatsPanel } from "@/components/stats-panel";
+import { ApiPerformancePanel } from "@/components/api-performance-panel";
 
-export default function StatsPage() {
+export default function PerformancePage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
@@ -25,5 +25,5 @@ export default function StatsPage() {
 
   if (!user || user.role !== "admin") return null;
 
-  return <StatsPanel />;
+  return <ApiPerformancePanel />;
 }

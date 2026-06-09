@@ -83,6 +83,37 @@ export interface NotificationStats {
   top_senders: SenderStat[];
 }
 
+// ---------------------------------------------------------------------------
+// API Performance
+// ---------------------------------------------------------------------------
+export interface EndpointStat {
+  path: string;
+  method: string;
+  request_count: number;
+  avg_ms: number;
+  p50_ms: number;
+  p95_ms: number;
+  p99_ms: number;
+  error_count: number;
+  error_rate: number;
+}
+
+export interface RequestTimeSeries {
+  time: string; // ISO datetime truncated to hour
+  count: number;
+  avg_ms: number;
+}
+
+export interface ApiPerformanceStats {
+  total_requests: number;
+  avg_ms: number;
+  p95_ms: number;
+  error_rate: number;
+  by_endpoint: EndpointStat[];
+  by_hour: RequestTimeSeries[];
+  window_hours: number;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

@@ -1,6 +1,7 @@
 import type {
   AccessTokenCreated,
   AccessTokenOut,
+  ApiPerformanceStats,
   AppSettings,
   NotificationOut,
   NotificationStats,
@@ -149,6 +150,10 @@ export const updateSettings = (values: Record<string, number>) =>
     method: "PATCH",
     body: JSON.stringify({ values }),
   });
+
+// ---- API Performance ----
+export const fetchApiPerformance = (windowHours = 24) =>
+  apiFetch<ApiPerformanceStats>(`/admin/performance?window_hours=${windowHours}`);
 
 // ---- Plugins ----
 export const fetchPlugins = () => apiFetch<PluginMeta[]>("/admin/plugins");

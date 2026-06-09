@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, Bell, Info, LogIn, LogOut, Settings, User } from "lucide-react";
+import { Activity, BarChart2, Bell, Info, LogIn, LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import { PreferencesDialog } from "@/components/preferences-dialog";
 
 const navItems = [
   { href: "/log", label: "Notification Log", icon: Bell, roles: ["viewer", "admin"] },
-  { href: "/stats", label: "Statistics", icon: BarChart2, roles: ["viewer", "admin"] },
+  { href: "/stats", label: "Statistics", icon: BarChart2, roles: ["admin"] },
+  { href: "/performance", label: "API Performance", icon: Activity, roles: ["admin"] },
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
   { href: "/about", label: "About", icon: Info, roles: ["viewer", "admin"] },
 ];
