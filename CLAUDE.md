@@ -35,9 +35,6 @@ The FastAPI backend is responsible for:
 ### Backend Directory Layout
 
 ```text
-├── build
-│   └── lib
-│       └── routers
 ├── plugins
 │   └── splunk
 ├── routers/
