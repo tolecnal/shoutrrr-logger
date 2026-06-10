@@ -3,7 +3,7 @@
 A self-hosted notification logging service for [shoutrrr](https://containrrr.dev/shoutrrr/). It exposes an HTTP endpoint that accepts notifications from shoutrrr, stores them in PostgreSQL 17, and provides a web UI for searching, browsing, filtering, and managing them.
 
 **Stack:** FastAPI (Python 3.14) · Next.js 16 · PostgreSQL 17 · OpenID Connect · Docker  
-**Version:** 0.3.0
+**Version:** 0.4.0
 
 ---
 
@@ -19,9 +19,13 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
   - [First-admin bootstrap](#first-admin-bootstrap)
   - [Troubleshooting role claims](#troubleshooting-role-claims)
 - [Sending notifications](#sending-notifications)
+  - [Rate limiting](#rate-limiting)
 - [Watchtower integration](#watchtower-integration)
 - [User roles](#user-roles)
+- [Preferences](#preferences)
 - [Access tokens](#access-tokens)
+- [Admin settings](#admin-settings)
+- [Audit log](#audit-log)
 - [Plugins](#plugins)
 - [API reference](#api-reference)
 - [Development setup](#development-setup)
@@ -359,6 +363,12 @@ generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+Y
 
 The `+` is URL-encoded space — shoutrrr decodes this before sending the header, so the server receives `Authorization: Bearer YOUR_TOKEN` correctly.
 
+### Rate limiting
+
+Ingestion can be rate-limited per access token. The default **Notification rate limit** ([Admin settings](#admin-settings)) is `0` (unlimited). Admins can also set a per-token override in **Admin → Access Tokens**: leave it unset to inherit the global limit, set it to `0` to make that token explicitly unlimited, or set a custom requests-per-minute value.
+
+Requests over the limit receive `429 Too Many Requests` with a `Retry-After: 60` header.
+
 ---
 
 ## Watchtower integration
@@ -475,6 +485,16 @@ A user who has neither role is refused at login with a diagnostic message.
 
 ---
 
+## Preferences
+
+Every signed-in user can open **Preferences** (gear icon in the top bar) to customize their own view. Preferences are stored in the browser (`localStorage`) and are per-user, per-device.
+
+- **Display** — theme (Light / Dark / System) and time format (locale-aware, 12-hour, or 24-hour).
+- **Tag rules** — highlight notifications whose custom fields match a pattern with a chosen color, optionally excluding matches from the log entirely.
+- **My Tokens** — create and manage personal access tokens (see [Access tokens](#access-tokens)).
+
+---
+
 ## Access tokens
 
 Access tokens are opaque bearer tokens used to authenticate ingest requests to `POST /api/shoutrrr`. They are stored as HMAC-SHA256 hashes — the plaintext is shown only once at creation time.
@@ -503,6 +523,35 @@ Each token can optionally be given an expiry date — expired tokens are rejecte
 
 ---
 
+## Admin settings
+
+**Admin → Settings** controls application-wide behavior. All settings are stored in the database and take effect immediately — no restart required.
+
+| Setting | Default | Description |
+|---|---|---|
+| Retention period | `0` (forever) | Automatically delete notifications older than this many days. |
+| Items per page | `20` | Number of notifications shown per page in the log. |
+| Auto-refresh interval | `30` seconds | How often the notification log refreshes automatically. `0` disables auto-refresh. |
+| Statistics window | `30` days | Number of days shown in the `/stats` activity chart. |
+| Max private tokens per user | `3` | Cap on personal access tokens each user may create. `0` = unlimited. |
+| Notification rate limit | `0` (unlimited) | Default per-token ingestion rate limit, in notifications per minute. Overridable per token — see [Rate limiting](#rate-limiting). |
+| API metrics retention | `30` days | Automatically delete `/performance` latency records older than this many days. `0` keeps them forever. |
+| Audit log retention | `365` days | Automatically delete audit log entries older than this many days. `0` keeps them forever. |
+
+Retention sweeps for notifications, API metrics, and audit logs run hourly. In multi-worker deployments, only one Gunicorn worker performs the sweep — workers coordinate via a PostgreSQL session-level advisory lock, so the same rows are never purged twice.
+
+---
+
+## Audit log
+
+**Admin → Audit Log** records every admin action: creating, updating, or deleting users, access tokens, and plugin configuration, plus changes to the settings above.
+
+Each entry captures the acting user, an action code (`user.create`, `user.update`, `user.delete`, `token.create`, `token.update`, `token.delete`, `settings.update`, `plugin.update`), the affected resource, a redacted snapshot of what changed, the source IP, and a timestamp. Fields that look like secrets (tokens, passwords, keys, HEC URLs, etc.) are masked as `***REDACTED***` before being stored, so raw access tokens and plugin credentials never appear in the audit log.
+
+The admin UI supports filtering by action and time range. The same data is available via `GET /api/v1/admin/audit-logs`. Entries older than the **Audit log retention** setting above are purged automatically.
+
+---
+
 ## Plugins
 
 Plugins react to every incoming notification — forward it to an external system, transform it, trigger an alert, and so on. The bundled **Splunk HEC** plugin forwards events to a Splunk HTTP Event Collector with configurable field mappings.
@@ -524,6 +573,8 @@ Interactive documentation is served by the running application:
 | OpenAPI schema | `https://<your-domain>/api/openapi.json` |
 
 During local development (backend running directly): `http://localhost:9000/api/docs`
+
+**Pagination**: `GET /api/v1/notifications` and `GET /api/v1/admin/audit-logs` use cursor-based (keyset) pagination. Each response includes `next_cursor`; pass it as the `cursor` query parameter to fetch the next page. `next_cursor` is `null` on the last page.
 
 ---
 
