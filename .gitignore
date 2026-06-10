@@ -6,10 +6,15 @@ frontend/node_modules
 
 # next.js
 /.next/
+frontend/.next/
 /out/
 
 # production
 /build
+
+# python
+__pycache__/
+*.py[cod]
 
 # debug
 npm-debug.log*
