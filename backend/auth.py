@@ -27,6 +27,7 @@ from database import get_db
 from models import AccessToken, User, UserRole
 from repositories.tokens import access_token_repository
 from repositories.users import user_repository
+from services.settings import settings_service
 
 # ---------------------------------------------------------------------------
 # Token hashing
@@ -199,6 +200,12 @@ async def verify_bearer_access_token(
     if matched is None or (matched.expires_at and matched.expires_at < now):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
+
+    if not matched.is_global and not await settings_service.get_bool(db, "private_tokens_enabled"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Private access tokens have been disabled by the administrator.",
         )
 
     # Update last_used_at asynchronously (fire-and-forget style via the same session)

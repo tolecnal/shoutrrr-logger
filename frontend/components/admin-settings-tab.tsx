@@ -9,6 +9,7 @@ import type { SettingOut } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 
 export function SettingsTab() {
   const { data, isLoading, mutate } = useSWR<SettingOut[]>(
@@ -41,8 +42,8 @@ export function SettingsTab() {
       // log pick up the new values without a full page reload.
       await globalMutate("/settings");
       toast.success("Settings saved");
-    } catch {
-      toast.error("Failed to save settings");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -67,6 +68,30 @@ export function SettingsTab() {
       {data.map((setting) => {
         const val = draft[setting.key] ?? setting.value;
         const changed = val !== setting.value;
+        if (setting.value_type === "bool") {
+          return (
+            <div key={setting.key} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-4">
+                <label
+                  htmlFor={`setting-${setting.key}`}
+                  className="text-sm font-medium text-foreground"
+                >
+                  {setting.label}
+                </label>
+                <Switch
+                  id={`setting-${setting.key}`}
+                  checked={val !== 0}
+                  onCheckedChange={(checked) =>
+                    setDraft((prev) => ({ ...prev, [setting.key]: checked ? 1 : 0 }))
+                  }
+                  className={changed ? "ring-2 ring-primary/50" : ""}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">{setting.description}</p>
+            </div>
+          );
+        }
+
         return (
           <div key={setting.key} className="space-y-1.5">
             <div className="flex items-baseline justify-between">
@@ -103,6 +128,12 @@ export function SettingsTab() {
             {setting.key === "auto_refresh_interval" && (
               <p className="text-xs text-muted-foreground/70 italic">
                 Current value: {val === 0 ? "disabled" : `every ${val}s`}
+              </p>
+            )}
+            {setting.key === "stats_window_days" && (
+              <p className="text-xs text-muted-foreground/70 italic">
+                Cannot exceed Retention period or API metrics retention (when either is
+                non-zero).
               </p>
             )}
           </div>

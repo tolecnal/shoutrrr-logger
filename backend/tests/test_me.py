@@ -208,6 +208,44 @@ class TestCreateMyToken:
         )
         assert ingest_resp.status_code == 202
 
+    async def test_blocked_when_private_tokens_disabled(
+        self, client, viewer_session_headers, admin_session_headers
+    ):
+        resp = await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"private_tokens_enabled": 0}},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+
+        resp = await client.post(
+            "/api/v1/me/tokens",
+            json={"name": "blocked"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_succeeds_after_reenabling(
+        self, client, viewer_session_headers, admin_session_headers
+    ):
+        await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"private_tokens_enabled": 0}},
+            headers=admin_session_headers,
+        )
+        await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"private_tokens_enabled": 1}},
+            headers=admin_session_headers,
+        )
+
+        resp = await client.post(
+            "/api/v1/me/tokens",
+            json={"name": "allowed-again"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 201
+
 
 # ---------------------------------------------------------------------------
 # PATCH /me/tokens/{token_id}

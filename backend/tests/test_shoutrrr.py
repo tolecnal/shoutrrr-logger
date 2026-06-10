@@ -9,7 +9,8 @@ import json
 
 import pytest_asyncio
 
-from models import AppSetting
+from auth import generate_raw_token, hash_token
+from models import AccessToken, AppSetting
 from services.notifications import notification_service
 
 
@@ -190,3 +191,65 @@ class TestShoutrrrRateLimiting:
 
         resp = await self._post(client, raw)
         assert resp.status_code == 429
+
+
+class TestShoutrrrPrivateTokensToggle:
+    @pytest_asyncio.fixture(autouse=True)
+    async def _disable_plugin_dispatch(self, monkeypatch):
+        async def _noop(notification_dict):
+            return None
+
+        monkeypatch.setattr(notification_service, "dispatch_plugins", _noop)
+
+    @pytest_asyncio.fixture
+    async def private_token(self, db, admin_user):
+        raw = generate_raw_token()
+        tok = AccessToken(
+            user_id=admin_user.id,
+            name="private-test-token",
+            token_hash=hash_token(raw),
+            is_global=False,
+        )
+        db.add(tok)
+        await db.flush()
+        await db.refresh(tok)
+        return raw, tok
+
+    async def _post(self, client, raw):
+        return await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "ping"}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    async def test_private_token_rejected_when_disabled(self, client, db, private_token):
+        raw, _ = private_token
+        db.add(AppSetting(key="private_tokens_enabled", value=0))
+        await db.flush()
+
+        resp = await self._post(client, raw)
+        assert resp.status_code == 403
+
+    async def test_global_token_unaffected_when_private_disabled(self, client, db, access_token):
+        raw, _ = access_token
+        db.add(AppSetting(key="private_tokens_enabled", value=0))
+        await db.flush()
+
+        resp = await self._post(client, raw)
+        assert resp.status_code == 202
+
+    async def test_private_token_works_after_reenabling(self, client, db, private_token):
+        raw, _ = private_token
+        db.add(AppSetting(key="private_tokens_enabled", value=0))
+        await db.flush()
+        assert (await self._post(client, raw)).status_code == 403
+
+        setting = await db.get(AppSetting, "private_tokens_enabled")
+        setting.value = 1
+        await db.flush()
+
+        resp = await self._post(client, raw)
+        assert resp.status_code == 202

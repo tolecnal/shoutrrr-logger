@@ -108,6 +108,7 @@ describe("settingsToMap", () => {
         min_value: 0,
         max_value: 10000,
         unit: "",
+        value_type: "int",
       },
     ]);
     expect(map.rate_limit_per_minute).toBe(42);

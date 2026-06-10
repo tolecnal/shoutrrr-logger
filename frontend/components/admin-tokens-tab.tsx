@@ -3,13 +3,15 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { format, isPast } from "date-fns";
-import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff, Pencil } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff, Pencil, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTokens, createToken, deleteToken, updateToken } from "@/lib/api";
 import type { AccessTokenCreated, AccessTokenOut } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CopyButton } from "@/components/copy-button";
+import { TokenTestDialog } from "@/components/token-test-dialog";
 import {
   Dialog,
   DialogContent,
@@ -93,20 +95,6 @@ function RateLimitFields({
         </div>
       </RadioGroup>
     </div>
-  );
-}
-
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <Button size="sm" variant="outline" className="h-7 w-7 p-0 shrink-0" onClick={copy}>
-      {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
-    </Button>
   );
 }
 
@@ -293,6 +281,18 @@ export function TokensTab() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
+                          <TokenTestDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                title="Test this token"
+                              >
+                                <FlaskConical className="h-3.5 w-3.5" />
+                              </Button>
+                            }
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
@@ -407,7 +407,18 @@ export function TokensTab() {
               Use this as a Bearer token in the <code className="font-mono">Authorization</code> header when sending notifications to <code className="font-mono">/api/shoutrrr</code>.
             </p>
           </div>
-          <DialogFooter>
+          <DialogFooter className="sm:justify-between">
+            {created && (
+              <TokenTestDialog
+                token={created.raw_token}
+                trigger={
+                  <Button size="sm" variant="outline" className="gap-1.5">
+                    <FlaskConical className="h-3.5 w-3.5" />
+                    Test this token
+                  </Button>
+                }
+              />
+            )}
             <Button size="sm" onClick={() => setCreated(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>

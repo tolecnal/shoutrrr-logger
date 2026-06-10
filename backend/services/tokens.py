@@ -12,6 +12,7 @@ from models import AccessToken
 from repositories.tokens import AccessTokenRepository, access_token_repository
 from repositories.users import UserRepository, user_repository
 from schemas import AccessTokenCreate
+from services.settings import settings_service
 
 
 class AccessTokenService:
@@ -100,6 +101,11 @@ class AccessTokenService:
         max_tokens: int,
     ) -> tuple[AccessToken, str]:
         """Create a private token for a user, enforcing the per-user limit."""
+        if not await settings_service.get_bool(session, "private_tokens_enabled"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Private access tokens have been disabled by the administrator.",
+            )
         if max_tokens > 0:
             count = await self._repo.count_by_user(session, user_id, is_global=False)
             if count >= max_tokens:

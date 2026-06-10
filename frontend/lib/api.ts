@@ -27,7 +27,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(text || `HTTP ${res.status}`);
+    let detail: string | undefined;
+    try {
+      const parsed = JSON.parse(text) as { detail?: unknown };
+      if (typeof parsed.detail === "string") detail = parsed.detail;
+    } catch {
+      // not JSON — fall through to raw text
+    }
+    throw new Error(detail || text || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -157,6 +164,7 @@ export function settingsToMap(list: SettingOut[]): AppSettings {
     auto_refresh_interval: map.auto_refresh_interval ?? 30,
     stats_window_days: map.stats_window_days ?? 30,
     rate_limit_per_minute: map.rate_limit_per_minute ?? 0,
+    private_tokens_enabled: (map.private_tokens_enabled ?? 1) !== 0,
   };
 }
 

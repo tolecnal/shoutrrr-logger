@@ -353,6 +353,37 @@ curl -X POST https://shoutrrr-logger.example.com/api/shoutrrr \
   -d '{"message": "Backup completed", "title": "Backup job"}'
 ```
 
+**PowerShell example:**
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://shoutrrr-logger.example.com/api/shoutrrr" `
+  -Headers @{ Authorization = "Bearer <your-access-token>" } `
+  -ContentType "application/json" `
+  -Body (@{ message = "Backup completed"; title = "Backup job" } | ConvertTo-Json)
+```
+
+**Python example (requests):**
+
+```python
+import requests
+
+requests.post(
+    "https://shoutrrr-logger.example.com/api/shoutrrr",
+    headers={"Authorization": "Bearer <your-access-token>"},
+    json={"message": "Backup completed", "title": "Backup job"},
+)
+```
+
+**wget example:**
+
+```bash
+wget -q -O- --method=POST \
+  --header="Authorization: Bearer <your-access-token>" \
+  --header="Content-Type: application/json" \
+  --body-data='{"message": "Backup completed", "title": "Backup job"}' \
+  https://shoutrrr-logger.example.com/api/shoutrrr
+```
+
 **shoutrrr generic URL scheme:**
 
 shoutrrr's `generic` service forwards to arbitrary HTTP endpoints. Pass the Bearer token via the `@Authorization` header parameter:
@@ -507,6 +538,12 @@ Created in **Admin → Access Tokens**. Global tokens are visible to all users �
 
 Any authenticated user can create personal tokens from **Preferences → My Tokens**. Notifications received through a personal token are only visible to the token's owner (and admins). The number of personal tokens per user is capped by the `max_private_tokens` setting (default: 3).
 
+Admins can disable private access tokens entirely via the **Allow private access tokens** [admin setting](#admin-settings). When disabled, users can no longer create new personal tokens, and existing personal tokens are rejected (`403 Forbidden`) for notification ingestion. Global tokens continue to work as normal.
+
+### Testing a token
+
+Both **Admin → Access Tokens** and **Preferences → My Tokens** have a "Test" button that opens a dialog with ready-to-use copy-paste examples (curl, PowerShell, Python, wget, and the shoutrrr generic URL scheme) for sending a test notification with that token.
+
 ### Filtering by scope
 
 The notification log has a **Scope** filter:
@@ -532,7 +569,8 @@ Each token can optionally be given an expiry date — expired tokens are rejecte
 | Retention period | `0` (forever) | Automatically delete notifications older than this many days. |
 | Items per page | `20` | Number of notifications shown per page in the log. |
 | Auto-refresh interval | `30` seconds | How often the notification log refreshes automatically. `0` disables auto-refresh. |
-| Statistics window | `30` days | Number of days shown in the `/stats` activity chart. |
+| Statistics window | `30` days | Number of days shown in the `/stats` activity chart. Cannot exceed Retention period or API metrics retention (when either is non-zero). |
+| Allow private access tokens | enabled | Whether users may create their own private access tokens from Preferences → My Tokens. When disabled, existing private tokens are also rejected for ingestion. |
 | Max private tokens per user | `3` | Cap on personal access tokens each user may create. `0` = unlimited. |
 | Notification rate limit | `0` (unlimited) | Default per-token ingestion rate limit, in notifications per minute. Overridable per token — see [Rate limiting](#rate-limiting). |
 | API metrics retention | `30` days | Automatically delete `/performance` latency records older than this many days. `0` keeps them forever. |

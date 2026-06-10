@@ -197,6 +197,7 @@ class SettingOut(BaseModel):
     min_value: int
     max_value: int
     unit: str = ""
+    value_type: str = "int"
 
 
 class SettingsUpdate(BaseModel):

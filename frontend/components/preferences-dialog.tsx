@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical } from "lucide-react";
 import useSWR from "swr";
 import {
   Dialog,
@@ -25,7 +25,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { fetchMyTokens, createMyToken, deleteMyToken, updateMyToken } from "@/lib/api";
+import { TokenTestDialog } from "@/components/token-test-dialog";
+import {
+  fetchMyTokens,
+  createMyToken,
+  deleteMyToken,
+  updateMyToken,
+  fetchSettings,
+  settingsToMap,
+} from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
   useTagRules,
@@ -208,6 +216,13 @@ export function PreferencesDialog() {
     { revalidateOnFocus: false },
   );
 
+  const { data: settingsList } = useSWR(open ? "/settings" : null, fetchSettings, {
+    revalidateOnFocus: false,
+  });
+  const privateTokensEnabled = settingsList
+    ? settingsToMap(settingsList).private_tokens_enabled
+    : true;
+
   const handleCreateToken = async () => {
     const name = tokenName.trim();
     if (!name) return;
@@ -382,51 +397,68 @@ export function PreferencesDialog() {
                     {copiedToken ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs text-muted-foreground px-0"
-                  onClick={() => setNewRawToken(null)}
-                >
-                  Dismiss
-                </Button>
+                <div className="flex items-center gap-2">
+                  <TokenTestDialog
+                    token={newRawToken}
+                    trigger={
+                      <Button size="sm" variant="outline" className="h-6 text-xs gap-1 px-2">
+                        <FlaskConical className="h-3 w-3" />
+                        Test
+                      </Button>
+                    }
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs text-muted-foreground px-0"
+                    onClick={() => setNewRawToken(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
               </div>
             )}
 
             {/* Create form */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Create personal token</p>
-              <p className="text-xs text-muted-foreground">
-                Personal tokens are private — only notifications sent with them are visible to you.
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  className="h-8 flex-1 text-sm bg-input"
-                  placeholder="Token name"
-                  value={tokenName}
-                  onChange={(e) => setTokenName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
-                />
-                <Input
-                  type="date"
-                  className="h-8 w-36 text-sm bg-input"
-                  title="Optional expiry date"
-                  value={tokenExpiry}
-                  onChange={(e) => setTokenExpiry(e.target.value)}
-                />
-                <Button
-                  size="sm"
-                  className="h-8 shrink-0"
-                  onClick={handleCreateToken}
-                  disabled={!tokenName.trim() || tokenCreating}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Create
-                </Button>
+            {privateTokensEnabled ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Create personal token</p>
+                <p className="text-xs text-muted-foreground">
+                  Personal tokens are private — only notifications sent with them are visible to you.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    className="h-8 flex-1 text-sm bg-input"
+                    placeholder="Token name"
+                    value={tokenName}
+                    onChange={(e) => setTokenName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
+                  />
+                  <Input
+                    type="date"
+                    className="h-8 w-36 text-sm bg-input"
+                    title="Optional expiry date"
+                    value={tokenExpiry}
+                    onChange={(e) => setTokenExpiry(e.target.value)}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 shrink-0"
+                    onClick={handleCreateToken}
+                    disabled={!tokenName.trim() || tokenCreating}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Create
+                  </Button>
+                </div>
+                {tokenError && (
+                  <p className="text-xs text-destructive">{tokenError}</p>
+                )}
               </div>
-              {tokenError && (
-                <p className="text-xs text-destructive">{tokenError}</p>
-              )}
-            </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Private access tokens have been disabled by your administrator.
+              </p>
+            )}
 
             <Separator className="bg-border" />
 
@@ -465,6 +497,18 @@ export function PreferencesDialog() {
                     }}
                     aria-label={`${tok.is_active ? "Deactivate" : "Activate"} ${tok.name}`}
                     className="shrink-0"
+                  />
+                  <TokenTestDialog
+                    trigger={
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                        title="Test this token"
+                      >
+                        <FlaskConical className="h-3.5 w-3.5" />
+                      </Button>
+                    }
                   />
                   <Button
                     size="sm"

@@ -52,6 +52,7 @@ export interface SettingOut {
   min_value: number;
   max_value: number;
   unit: string;
+  value_type: "int" | "bool";
 }
 
 // Convenience typed view of all known settings
@@ -61,6 +62,7 @@ export interface AppSettings {
   auto_refresh_interval: number;
   stats_window_days: number;
   rate_limit_per_minute: number;
+  private_tokens_enabled: boolean;
 }
 
 // ---------------------------------------------------------------------------

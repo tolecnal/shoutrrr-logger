@@ -18,6 +18,7 @@ class SettingMeta:
     min_value: int
     max_value: int
     unit: str = ""
+    value_type: str = "int"
 
 
 KNOWN_SETTINGS: list[SettingMeta] = [
@@ -56,6 +57,21 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         min_value=7,
         max_value=365,
         unit="days",
+    ),
+    SettingMeta(
+        key="private_tokens_enabled",
+        label="Allow private access tokens",
+        description=(
+            "Allow users to create their own private access tokens from "
+            "Preferences → My Tokens. When disabled, users can no longer create "
+            "new private tokens, and existing private tokens are rejected for "
+            "notification ingestion (global tokens are unaffected)."
+        ),
+        default=1,
+        min_value=0,
+        max_value=1,
+        unit="",
+        value_type="bool",
     ),
     SettingMeta(
         key="max_private_tokens",
@@ -110,12 +126,12 @@ class SettingsService:
             v = int(raw)
         except (TypeError, ValueError) as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Setting '{meta.key}' must be an integer",
             ) from exc
         if v < meta.min_value or v > meta.max_value:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=(
                     f"Setting '{meta.key}' must be between {meta.min_value} and {meta.max_value}"
                 ),
@@ -138,6 +154,7 @@ class SettingsService:
                     "min_value": meta.min_value,
                     "max_value": meta.max_value,
                     "unit": meta.unit,
+                    "value_type": meta.value_type,
                 }
             )
         return result
@@ -153,15 +170,56 @@ class SettingsService:
         except (TypeError, ValueError):
             return fallback
 
+    async def get_bool(
+        self, session: AsyncSession, key: str, *, default: bool | None = None
+    ) -> bool:
+        int_default = None if default is None else int(default)
+        return await self.get_int(session, key, default=int_default) != 0
+
     async def update(self, session: AsyncSession, updates: dict[str, Any]) -> list[dict]:
+        coerced: dict[str, int] = {}
         for key, raw in updates.items():
             meta = _META_BY_KEY.get(key)
             if meta is None:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Unknown setting '{key}'",
                 )
-            value = self._coerce(meta, raw)
+            coerced[key] = self._coerce(meta, raw)
+
+        merged: dict[str, int] = {}
+        for meta in KNOWN_SETTINGS:
+            if meta.key in coerced:
+                merged[meta.key] = coerced[meta.key]
+            else:
+                merged[meta.key] = await self.get_int(session, meta.key)
+
+        stats_window_days = merged.get("stats_window_days")
+        retention_days = merged.get("retention_days")
+        api_metrics_retention_days = merged.get("api_metrics_retention_days")
+        if stats_window_days is not None:
+            if retention_days and stats_window_days > retention_days:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=(
+                        f"Statistics window ({stats_window_days} days) cannot exceed "
+                        f"Retention period ({retention_days} days). Lower the statistics "
+                        "window or increase the retention period (or set it to 0 for "
+                        "unlimited)."
+                    ),
+                )
+            if api_metrics_retention_days and stats_window_days > api_metrics_retention_days:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=(
+                        f"Statistics window ({stats_window_days} days) cannot exceed "
+                        f"API metrics retention ({api_metrics_retention_days} days). Lower "
+                        "the statistics window or increase the API metrics retention "
+                        "(or set it to 0 for unlimited)."
+                    ),
+                )
+
+        for key, value in coerced.items():
             await self._repo.set(session, key, value)
         return await self.get_all(session)
 
