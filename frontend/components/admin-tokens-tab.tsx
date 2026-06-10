@@ -105,7 +105,7 @@ function CopyButton({ value }: { value: string }) {
   };
   return (
     <Button size="sm" variant="outline" className="h-7 w-7 p-0 shrink-0" onClick={copy}>
-      {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
     </Button>
   );
 }
@@ -274,8 +274,8 @@ export function TokensTab() {
                         <span className="flex items-center gap-1.5">
                           {t.name}
                           {t.is_global
-                            ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-cyan-500/15 text-cyan-400 border-cyan-500/25">Global</Badge>
-                            : <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-violet-500/15 text-violet-400 border-violet-500/25">Private</Badge>}
+                            ? <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/25">Global</Badge>
+                            : <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/25">Private</Badge>}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{t.owner_username ?? "—"}</td>
@@ -381,7 +381,7 @@ export function TokensTab() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-sm">Token Created</DialogTitle>
-            <DialogDescription className="text-xs text-amber-400">
+            <DialogDescription className="text-xs text-amber-600 dark:text-amber-400">
               Copy this token now. It will not be shown again.
             </DialogDescription>
           </DialogHeader>

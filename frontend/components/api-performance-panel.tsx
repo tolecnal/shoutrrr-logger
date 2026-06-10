@@ -21,11 +21,11 @@ import { cn } from "@/lib/utils";
 // Helpers
 // ---------------------------------------------------------------------------
 const METHOD_COLORS: Record<string, string> = {
-  GET: "bg-blue-500/15 text-blue-400",
-  POST: "bg-green-500/15 text-green-400",
-  PUT: "bg-amber-500/15 text-amber-400",
-  PATCH: "bg-amber-500/15 text-amber-400",
-  DELETE: "bg-red-500/15 text-red-400",
+  GET: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  POST: "bg-green-500/15 text-green-700 dark:text-green-400",
+  PUT: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  PATCH: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  DELETE: "bg-red-500/15 text-red-700 dark:text-red-400",
 };
 
 const WINDOWS = [
@@ -37,15 +37,15 @@ const WINDOWS = [
 ];
 
 function msClass(ms: number): string {
-  if (ms < 100) return "text-green-400";
-  if (ms < 500) return "text-yellow-400";
-  return "text-red-400";
+  if (ms < 100) return "text-green-600 dark:text-green-400";
+  if (ms < 500) return "text-yellow-600 dark:text-yellow-400";
+  return "text-red-600 dark:text-red-400";
 }
 
 function errClass(rate: number): string {
   if (rate === 0) return "text-muted-foreground";
-  if (rate < 5) return "text-yellow-400";
-  return "text-red-400";
+  if (rate < 5) return "text-yellow-600 dark:text-yellow-400";
+  return "text-red-600 dark:text-red-400";
 }
 
 function fmtMs(ms: number): string {
@@ -214,16 +214,16 @@ export function ApiPerformancePanel() {
             >
               <defs>
                 <linearGradient id="perfAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.35} />
-                  <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2433" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="time"
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                 tickFormatter={(v: string) =>
                   windowHours <= 24
                     ? format(parseISO(v), "HH:mm")
@@ -234,18 +234,18 @@ export function ApiPerformancePanel() {
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                 allowDecimals={false}
               />
               <Tooltip content={<ChartTooltip windowHours={windowHours} />} />
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="#22d3ee"
+                stroke="var(--chart-1)"
                 strokeWidth={2}
                 fill="url(#perfAreaGradient)"
                 dot={false}
-                activeDot={{ r: 4, fill: "#22d3ee", strokeWidth: 0 }}
+                activeDot={{ r: 4, fill: "var(--chart-1)", strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>

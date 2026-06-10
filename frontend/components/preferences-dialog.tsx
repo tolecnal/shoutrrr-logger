@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check } from "lucide-react";
 import useSWR from "swr";
 import {
@@ -184,7 +185,13 @@ function RuleRow({
 export function PreferencesDialog() {
   const { prefs, setPrefs } = usePreferences();
   const { rules, addRule, updateRule, deleteRule } = useTagRules();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Personal tokens state
   const [tokenName, setTokenName] = useState("");
@@ -275,6 +282,26 @@ export function PreferencesDialog() {
 
           {/* ---- Display tab ---- */}
           <TabsContent value="display" className="mt-4 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Theme</Label>
+              <p className="text-xs text-muted-foreground">
+                Choose how shoutrrr-logger looks. &quot;System&quot; follows your operating system setting.
+              </p>
+              <Select
+                value={mounted ? (theme ?? "dark") : "dark"}
+                onValueChange={setTheme}
+              >
+                <SelectTrigger className="w-48 bg-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dark">Dark</SelectItem>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="system">System</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Separator className="bg-border" />
             <div className="space-y-2">
               <Label className="text-sm font-medium">Time format</Label>
               <p className="text-xs text-muted-foreground">

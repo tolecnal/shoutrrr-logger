@@ -9,6 +9,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Light and dark theme support** — the app previously rendered dark-only; it now supports Light, Dark, and System (follows OS preference) modes.
+  - New **Theme** selector in **Preferences → Display**, persisted in `localStorage` via `next-themes`.
+  - A new light color palette is defined alongside the existing dark palette; the active theme is applied via a `.dark` class on `<html>` with no flash on load.
+  - Charts, status badges, and other previously hardcoded dark-mode colors now adapt to the active theme.
+
 - **Admin audit log** — every admin action (user/token/settings/plugin create, update, delete) is now recorded.
   - New `audit_logs` table: actor (user id + username snapshot), action (`user.create`, `token.update`, `plugin.update`, etc.), target type/id, a redacted JSON `details` snapshot, IP address, and timestamp.
   - Sensitive fields (anything matching `token`, `secret`, `password`, `passwd`, `key`, `hec`, or `auth`) are masked as `***REDACTED***` before being stored — plugin secrets (e.g. Splunk HEC token/URL) and raw access tokens never appear in audit details.

@@ -4,7 +4,45 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Dark-first design – app always renders in dark mode */
+  /* Light theme */
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0891b2;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #475569;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0891b2;
+  --chart-1: #0891b2;
+  --chart-2: #0284c7;
+  --chart-3: #4f46e5;
+  --chart-4: #059669;
+  --chart-5: #d97706;
+  --radius: 0.5rem;
+  --sidebar: #f1f5f9;
+  --sidebar-foreground: #475569;
+  --sidebar-primary: #0891b2;
+  --sidebar-primary-foreground: #f8fafc;
+  --sidebar-accent: #e2e8f0;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0891b2;
+}
+
+.dark {
+  /* Dark theme (default) */
   color-scheme: dark;
   --background: #0d0f14;
   --foreground: #e2e8f0;
