@@ -45,13 +45,22 @@ async def update_settings(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[SettingOut]:
+    before = {s["key"]: s["value"] for s in await settings_service.get_all(db)}
     result = await settings_service.update(db, body.values)
-    await audit_log_service.log(
-        db,
-        actor=admin,
-        action=AuditAction.SETTINGS_UPDATE,
-        target_type="setting",
-        details=body.values,
-        request=request,
-    )
+    after = {s["key"]: s["value"] for s in result}
+
+    changes = {
+        key: {"old": before.get(key), "new": after[key]}
+        for key in body.values
+        if before.get(key) != after.get(key)
+    }
+    if changes:
+        await audit_log_service.log(
+            db,
+            actor=admin,
+            action=AuditAction.SETTINGS_UPDATE,
+            target_type="setting",
+            details=changes,
+            request=request,
+        )
     return [SettingOut.model_validate(s) for s in result]

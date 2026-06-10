@@ -185,7 +185,42 @@ class TestSettingsAuditLog:
         items = logs_resp.json()["items"]
         entry = items[0]
         assert entry["target_type"] == "setting"
-        assert entry["details"]["rate_limit_per_minute"] == 42
+        assert entry["details"]["rate_limit_per_minute"] == {"old": 0, "new": 42}
+
+    async def test_update_settings_no_change_does_not_log(self, client, admin_session_headers):
+        # rate_limit_per_minute already defaults to 0 — submitting the same
+        # value again is not a change and should not produce a new entry.
+        resp = await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"rate_limit_per_minute": 0}},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+
+        logs_resp = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "settings.update"},
+            headers=admin_session_headers,
+        )
+        assert logs_resp.json()["items"] == []
+
+    async def test_max_private_tokens_not_redacted(self, client, admin_session_headers):
+        """Setting keys containing 'token' but holding non-secret integer
+        values (e.g. max_private_tokens) must not be redacted."""
+        resp = await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"max_private_tokens": 7}},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+
+        logs_resp = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "settings.update"},
+            headers=admin_session_headers,
+        )
+        entry = logs_resp.json()["items"][0]
+        assert entry["details"]["max_private_tokens"]["new"] == 7
 
 
 # ---------------------------------------------------------------------------

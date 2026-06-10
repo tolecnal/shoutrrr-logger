@@ -36,7 +36,11 @@ _REDACTED = "***REDACTED***"
 def _redact(value: Any) -> Any:
     if isinstance(value, dict):
         return {
-            k: (_REDACTED if isinstance(k, str) and _SENSITIVE_KEY_RE.search(k) else _redact(v))
+            k: (
+                _REDACTED
+                if isinstance(k, str) and isinstance(v, str) and _SENSITIVE_KEY_RE.search(k)
+                else _redact(v)
+            )
             for k, v in value.items()
         }
     if isinstance(value, list):
