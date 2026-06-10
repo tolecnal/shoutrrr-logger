@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-10
+
 ### Added
 
 - **Automatic retention for API performance metrics and audit logs**, alongside the existing notification retention sweep. New settings `api_metrics_retention_days` (default 30) and `audit_log_retention_days` (default 365), configurable from **Admin → Settings**; set either to `0` to keep records forever.
@@ -31,6 +33,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Preferences dialog**: the dialog no longer changes size when switching between the Display, Tag Rules, and My Tokens tabs (now a fixed height with internal scrolling per tab).
 - **Preferences dialog — Tag Rules**: rule rows now wrap onto multiple lines instead of clipping labels (tag name, "Exclude" toggle, color, pattern count) when there isn't enough horizontal space.
+- **Preferences dialog — Tag Rules**: the color picker is now wide enough to show full color names (e.g. "yellow", "magenta") without clipping.
 
 ---
 
