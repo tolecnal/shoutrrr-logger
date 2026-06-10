@@ -75,7 +75,7 @@ function RuleRow({
   return (
     <div className="rounded-md border border-border bg-card">
       {/* Row header */}
-      <div className="flex items-center gap-2 p-3 overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 p-3">
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
         <Switch
           checked={rule.enabled}
@@ -268,7 +268,7 @@ export function PreferencesDialog() {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-card border-border">
+      <DialogContent className="max-w-2xl h-[600px] max-h-[85vh] flex flex-col bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Preferences</DialogTitle>
         </DialogHeader>
@@ -281,7 +281,7 @@ export function PreferencesDialog() {
           </TabsList>
 
           {/* ---- Display tab ---- */}
-          <TabsContent value="display" className="mt-4 space-y-6">
+          <TabsContent value="display" className="mt-4 flex-1 min-h-0 overflow-y-auto space-y-6">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Theme</Label>
               <p className="text-xs text-muted-foreground">

@@ -24,6 +24,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Breaking API change**: both endpoints now accept an opaque `cursor` query parameter instead of `page`, and return `{ items, total, page_size, pages, next_cursor }` instead of `{ items, total, page, page_size, pages }`. Pass the previous response's `next_cursor` to fetch the next page; `next_cursor` is `null` on the last page.
   - The notification log and admin audit log UIs now use Prev/Next cursor-based navigation.
 - **Configurable database connection pool**: new `DB_POOL_SIZE` (default `5`) and `DB_MAX_OVERFLOW` (default `5`) environment variables control the SQLAlchemy async engine pool size per worker process (previously hardcoded to 10/20). Total connections to PostgreSQL are approximately `WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW)`.
+- **Single retention-loop owner across gunicorn workers**: each worker previously started its own hourly retention loop, risking concurrent purges of the same rows. Workers now race for a PostgreSQL session-level advisory lock at startup; only the winner runs `_retention_loop`. Self-healing — if that worker is recycled, the lock is released and another worker takes over. No-op (always "leader") on SQLite for local dev/tests.
+- **Notification log pagination moved to the toolbar**: "Page X of Y" and the Prev/Next controls now sit next to the total/visible count at the top of the notification log, so they stay visible regardless of table scroll position (previously shown only in a footer below the table).
+
+### Fixed
+
+- **Preferences dialog**: the dialog no longer changes size when switching between the Display, Tag Rules, and My Tokens tabs (now a fixed height with internal scrolling per tab).
+- **Preferences dialog — Tag Rules**: rule rows now wrap onto multiple lines instead of clipping labels (tag name, "Exclude" toggle, color, pattern count) when there isn't enough horizontal space.
 
 ---
 

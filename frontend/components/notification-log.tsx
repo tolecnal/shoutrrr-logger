@@ -460,6 +460,34 @@ export function NotificationLog() {
                 : `${data.total.toLocaleString()} total`}
             </span>
           )}
+          {(displayPages > 1 || serverHasMore) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+              <span>
+                Page {displayPage} of {displayPages}
+                {serverHasMore && "+"}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                disabled={!canGoPrev}
+                onClick={handlePrev}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                disabled={!canGoNext}
+                onClick={handleNext}
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filter bar: always visible — scope + tag chips on the left, time range + group-by on the right */}
@@ -680,36 +708,6 @@ export function NotificationLog() {
             </table>
           )}
         </div>
-
-        {/* Pagination */}
-        {(displayPages > 1 || serverHasMore) && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-card/50 text-xs text-muted-foreground">
-            <span>
-              Page {displayPage} of {displayPages}
-              {serverHasMore && "+"}
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 p-0"
-                disabled={!canGoPrev}
-                onClick={handlePrev}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 p-0"
-                disabled={!canGoNext}
-                onClick={handleNext}
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Detail panel */}

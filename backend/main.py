@@ -15,7 +15,8 @@ import jwt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncSession, async_sessionmaker
 
 from auth import (
     create_session_jwt,
@@ -40,6 +41,40 @@ from services.users import user_service
 from version import API_VERSION, APP_VERSION, BUILD_GIT_HASH, BUILD_TIME
 
 logger = logging.getLogger(__name__)
+
+
+# Arbitrary fixed key for the cross-worker "retention loop owner" advisory
+# lock (see _acquire_retention_leadership below).
+_RETENTION_LOCK_KEY = 0x73685F7274  # "sh_rt" packed into an int, just needs to be stable
+
+
+async def _acquire_retention_leadership(engine: AsyncEngine) -> tuple[bool, AsyncConnection | None]:
+    """Try to become the single process responsible for the hourly retention loop.
+
+    With multiple gunicorn workers, every worker runs its own copy of the
+    FastAPI app (and thus its own ``lifespan``). Without coordination, each
+    worker would start its own ``_retention_loop``, all purging the same
+    rows on overlapping schedules. A PostgreSQL session-level advisory lock
+    lets exactly one worker "win": the returned connection (if any) must be
+    kept open for the app's lifetime and closed on shutdown to release the
+    lock — if that worker dies, the lock is released automatically and
+    another worker can take over on its next restart.
+
+    On non-PostgreSQL backends (SQLite in tests/dev) there is only ever one
+    process, so this always succeeds with no connection to manage.
+
+    Returns ``(is_leader, lock_connection)``.
+    """
+    if engine.dialect.name != "postgresql":
+        return True, None
+    conn = await engine.connect()
+    result = await conn.execute(
+        text("SELECT pg_try_advisory_lock(:key)"), {"key": _RETENTION_LOCK_KEY}
+    )
+    if result.scalar_one():
+        return True, conn
+    await conn.close()
+    return False, None
 
 
 async def _retention_loop() -> None:
@@ -100,14 +135,27 @@ async def _retention_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    from database import engine  # noqa: PLC0415
+
     await init_db()
     plugin_registry.discover()
-    retention_task = asyncio.create_task(_retention_loop())
-    logger.info("Retention loop started (reads DB setting each hour)")
+
+    is_retention_leader, retention_lock_conn = await _acquire_retention_leadership(engine)
+    retention_task: asyncio.Task | None = None
+    if is_retention_leader:
+        retention_task = asyncio.create_task(_retention_loop())
+        logger.info("Retention loop started on this worker (reads DB setting each hour)")
+    else:
+        logger.info("Retention loop already owned by another worker; skipping on this worker")
+
     yield
-    retention_task.cancel()
-    with suppress(asyncio.CancelledError):
-        await retention_task
+
+    if retention_task is not None:
+        retention_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await retention_task
+    if retention_lock_conn is not None:
+        await retention_lock_conn.close()
 
 
 app = FastAPI(
