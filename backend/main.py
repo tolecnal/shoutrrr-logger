@@ -29,7 +29,7 @@ from database import get_db, init_db
 from middleware.performance import PerformanceMiddleware
 from models import User, UserRole
 from plugins import registry as plugin_registry
-from routers import api_metrics, me, notifications, plugins, shoutrrr, tokens, users
+from routers import api_metrics, audit_logs, me, notifications, plugins, shoutrrr, tokens, users
 from routers import settings as settings_router
 from schemas import OIDCCallbackResponse, UserOut
 from services.notifications import notification_service
@@ -144,6 +144,7 @@ app.include_router(shoutrrr.router, prefix=_V1)
 app.include_router(notifications.router, prefix=_V1)
 app.include_router(users.router, prefix=f"{_V1}/admin")
 app.include_router(tokens.router, prefix=f"{_V1}/admin")
+app.include_router(audit_logs.router, prefix=f"{_V1}/admin")
 app.include_router(plugins.router, prefix=_V1)
 app.include_router(settings_router.public_router, prefix=_V1)
 app.include_router(settings_router.admin_router, prefix=_V1)

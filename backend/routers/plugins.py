@@ -7,13 +7,14 @@ PATCH /api/admin/plugins/{id}    — update enabled flag and/or config dict
 POST /api/admin/plugins/{id}/test — trigger a test notification through the plugin
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user_from_session
 from database import get_db
 from models import UserRole
 from schemas import PluginOut, PluginUpdate
+from services.audit_logs import AuditAction, audit_log_service
 from services.notifications import notification_service
 from services.plugins import plugin_service
 
@@ -60,10 +61,21 @@ async def get_plugin(
 async def update_plugin(
     plugin_id: str,
     body: PluginUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
-    _user=Depends(_require_admin),
+    user=Depends(_require_admin),
 ) -> PluginOut:
-    return await plugin_service.update_plugin(db, plugin_id, body)
+    result = await plugin_service.update_plugin(db, plugin_id, body)
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.PLUGIN_UPDATE,
+        target_type="plugin",
+        target_id=plugin_id,
+        details=body.model_dump(exclude_none=True, mode="json"),
+        request=request,
+    )
+    return result
 
 
 @router.post("/{plugin_id}/test", status_code=status.HTTP_202_ACCEPTED)

@@ -60,6 +60,7 @@ export interface AppSettings {
   page_size: number;
   auto_refresh_interval: number;
   stats_window_days: number;
+  rate_limit_per_minute: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,8 +133,25 @@ export interface AccessTokenOut {
   is_active: boolean;
   is_global: boolean;
   owner_username: string | null;
+  // null = inherit the global "rate_limit_per_minute" setting; 0 = unlimited
+  rate_limit_override: number | null;
 }
 
 export interface AccessTokenCreated extends AccessTokenOut {
   raw_token: string;
+}
+
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+export interface AuditLogOut {
+  id: string;
+  actor_user_id: string | null;
+  actor_username: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  details: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
 }

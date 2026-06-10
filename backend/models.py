@@ -75,6 +75,11 @@ class AccessToken(Base):
     # True  → admin-managed, visible to all users in the notification feed
     # False → private, visible only to the owning user
     is_global: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Per-token override for the ingestion rate limit (notifications/minute).
+    # NULL  → inherit the global "rate_limit_per_minute" setting
+    # 0     → explicitly unlimited
+    # >0    → custom per-minute limit
+    rate_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="access_tokens")
 
@@ -99,6 +104,7 @@ class Notification(Base):
 
     __table_args__ = (
         Index("ix_notifications_received_at", "received_at"),
+        Index("ix_notifications_token_received", "token_id", "received_at"),
         Index(
             "ix_notifications_message_gin",
             "message",
@@ -153,4 +159,32 @@ class ApiMetricLog(Base):
     __table_args__ = (
         Index("ix_api_metric_logs_created_at", "created_at"),
         Index("ix_api_metric_logs_path", "path"),
+    )
+
+
+class AuditLog(Base):
+    """Records admin actions: who did what, to which resource, and when."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Nullable + denormalized username so log entries survive user deletion
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # e.g. "user.create", "token.update", "settings.update"
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_audit_logs_created_at", "created_at"),
+        Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_actor_user_id", "actor_user_id"),
     )

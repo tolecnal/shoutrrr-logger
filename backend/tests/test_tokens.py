@@ -132,6 +132,32 @@ class TestAdminCreateToken:
         )
         assert resp.status_code == 404
 
+    async def test_rate_limit_override_defaults_to_none(self, client, admin_session_headers):
+        resp = await client.post(
+            "/api/v1/admin/tokens",
+            json={"name": "no-override"},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["rate_limit_override"] is None
+
+    async def test_rate_limit_override_persisted(self, client, admin_session_headers):
+        resp = await client.post(
+            "/api/v1/admin/tokens",
+            json={"name": "with-override", "rate_limit_override": 15},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["rate_limit_override"] == 15
+
+    async def test_rejects_negative_rate_limit_override(self, client, admin_session_headers):
+        resp = await client.post(
+            "/api/v1/admin/tokens",
+            json={"name": "bad-override", "rate_limit_override": -1},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # PATCH /admin/tokens/{token_id}
@@ -180,6 +206,48 @@ class TestAdminUpdateToken:
             headers=admin_session_headers,
         )
         assert resp.status_code == 404
+
+    async def test_set_rate_limit_override(self, client, admin_session_headers, extra_global_token):
+        _, tok = extra_global_token
+        resp = await client.patch(
+            f"/api/v1/admin/tokens/{tok.id}",
+            params={"rate_limit_override": 7},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["rate_limit_override"] == 7
+
+    async def test_clear_rate_limit_override(
+        self, client, admin_session_headers, extra_global_token
+    ):
+        _, tok = extra_global_token
+        # First set an override...
+        resp = await client.patch(
+            f"/api/v1/admin/tokens/{tok.id}",
+            params={"rate_limit_override": 7},
+            headers=admin_session_headers,
+        )
+        assert resp.json()["rate_limit_override"] == 7
+
+        # ...then clear it back to "inherit global default".
+        resp = await client.patch(
+            f"/api/v1/admin/tokens/{tok.id}",
+            params={"clear_rate_limit_override": "true"},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["rate_limit_override"] is None
+
+    async def test_rejects_negative_rate_limit_override(
+        self, client, admin_session_headers, extra_global_token
+    ):
+        _, tok = extra_global_token
+        resp = await client.patch(
+            f"/api/v1/admin/tokens/{tok.id}",
+            params={"rate_limit_override": -1},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------

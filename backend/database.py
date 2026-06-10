@@ -57,6 +57,21 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                         "ADD COLUMN IF NOT EXISTS is_global BOOLEAN NOT NULL DEFAULT TRUE"
                     )
                 )
+                # Per-token override for the ingestion rate limit (NULL = inherit
+                # the global "rate_limit_per_minute" setting).
+                await conn.execute(
+                    sqlalchemy.text(
+                        "ALTER TABLE IF EXISTS access_tokens "
+                        "ADD COLUMN IF NOT EXISTS rate_limit_override INTEGER"
+                    )
+                )
+                # Composite index for the rate-limit sliding-window COUNT query.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE INDEX IF NOT EXISTS ix_notifications_token_received "
+                        "ON notifications (token_id, received_at)"
+                    )
+                )
             logger.info("Database initialised successfully.")
             return
         except Exception as exc:

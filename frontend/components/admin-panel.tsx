@@ -1,11 +1,12 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KeyRound, Puzzle, Settings2, Users } from "lucide-react";
+import { KeyRound, Puzzle, ScrollText, Settings2, Users } from "lucide-react";
 import { UsersTab } from "@/components/admin-users-tab";
 import { TokensTab } from "@/components/admin-tokens-tab";
 import { PluginsTab } from "@/components/admin-plugins-tab";
 import { SettingsTab } from "@/components/admin-settings-tab";
+import { AuditLogTab } from "@/components/admin-audit-log-tab";
 
 export function AdminPanel() {
   return (
@@ -37,6 +38,10 @@ export function AdminPanel() {
               <Settings2 className="h-3.5 w-3.5" />
               Settings
             </TabsTrigger>
+            <TabsTrigger value="audit-log" className="flex items-center gap-1.5 text-xs">
+              <ScrollText className="h-3.5 w-3.5" />
+              Audit Log
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-0">
@@ -53,6 +58,10 @@ export function AdminPanel() {
 
           <TabsContent value="settings" className="mt-0">
             <SettingsTab />
+          </TabsContent>
+
+          <TabsContent value="audit-log" className="mt-0">
+            <AuditLogTab />
           </TabsContent>
         </Tabs>
       </div>

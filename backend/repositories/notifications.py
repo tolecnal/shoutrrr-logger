@@ -135,6 +135,22 @@ class NotificationRepository:
         result = await session.execute(base_query.order_by(Notification.received_at.desc()))
         return result.scalars().all()
 
+    async def count_since(
+        self, session: AsyncSession, *, token_id: uuid.UUID, since: datetime
+    ) -> int:
+        """Count notifications submitted via ``token_id`` at/after ``since``.
+
+        Used by the rate limiter's sliding window; relies on the composite
+        ``ix_notifications_token_received`` index for efficiency.
+        """
+        result = await session.execute(
+            select(func.count(Notification.id)).where(
+                Notification.token_id == token_id,
+                Notification.received_at >= since,
+            )
+        )
+        return result.scalar_one()
+
     async def delete_older_than(self, session: AsyncSession, cutoff: datetime) -> int:
         result = await session.execute(
             delete(Notification).where(Notification.received_at < cutoff)

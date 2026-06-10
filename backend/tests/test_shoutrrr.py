@@ -2,10 +2,15 @@
 Integration tests for POST /api/v1/shoutrrr.
 
 Covers: JSON body, plain-text body, query-param custom fields ($hostname),
-missing/invalid token (401), empty body (400).
+missing/invalid token (401), empty body (400), and ingestion rate limiting.
 """
 
 import json
+
+import pytest_asyncio
+
+from models import AppSetting
+from services.notifications import notification_service
 
 
 class TestShoutrrrReceive:
@@ -122,3 +127,66 @@ class TestShoutrrrReceive:
         data = resp.json()
         assert data["custom_fields"]["service"] == "api"
         assert data["custom_fields"]["env"] == "staging"
+
+
+class TestShoutrrrRateLimiting:
+    @pytest_asyncio.fixture(autouse=True)
+    async def _disable_plugin_dispatch(self, monkeypatch):
+        """Avoid dispatch_plugins' background-task session, which on the shared
+        in-memory SQLite connection would roll back the request transaction
+        and wipe the token/setting rows these multi-request tests rely on."""
+
+        async def _noop(notification_dict):
+            return None
+
+        monkeypatch.setattr(notification_service, "dispatch_plugins", _noop)
+
+    async def _post(self, client, raw):
+        return await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "ping"}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    async def test_default_is_unlimited(self, client, access_token):
+        """With no 'rate_limit_per_minute' setting (default 0), requests are never throttled."""
+        raw, _ = access_token
+        for _ in range(5):
+            resp = await self._post(client, raw)
+            assert resp.status_code == 202
+
+    async def test_global_limit_returns_429(self, client, db, access_token):
+        raw, _ = access_token
+        db.add(AppSetting(key="rate_limit_per_minute", value=2))
+        await db.flush()
+
+        assert (await self._post(client, raw)).status_code == 202
+        assert (await self._post(client, raw)).status_code == 202
+
+        resp = await self._post(client, raw)
+        assert resp.status_code == 429
+        assert resp.headers["retry-after"] == "60"
+
+    async def test_per_token_override_zero_bypasses_global_limit(self, client, db, access_token):
+        raw, tok = access_token
+        db.add(AppSetting(key="rate_limit_per_minute", value=1))
+        tok.rate_limit_override = 0
+        await db.flush()
+
+        for _ in range(3):
+            resp = await self._post(client, raw)
+            assert resp.status_code == 202
+
+    async def test_per_token_override_custom_limit(self, client, db, access_token):
+        raw, tok = access_token
+        db.add(AppSetting(key="rate_limit_per_minute", value=100))
+        tok.rate_limit_override = 1
+        await db.flush()
+
+        assert (await self._post(client, raw)).status_code == 202
+
+        resp = await self._post(client, raw)
+        assert resp.status_code == 429

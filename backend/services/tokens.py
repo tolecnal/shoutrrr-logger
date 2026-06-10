@@ -44,6 +44,7 @@ class AccessTokenService:
             token_hash=hash_token(raw),
             expires_at=body.expires_at,
             is_global=body.is_global,
+            rate_limit_override=body.rate_limit_override,
         )
         await self._repo.add(session, token)
         return token, raw
@@ -55,6 +56,8 @@ class AccessTokenService:
         *,
         name: str | None,
         is_active: bool | None,
+        rate_limit_override: int | None = None,
+        clear_rate_limit_override: bool = False,
     ) -> AccessToken:
         token = await self._repo.get_by_id(session, token_id, with_user=True)
         if token is None:
@@ -63,15 +66,20 @@ class AccessTokenService:
             token.name = name
         if is_active is not None:
             token.is_active = is_active
+        if clear_rate_limit_override:
+            token.rate_limit_override = None
+        elif rate_limit_override is not None:
+            token.rate_limit_override = rate_limit_override
         await session.flush()
         await session.refresh(token, attribute_names=["user"])
         return token
 
-    async def delete_token(self, session: AsyncSession, token_id: uuid.UUID) -> None:
+    async def delete_token(self, session: AsyncSession, token_id: uuid.UUID) -> AccessToken:
         token = await self._repo.get_by_id(session, token_id)
         if token is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
         await self._repo.delete(session, token)
+        return token
 
     # ------------------------------------------------------------------
     # Personal (private) token operations — called from /me/tokens

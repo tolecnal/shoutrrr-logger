@@ -4,13 +4,14 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_admin
 from database import get_db
 from models import AccessToken, User
 from schemas import AccessTokenCreate, AccessTokenCreated, AccessTokenOut
+from services.audit_logs import AuditAction, audit_log_service
 from services.tokens import access_token_service
 
 router = APIRouter(prefix="/tokens", tags=["access-tokens"])
@@ -39,12 +40,27 @@ async def list_tokens(
 )
 async def create_token(
     body: AccessTokenCreate,
+    request: Request,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AccessTokenCreated:
     # Default owner to the creating admin when not explicitly specified
     effective = body if body.user_id is not None else body.model_copy(update={"user_id": admin.id})
     token, raw = await access_token_service.create_token(db, effective)
+    await audit_log_service.log(
+        db,
+        actor=admin,
+        action=AuditAction.TOKEN_CREATE,
+        target_type="access_token",
+        target_id=str(token.id),
+        details={
+            "name": effective.name,
+            "is_global": effective.is_global,
+            "user_id": str(effective.user_id) if effective.user_id else None,
+            "rate_limit_override": effective.rate_limit_override,
+        },
+        request=request,
+    )
     out = AccessTokenCreated.model_validate(token)
     return out.model_copy(
         update={"raw_token": raw, "owner_username": token.user.username if token.user else None}
@@ -56,12 +72,40 @@ async def create_token(
 )
 async def update_token(
     token_id: uuid.UUID,
+    request: Request,
     name: str | None = None,
     is_active: bool | None = None,
-    _admin: User = Depends(require_admin),
+    rate_limit_override: int | None = Query(None, ge=0),
+    clear_rate_limit_override: bool = Query(False),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AccessTokenOut:
-    token = await access_token_service.update_token(db, token_id, name=name, is_active=is_active)
+    token = await access_token_service.update_token(
+        db,
+        token_id,
+        name=name,
+        is_active=is_active,
+        rate_limit_override=rate_limit_override,
+        clear_rate_limit_override=clear_rate_limit_override,
+    )
+    details: dict = {}
+    if name is not None:
+        details["name"] = name
+    if is_active is not None:
+        details["is_active"] = is_active
+    if clear_rate_limit_override:
+        details["rate_limit_override"] = None
+    elif rate_limit_override is not None:
+        details["rate_limit_override"] = rate_limit_override
+    await audit_log_service.log(
+        db,
+        actor=admin,
+        action=AuditAction.TOKEN_UPDATE,
+        target_type="access_token",
+        target_id=str(token_id),
+        details=details,
+        request=request,
+    )
     return _token_out(token)
 
 
@@ -70,7 +114,17 @@ async def update_token(
 )
 async def delete_token(
     token_id: uuid.UUID,
-    _admin: User = Depends(require_admin),
+    request: Request,
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    await access_token_service.delete_token(db, token_id)
+    deleted = await access_token_service.delete_token(db, token_id)
+    await audit_log_service.log(
+        db,
+        actor=admin,
+        action=AuditAction.TOKEN_DELETE,
+        target_type="access_token",
+        target_id=str(token_id),
+        details={"name": deleted.name, "is_global": deleted.is_global},
+        request=request,
+    )

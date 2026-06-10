@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { format, isPast } from "date-fns";
-import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Copy, Check, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTokens, createToken, deleteToken, updateToken } from "@/lib/api";
 import type { AccessTokenCreated, AccessTokenOut } from "@/lib/types";
@@ -30,6 +30,71 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+type RateLimitMode = "default" | "unlimited" | "custom";
+
+function rateLimitToMode(value: number | null): RateLimitMode {
+  if (value === null) return "default";
+  if (value === 0) return "unlimited";
+  return "custom";
+}
+
+function formatRateLimit(value: number | null): string {
+  if (value === null) return "Default";
+  if (value === 0) return "Unlimited";
+  return `${value}/min`;
+}
+
+function RateLimitFields({
+  mode,
+  onModeChange,
+  value,
+  onValueChange,
+  idPrefix,
+}: {
+  mode: RateLimitMode;
+  onModeChange: (mode: RateLimitMode) => void;
+  value: string;
+  onValueChange: (value: string) => void;
+  idPrefix: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">Rate limit</Label>
+      <RadioGroup value={mode} onValueChange={(v) => onModeChange(v as RateLimitMode)} className="gap-2">
+        <div className="flex items-center gap-2">
+          <RadioGroupItem value="default" id={`${idPrefix}-rl-default`} />
+          <Label htmlFor={`${idPrefix}-rl-default`} className="text-xs font-normal text-muted-foreground">
+            Use global default
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <RadioGroupItem value="unlimited" id={`${idPrefix}-rl-unlimited`} />
+          <Label htmlFor={`${idPrefix}-rl-unlimited`} className="text-xs font-normal text-muted-foreground">
+            Unlimited
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <RadioGroupItem value="custom" id={`${idPrefix}-rl-custom`} />
+          <Label htmlFor={`${idPrefix}-rl-custom`} className="text-xs font-normal text-muted-foreground">
+            Custom
+          </Label>
+          <Input
+            className="h-7 w-24 text-xs"
+            type="number"
+            min={1}
+            placeholder="per minute"
+            value={value}
+            disabled={mode !== "custom"}
+            onChange={(e) => onValueChange(e.target.value)}
+            onFocus={() => onModeChange("custom")}
+          />
+        </div>
+      </RadioGroup>
+    </div>
+  );
+}
 
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -58,11 +123,20 @@ export function TokensTab() {
   const [created, setCreated] = useState<AccessTokenCreated | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<AccessTokenOut | null>(null);
+  const [editing, setEditing] = useState<AccessTokenOut | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     expires_at: "",
+    rateLimitMode: "default" as RateLimitMode,
+    rateLimitValue: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    name: "",
+    rateLimitMode: "default" as RateLimitMode,
+    rateLimitValue: "",
   });
 
   const handleCreate = async () => {
@@ -71,6 +145,12 @@ export function TokensTab() {
       const result = await createToken({
         name: form.name,
         expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+        rate_limit_override:
+          form.rateLimitMode === "default"
+            ? null
+            : form.rateLimitMode === "unlimited"
+              ? 0
+              : Number(form.rateLimitValue),
       });
       setCreated(result);
       setCreating(false);
@@ -105,6 +185,46 @@ export function TokensTab() {
     }
   };
 
+  const openEdit = (t: AccessTokenOut) => {
+    setEditing(t);
+    setEditForm({
+      name: t.name,
+      rateLimitMode: rateLimitToMode(t.rate_limit_override),
+      rateLimitValue: t.rate_limit_override && t.rate_limit_override > 0 ? String(t.rate_limit_override) : "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const params: {
+        name?: string;
+        rate_limit_override?: number;
+        clear_rate_limit_override?: boolean;
+      } = {};
+      if (editForm.name !== editing.name) params.name = editForm.name;
+      if (editForm.rateLimitMode === "default") {
+        if (editing.rate_limit_override !== null) params.clear_rate_limit_override = true;
+      } else if (editForm.rateLimitMode === "unlimited") {
+        if (editing.rate_limit_override !== 0) params.rate_limit_override = 0;
+      } else {
+        const value = Number(editForm.rateLimitValue);
+        if (editing.rate_limit_override !== value) params.rate_limit_override = value;
+      }
+      if (Object.keys(params).length > 0) {
+        await updateToken(editing.id, params);
+        toast.success("Token updated.");
+        await mutate();
+      }
+      setEditing(null);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update token.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -116,7 +236,7 @@ export function TokensTab() {
             Admin-created tokens are global — visible to all users in the log.
           </p>
         </div>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", expires_at: "" }); }}>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", expires_at: "", rateLimitMode: "default", rateLimitValue: "" }); }}>
           <Plus className="h-3.5 w-3.5" />
           Create Token
         </Button>
@@ -129,6 +249,7 @@ export function TokensTab() {
               <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Name</th>
               <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Owner</th>
               <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Status</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Rate limit</th>
               <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Expires</th>
               <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Last used</th>
               <th className="px-4 py-2.5" />
@@ -138,7 +259,7 @@ export function TokensTab() {
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <Skeleton className="h-3 w-20" />
                       </td>
@@ -162,6 +283,9 @@ export function TokensTab() {
                         <Badge variant={status.variant} className="text-[11px]">{status.label}</Badge>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                        {formatRateLimit(t.rate_limit_override)}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
                         {t.expires_at ? format(new Date(t.expires_at), "MMM d, yyyy") : <span className="text-muted-foreground/50">Never</span>}
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
@@ -169,6 +293,15 @@ export function TokensTab() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-end">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => openEdit(t)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -225,6 +358,13 @@ export function TokensTab() {
               />
               <p className="text-[11px] text-muted-foreground">Leave blank for unlimited.</p>
             </div>
+            <RateLimitFields
+              mode={form.rateLimitMode}
+              onModeChange={(mode) => setForm({ ...form, rateLimitMode: mode })}
+              value={form.rateLimitValue}
+              onValueChange={(value) => setForm({ ...form, rateLimitValue: value })}
+              idPrefix="create"
+            />
           </div>
           <DialogFooter>
             <Button size="sm" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
@@ -269,6 +409,42 @@ export function TokensTab() {
           </div>
           <DialogFooter>
             <Button size="sm" onClick={() => setCreated(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit token dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Edit Token</DialogTitle>
+            <DialogDescription className="text-xs">
+              Update the token name or its ingestion rate limit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Token name</Label>
+              <Input
+                className="h-8 text-xs"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+            </div>
+            <RateLimitFields
+              mode={editForm.rateLimitMode}
+              onModeChange={(mode) => setEditForm({ ...editForm, rateLimitMode: mode })}
+              value={editForm.rateLimitValue}
+              onValueChange={(value) => setEditForm({ ...editForm, rateLimitValue: value })}
+              idPrefix="edit"
+            />
+          </div>
+          <DialogFooter>
+            <Button size="sm" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={saving || !editForm.name}>
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

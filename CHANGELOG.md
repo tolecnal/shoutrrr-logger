@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Admin audit log** — every admin action (user/token/settings/plugin create, update, delete) is now recorded.
+  - New `audit_logs` table: actor (user id + username snapshot), action (`user.create`, `token.update`, `plugin.update`, etc.), target type/id, a redacted JSON `details` snapshot, IP address, and timestamp.
+  - Sensitive fields (anything matching `token`, `secret`, `password`, `passwd`, `key`, `hec`, or `auth`) are masked as `***REDACTED***` before being stored — plugin secrets (e.g. Splunk HEC token/URL) and raw access tokens never appear in audit details.
+  - `GET /api/v1/admin/audit-logs` (admin-only) supports `action`, `actor_user_id`, `after`, `before`, `page`, and `page_size` filters.
+  - New **Admin → Audit Log** tab: paginated table (Time, Actor, Action, Target, IP) with an action filter and an expandable details view.
+
+- **Ingestion rate limiting** for `POST /api/v1/shoutrrr`, enforced via a DB-backed sliding window over the `notifications` table (accurate across multiple gunicorn workers, no new infra).
+  - New global setting `rate_limit_per_minute` (default `0` = unlimited, range 0–10000) configurable from **Admin → Settings**.
+  - Admin-only per-token override `rate_limit_override`: `null` = inherit the global setting, `0` = explicitly unlimited, `>0` = a custom per-minute limit for that token.
+  - Requests over the limit receive `429 Too Many Requests` with a `Retry-After: 60` header.
+  - **Admin → Access Tokens** gains a "Rate limit" column and an edit (pencil) action to rename a token or set/clear its rate-limit override; the create-token dialog offers the same control.
+
+### Changed
+
+- `AccessToken` model gains a nullable `rate_limit_override` integer column. `notifications` gains a composite index on `(token_id, received_at)` to keep the rate-limit lookup cheap. Both are applied automatically via idempotent `ALTER TABLE IF EXISTS … ADD COLUMN IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` in `init_db()`.
+
+---
+
 ## [0.3.0] — 2026-06-09
 
 ### Added

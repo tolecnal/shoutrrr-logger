@@ -66,6 +66,18 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         max_value=50,
         unit="tokens",
     ),
+    SettingMeta(
+        key="rate_limit_per_minute",
+        label="Notification rate limit",
+        description=(
+            "Maximum notifications a single access token may submit per minute. "
+            "Set to 0 for unlimited. Admins can override this per-token."
+        ),
+        default=0,
+        min_value=0,
+        max_value=10000,
+        unit="per minute",
+    ),
 ]
 
 _META_BY_KEY: dict[str, SettingMeta] = {s.key: s for s in KNOWN_SETTINGS}

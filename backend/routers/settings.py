@@ -6,13 +6,14 @@ GET  /admin/settings   — admin only (same data, kept for symmetry)
 PATCH /admin/settings  — admin only, bulk update
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_admin, require_viewer
 from database import get_db
 from models import User
 from schemas import SettingOut, SettingsUpdate
+from services.audit_logs import AuditAction, audit_log_service
 from services.settings import settings_service
 
 public_router = APIRouter(prefix="/settings", tags=["settings"])
@@ -40,7 +41,17 @@ async def get_settings_admin(
 @admin_router.patch("", response_model=list[SettingOut], summary="Update application settings")
 async def update_settings(
     body: SettingsUpdate,
-    _user: User = Depends(require_admin),
+    request: Request,
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[SettingOut]:
-    return [SettingOut.model_validate(s) for s in await settings_service.update(db, body.values)]
+    result = await settings_service.update(db, body.values)
+    await audit_log_service.log(
+        db,
+        actor=admin,
+        action=AuditAction.SETTINGS_UPDATE,
+        target_type="setting",
+        details=body.values,
+        request=request,
+    )
+    return [SettingOut.model_validate(s) for s in result]

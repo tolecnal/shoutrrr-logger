@@ -124,6 +124,9 @@ class AccessTokenCreate(BaseModel):
     user_id: uuid.UUID | None = None
     expires_at: datetime | None = None
     is_global: bool = True
+    # Per-token rate limit override (notifications/minute). None = inherit the
+    # global "rate_limit_per_minute" setting; 0 = unlimited; >0 = custom limit.
+    rate_limit_override: int | None = Field(None, ge=0)
 
 
 class PersonalTokenCreate(BaseModel):
@@ -144,6 +147,8 @@ class AccessTokenOut(BaseModel):
     is_global: bool = True
     # owner username for display
     owner_username: str | None = None
+    # None = inherit the global "rate_limit_per_minute" setting; 0 = unlimited
+    rate_limit_override: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -240,6 +245,23 @@ class ApiPerformanceStats(BaseModel):
     by_endpoint: list[EndpointStat]
     by_hour: list[RequestTimeSeries]
     window_hours: int
+
+
+# ---------------------------------------------------------------------------
+# Audit Log
+# ---------------------------------------------------------------------------
+class AuditLogOut(BaseModel):
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None
+    actor_username: str | None
+    action: str
+    target_type: str
+    target_id: str | None
+    details: dict[str, Any] | None
+    ip_address: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ from database import get_db
 from models import AccessToken
 from schemas import NotificationOut
 from services.notifications import notification_service
+from services.rate_limit import rate_limit_service
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ async def receive_notification(
     token: AccessToken = Depends(verify_bearer_access_token),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationOut:
+    await rate_limit_service.enforce(db, token)
+
     content_type = request.headers.get("content-type", "")
     raw_body = await request.body()
 

@@ -3,6 +3,7 @@ import type {
   AccessTokenOut,
   ApiPerformanceStats,
   AppSettings,
+  AuditLogOut,
   NotificationOut,
   NotificationStats,
   PaginatedResponse,
@@ -117,12 +118,25 @@ export const createToken = (body: {
   name: string;
   user_id?: string;
   expires_at?: string | null;
+  rate_limit_override?: number | null;
 }) => apiFetch<AccessTokenCreated>("/admin/tokens", { method: "POST", body: JSON.stringify(body) });
 
-export const updateToken = (id: string, params: { name?: string; is_active?: boolean }) => {
+export const updateToken = (
+  id: string,
+  params: {
+    name?: string;
+    is_active?: boolean;
+    rate_limit_override?: number;
+    clear_rate_limit_override?: boolean;
+  }
+) => {
   const sp = new URLSearchParams();
   if (params.name !== undefined) sp.set("name", params.name);
   if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
+  if (params.rate_limit_override !== undefined)
+    sp.set("rate_limit_override", String(params.rate_limit_override));
+  if (params.clear_rate_limit_override !== undefined)
+    sp.set("clear_rate_limit_override", String(params.clear_rate_limit_override));
   return apiFetch<AccessTokenOut>(`/admin/tokens/${id}?${sp}`, { method: "PATCH" });
 };
 
@@ -141,6 +155,7 @@ export function settingsToMap(list: SettingOut[]): AppSettings {
     page_size: map.page_size ?? 20,
     auto_refresh_interval: map.auto_refresh_interval ?? 30,
     stats_window_days: map.stats_window_days ?? 30,
+    rate_limit_per_minute: map.rate_limit_per_minute ?? 0,
   };
 }
 
@@ -187,3 +202,12 @@ export const updatePlugin = (id: string, body: { enabled?: boolean; config?: Rec
 
 export const testPlugin = (id: string) =>
   apiFetch<{ detail: string }>(`/admin/plugins/${id}/test`, { method: "POST" });
+
+// ---- Audit Log ----
+export function auditLogsKey(page: number, pageSize = 20, action?: string) {
+  let url = `/admin/audit-logs?page=${page}&page_size=${pageSize}`;
+  if (action) url += `&action=${encodeURIComponent(action)}`;
+  return url;
+}
+
+export const fetchAuditLogs = (url: string) => apiFetch<PaginatedResponse<AuditLogOut>>(url);

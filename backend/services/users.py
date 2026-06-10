@@ -44,13 +44,14 @@ class UserService:
 
     async def delete_user(
         self, session: AsyncSession, user_id: uuid.UUID, current_user: User
-    ) -> None:
+    ) -> User:
         if str(user_id) == str(current_user.id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
             )
         user = await self.get_user(session, user_id)
         await self._repo.delete(session, user)
+        return user
 
     async def upsert_from_oidc(
         self,
