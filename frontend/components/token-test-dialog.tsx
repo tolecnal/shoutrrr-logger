@@ -40,6 +40,22 @@ requests.post(
 )`,
     },
     {
+      label: "PHP",
+      code: `$ch = curl_init("${url}");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer ${token}",
+    "Content-Type: application/json",
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "message" => "Test notification",
+    "title" => "Test",
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_exec($ch);
+curl_close($ch);`,
+    },
+    {
       label: "wget",
       code: `wget -q -O- --method=POST \\
   --header="Authorization: Bearer ${token}" \\

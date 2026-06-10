@@ -374,6 +374,24 @@ requests.post(
 )
 ```
 
+**PHP example:**
+
+```php
+$ch = curl_init("https://shoutrrr-logger.example.com/api/shoutrrr");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer <your-access-token>",
+    "Content-Type: application/json",
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "message" => "Backup completed",
+    "title" => "Backup job",
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_exec($ch);
+curl_close($ch);
+```
+
 **wget example:**
 
 ```bash

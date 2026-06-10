@@ -10,13 +10,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Admin toggle for private access tokens**: new `private_tokens_enabled` setting (default: enabled), configurable from **Admin → Settings**. When disabled, users can no longer create new private tokens from **Preferences → My Tokens**, and existing private tokens are rejected (`403`) for notification ingestion. Global tokens are unaffected.
-- **"Test this token" dialog**: the Admin → Access Tokens page and Preferences → My Tokens now have a "Test" action that opens a dialog with copy-paste examples (curl, PowerShell, Python, wget, and the shoutrrr generic URL scheme) for sending a notification with that token.
-- **README**: added PowerShell, Python (`requests`), and wget examples to the "Sending notifications" section, alongside the existing curl example.
+- **"Test this token" dialog**: the Admin → Access Tokens page and Preferences → My Tokens now have a "Test" action that opens a dialog with copy-paste examples (curl, PowerShell, Python, PHP, wget, and the shoutrrr generic URL scheme) for sending a notification with that token.
+- **README**: added PowerShell, Python (`requests`), PHP, and wget examples to the "Sending notifications" section, alongside the existing curl example.
 
 ### Changed
 
 - **Settings validation**: the **Statistics window** (`stats_window_days`) can no longer be set higher than **Retention period** (`retention_days`) or **API metrics retention** (`api_metrics_retention_days`) when either is non-zero, preventing `/stats` and `/performance` from silently showing incomplete data for windows that exceed the retained data.
 - Error responses from the settings API (and other endpoints) now surface their `detail` message directly in toast notifications instead of raw JSON.
+- **CI**: bumped GitHub Actions in the lint and Docker publish workflows to Node.js 24-compatible major versions (`actions/checkout@v5`, `docker/build-push-action@v7`, `docker/login-action@v4`, `docker/metadata-action@v6`, `docker/setup-buildx-action@v4`, `docker/setup-qemu-action@v4`, `peter-evans/dockerhub-description@v5`), ahead of GitHub's Node 20 runner deprecation.
+- **Frontend build**: added `onlyBuiltDependencies` (esbuild, sharp, unrs-resolver) to `pnpm-workspace.yaml` so pnpm no longer skips the install scripts these packages need.
 
 ## [0.5.0] — 2026-06-10
 

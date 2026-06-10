@@ -6,3 +6,12 @@ packages:
 # every resolution to the patched line.
 overrides:
   postcss: ^8.5.10
+
+# pnpm 10+ skips install/postinstall scripts by default. These are trusted
+# build steps (native binary downloads/compilation) required for Next.js
+# image optimization (sharp), bundling (esbuild), and module resolution
+# (unrs-resolver) to work correctly.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver
