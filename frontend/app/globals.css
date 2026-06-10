@@ -5,6 +5,7 @@
 
 :root {
   /* Dark-first design – app always renders in dark mode */
+  color-scheme: dark;
   --background: #0d0f14;
   --foreground: #e2e8f0;
   --card: #13161d;
