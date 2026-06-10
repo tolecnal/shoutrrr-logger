@@ -28,11 +28,19 @@ class AccessTokenRepository:
         )
         return result.scalars().all()
 
-    async def list_active(self, session: AsyncSession) -> Sequence[AccessToken]:
+    async def get_by_hash(self, session: AsyncSession, token_hash: str) -> AccessToken | None:
+        """Look up an active token by its (deterministic) hash.
+
+        Backed by the unique ``ix_access_tokens_token_hash`` index, so this is
+        an O(1) lookup regardless of how many tokens exist.
+        """
         result = await session.execute(
-            select(AccessToken).where(AccessToken.is_active == True)  # noqa: E712
+            select(AccessToken).where(
+                AccessToken.token_hash == token_hash,
+                AccessToken.is_active == True,  # noqa: E712
+            )
         )
-        return result.scalars().all()
+        return result.scalar_one_or_none()
 
     async def add(self, session: AsyncSession, token: AccessToken) -> AccessToken:
         session.add(token)

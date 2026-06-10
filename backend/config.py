@@ -7,6 +7,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/shoutrrr_logger"
 
+    # SQLAlchemy async engine connection pool, *per worker process*. With
+    # gunicorn's `-w WORKERS`, each worker gets its own pool, so the total
+    # connections this app can open is roughly:
+    #   WORKERS * (db_pool_size + db_max_overflow)
+    # Keep that comfortably under PostgreSQL's `max_connections` (default 100).
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
+
     # OpenID Connect
     oidc_discovery_url: str = "http://localhost:8080/realms/master/.well-known/openid-configuration"
     oidc_client_id: str = "shoutrrr-logger"

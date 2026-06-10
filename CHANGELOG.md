@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Automatic retention for API performance metrics and audit logs**, alongside the existing notification retention sweep. New settings `api_metrics_retention_days` (default 30) and `audit_log_retention_days` (default 365), configurable from **Admin → Settings**; set either to `0` to keep records forever.
+
+### Changed
+
+- **Database performance review**: indexing and query fixes for ingestion under load and large data volumes.
+  - Bearer-token verification (`POST /api/v1/shoutrrr` and other token-authenticated endpoints) now does an O(1) indexed lookup by `token_hash` instead of loading every active token and comparing hashes one by one. New unique index `ix_access_tokens_token_hash`.
+  - Notification search (`message`/`title`/`sender_name` `ILIKE` filter) now has trigram (`pg_trgm`) GIN indexes on all three columns (`ix_notifications_title_gin`, `ix_notifications_sender_name_gin`), matching the existing `message` index, so searches on large tables avoid sequential scans.
+  - `GET /api/v1/admin/stats` "top senders" now respects the configured stats window instead of scanning the entire `notifications` table unfiltered.
+  - New composite index `ix_access_tokens_user_global` on `(user_id, is_global)` speeds up per-user token listing/limit checks.
+  - Removed a redundant duplicate unique index on `users.sub` (`uq_users_sub`), keeping a single unique index (`ix_users_sub`).
+  - All changes applied automatically via idempotent `CREATE INDEX IF NOT EXISTS` / `DROP CONSTRAINT IF EXISTS` statements in `init_db()`.
+- **Cursor (keyset) pagination** for `GET /api/v1/notifications` and `GET /api/v1/admin/audit-logs`, replacing `OFFSET`-based pagination so deep pages on large tables stay an indexed range scan instead of an ever-growing skip.
+  - **Breaking API change**: both endpoints now accept an opaque `cursor` query parameter instead of `page`, and return `{ items, total, page_size, pages, next_cursor }` instead of `{ items, total, page, page_size, pages }`. Pass the previous response's `next_cursor` to fetch the next page; `next_cursor` is `null` on the last page.
+  - The notification log and admin audit log UIs now use Prev/Next cursor-based navigation.
+- **Configurable database connection pool**: new `DB_POOL_SIZE` (default `5`) and `DB_MAX_OVERFLOW` (default `5`) environment variables control the SQLAlchemy async engine pool size per worker process (previously hardcoded to 10/20). Total connections to PostgreSQL are approximately `WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW)`.
+
+---
+
 ## [0.4.0] — 2026-06-10
 
 ### Added

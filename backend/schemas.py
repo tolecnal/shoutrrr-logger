@@ -13,12 +13,20 @@ from models import UserRole
 # ---------------------------------------------------------------------------
 # Pagination
 # ---------------------------------------------------------------------------
-class PaginatedResponse[T](BaseModel):
+class CursorPage[T](BaseModel):
+    """Keyset/cursor-paginated response, newest first.
+
+    ``total``/``pages`` are informational (for "X total" / "page N of M"
+    display); navigation is driven by ``next_cursor`` — pass it back as the
+    ``cursor`` query parameter to fetch the next page. ``next_cursor`` is
+    ``None`` on the last page.
+    """
+
     items: list[T]
     total: int
-    page: int
     page_size: int
     pages: int
+    next_cursor: str | None = None
 
 
 # ---------------------------------------------------------------------------

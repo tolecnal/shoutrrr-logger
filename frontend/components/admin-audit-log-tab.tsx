@@ -48,17 +48,35 @@ function targetLabel(entry: AuditLogOut): string {
 }
 
 export function AuditLogTab() {
-  const [page, setPage] = useState(1);
+  // Keyset pagination: cursorStack[pageIndex] is the cursor for the current
+  // page (cursorStack[0] is always null = first page). Moving "next" appends
+  // the response's next_cursor; moving "prev" just steps back through what
+  // we've already visited.
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [action, setAction] = useState<string | undefined>(undefined);
   const [details, setDetails] = useState<AuditLogOut | null>(null);
 
   const { formatTimestamp } = usePreferences();
 
-  const { data, isLoading } = useSWR(auditLogsKey(page, PAGE_SIZE, action), fetchAuditLogs);
+  const cursor = cursorStack[pageIndex];
+  const { data, isLoading } = useSWR(auditLogsKey(cursor, PAGE_SIZE, action), fetchAuditLogs);
 
   const handleActionChange = (value: string) => {
     setAction(value === "__all" ? undefined : value);
-    setPage(1);
+    setCursorStack([null]);
+    setPageIndex(0);
+  };
+
+  const handlePrev = () => setPageIndex((p) => Math.max(0, p - 1));
+
+  const handleNext = () => {
+    const next = data?.next_cursor;
+    if (!next) return;
+    setCursorStack((prev) =>
+      pageIndex === prev.length - 1 ? [...prev, next] : prev
+    );
+    setPageIndex((p) => p + 1);
   };
 
   return (
@@ -155,14 +173,14 @@ export function AuditLogTab() {
 
       {data && data.pages > 1 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Page {data.page} of {data.pages}</span>
+          <span>Page {pageIndex + 1} of {data.pages}</span>
           <div className="flex items-center gap-1">
             <Button
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              disabled={pageIndex <= 0}
+              onClick={handlePrev}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
@@ -170,8 +188,8 @@ export function AuditLogTab() {
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0"
-              disabled={page >= data.pages}
-              onClick={() => setPage((p) => p + 1)}
+              disabled={!data.next_cursor}
+              onClick={handleNext}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>

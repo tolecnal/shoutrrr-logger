@@ -3,7 +3,7 @@
 import math
 import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Request
@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import AuditLog, User
 from repositories.audit_logs import AuditLogRepository, audit_log_repository
-from schemas import AuditLogOut, PaginatedResponse
+from schemas import AuditLogOut, CursorPage
 
 
 class AuditAction:
@@ -88,25 +88,29 @@ class AuditLogService:
         actor_user_id: uuid.UUID | None = None,
         after: datetime | None = None,
         before: datetime | None = None,
-        page: int,
+        cursor: str | None = None,
         page_size: int,
-    ) -> PaginatedResponse[AuditLogOut]:
-        rows, total = await self._repo.search_paginated(
+    ) -> CursorPage[AuditLogOut]:
+        rows, total, next_cursor = await self._repo.search_paginated(
             session,
             action=action,
             actor_user_id=actor_user_id,
             after=after,
             before=before,
-            page=page,
+            cursor=cursor,
             page_size=page_size,
         )
-        return PaginatedResponse(
+        return CursorPage(
             items=[AuditLogOut.model_validate(r) for r in rows],
             total=total,
-            page=page,
             page_size=page_size,
             pages=max(1, math.ceil(total / page_size)),
+            next_cursor=next_cursor,
         )
+
+    async def purge_old(self, session: AsyncSession, *, retention_days: int) -> int:
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+        return await self._repo.delete_older_than(session, cutoff)
 
 
 audit_log_service = AuditLogService()

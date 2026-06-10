@@ -6,40 +6,44 @@ import { notificationsKey, auditLogsKey, updateToken, settingsToMap } from "@/li
 // ---------------------------------------------------------------------------
 
 describe("notificationsKey", () => {
-  it("includes page and page_size", () => {
-    const key = notificationsKey(1, "");
-    expect(key).toContain("page=1");
+  it("includes page_size", () => {
+    const key = notificationsKey(null, "");
     expect(key).toContain("page_size=20");
   });
 
-  it("uses default page_size of 20", () => {
-    expect(notificationsKey(2, "")).toContain("page_size=20");
+  it("does not include cursor when null", () => {
+    expect(notificationsKey(null, "")).not.toContain("cursor=");
+  });
+
+  it("includes url-encoded cursor when provided", () => {
+    const key = notificationsKey("abc==", "");
+    expect(key).toContain("cursor=abc%3D%3D");
   });
 
   it("accepts a custom page_size", () => {
-    expect(notificationsKey(1, "", 50)).toContain("page_size=50");
+    expect(notificationsKey(null, "", 50)).toContain("page_size=50");
   });
 
   it("does not include q param when query is empty string", () => {
-    const key = notificationsKey(1, "");
+    const key = notificationsKey(null, "");
     expect(key).not.toContain("&q=");
   });
 
   it("includes url-encoded q param when query is provided", () => {
-    const key = notificationsKey(1, "docker error");
+    const key = notificationsKey(null, "docker error");
     expect(key).toContain("q=docker%20error");
   });
 
-  it("produces keys that differ by page", () => {
-    expect(notificationsKey(1, "")).not.toBe(notificationsKey(2, ""));
+  it("produces keys that differ by cursor", () => {
+    expect(notificationsKey(null, "")).not.toBe(notificationsKey("abc==", ""));
   });
 
   it("produces keys that differ by search term", () => {
-    expect(notificationsKey(1, "foo")).not.toBe(notificationsKey(1, "bar"));
+    expect(notificationsKey(null, "foo")).not.toBe(notificationsKey(null, "bar"));
   });
 
   it("starts with /notifications path segment", () => {
-    expect(notificationsKey(1, "")).toMatch(/^\/notifications/);
+    expect(notificationsKey(null, "")).toMatch(/^\/notifications/);
   });
 });
 
@@ -48,35 +52,39 @@ describe("notificationsKey", () => {
 // ---------------------------------------------------------------------------
 
 describe("auditLogsKey", () => {
-  it("includes page and page_size", () => {
-    const key = auditLogsKey(1, 20);
-    expect(key).toContain("page=1");
+  it("includes page_size", () => {
+    const key = auditLogsKey(null, 20);
     expect(key).toContain("page_size=20");
   });
 
-  it("uses default page_size of 20", () => {
-    expect(auditLogsKey(2)).toContain("page_size=20");
+  it("does not include cursor when null", () => {
+    expect(auditLogsKey(null, 20)).not.toContain("cursor=");
+  });
+
+  it("includes url-encoded cursor when provided", () => {
+    const key = auditLogsKey("abc==", 20);
+    expect(key).toContain("cursor=abc%3D%3D");
   });
 
   it("does not include action param when not provided", () => {
-    expect(auditLogsKey(1)).not.toContain("action=");
+    expect(auditLogsKey(null)).not.toContain("action=");
   });
 
   it("includes url-encoded action param when provided", () => {
-    const key = auditLogsKey(1, 20, "settings.update");
+    const key = auditLogsKey(null, 20, "settings.update");
     expect(key).toContain("action=settings.update");
   });
 
-  it("produces keys that differ by page", () => {
-    expect(auditLogsKey(1)).not.toBe(auditLogsKey(2));
+  it("produces keys that differ by cursor", () => {
+    expect(auditLogsKey(null)).not.toBe(auditLogsKey("abc=="));
   });
 
   it("produces keys that differ by action filter", () => {
-    expect(auditLogsKey(1, 20, "user.create")).not.toBe(auditLogsKey(1, 20, "token.create"));
+    expect(auditLogsKey(null, 20, "user.create")).not.toBe(auditLogsKey(null, 20, "token.create"));
   });
 
   it("starts with /admin/audit-logs path segment", () => {
-    expect(auditLogsKey(1)).toMatch(/^\/admin\/audit-logs/);
+    expect(auditLogsKey(null)).toMatch(/^\/admin\/audit-logs/);
   });
 });
 
@@ -174,11 +182,11 @@ describe("apiFetch error handling", () => {
     } as unknown as Response);
 
     const { fetchNotifications } = await import("@/lib/api");
-    await expect(fetchNotifications("/notifications?page=1&page_size=20")).rejects.toThrow();
+    await expect(fetchNotifications("/notifications?page_size=20")).rejects.toThrow();
   });
 
   it("resolves when response is ok", async () => {
-    const mockPayload = { items: [], total: 0, page: 1, page_size: 20, pages: 1 };
+    const mockPayload = { items: [], total: 0, page_size: 20, pages: 1, next_cursor: null };
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -186,7 +194,7 @@ describe("apiFetch error handling", () => {
     } as unknown as Response);
 
     const { fetchNotifications } = await import("@/lib/api");
-    const result = await fetchNotifications("/notifications?page=1&page_size=20");
+    const result = await fetchNotifications("/notifications?page_size=20");
     expect(result.total).toBe(0);
     expect(result.items).toEqual([]);
   });

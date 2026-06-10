@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_viewer
 from database import get_db
 from models import User, UserRole
-from schemas import NotificationOut, NotificationStats, PaginatedResponse
+from schemas import CursorPage, NotificationOut, NotificationStats
 from services.notifications import notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -63,13 +63,15 @@ async def export_notifications(
 
 @router.get(
     "",
-    response_model=PaginatedResponse[NotificationOut],
+    response_model=CursorPage[NotificationOut],
     summary="List notifications",
-    description="Returns paginated notifications, newest first. Supports full-text search via the `q` parameter.",
+    description="Returns cursor-paginated notifications, newest first. Supports full-text search via the `q` parameter.",
 )
 async def list_notifications(
     q: str | None = Query(None, description="Search query – matches title and message"),
-    page: int = Query(1, ge=1),
+    cursor: str | None = Query(
+        None, description="Opaque cursor from a previous response's `next_cursor`"
+    ),
     page_size: int = Query(PAGE_SIZE, ge=1, le=100),
     after: datetime | None = Query(
         None, description="Only return notifications received after this datetime (ISO 8601)"
@@ -84,11 +86,11 @@ async def list_notifications(
     ),
     user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
-) -> PaginatedResponse[NotificationOut]:
+) -> CursorPage[NotificationOut]:
     return await notification_service.list_notifications(
         db,
         query=q,
-        page=page,
+        cursor=cursor,
         page_size=page_size,
         after=after,
         before=before,

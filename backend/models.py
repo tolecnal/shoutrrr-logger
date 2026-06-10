@@ -12,7 +12,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -35,6 +34,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # unique=True + index=True together produce a single unique index (ix_users_sub)
     sub: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -51,8 +51,6 @@ class User(Base):
     access_tokens: Mapped[list["AccessToken"]] = relationship(
         "AccessToken", back_populates="user", cascade="all, delete-orphan"
     )
-
-    __table_args__ = (UniqueConstraint("sub", name="uq_users_sub"),)
 
 
 class AccessToken(Base):
@@ -83,6 +81,13 @@ class AccessToken(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="access_tokens")
 
+    __table_args__ = (
+        # token_hash is a deterministic SHA-256 digest, so bearer-token auth can
+        # do a direct indexed lookup instead of scanning every active token.
+        Index("ix_access_tokens_token_hash", "token_hash", unique=True),
+        Index("ix_access_tokens_user_global", "user_id", "is_global"),
+    )
+
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -110,6 +115,18 @@ class Notification(Base):
             "message",
             postgresql_using="gin",
             postgresql_ops={"message": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_notifications_title_gin",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_notifications_sender_name_gin",
+            "sender_name",
+            postgresql_using="gin",
+            postgresql_ops={"sender_name": "gin_trgm_ops"},
         ),
     )
 

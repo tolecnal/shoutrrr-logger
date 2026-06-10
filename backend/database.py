@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 engine = create_async_engine(
     settings.database_url,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
     pool_pre_ping=True,
     echo=False,
     # Disable SSL for connections to a local/private postgres instance.
@@ -70,6 +70,43 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                     sqlalchemy.text(
                         "CREATE INDEX IF NOT EXISTS ix_notifications_token_received "
                         "ON notifications (token_id, received_at)"
+                    )
+                )
+                # users.sub previously had both a UniqueConstraint (uq_users_sub) and a
+                # unique index (ix_users_sub) — drop the redundant constraint, keeping
+                # the single unique index.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS uq_users_sub"
+                    )
+                )
+                # token_hash is a deterministic hash, so bearer-token auth can look it
+                # up directly instead of scanning every active token.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_access_tokens_token_hash "
+                        "ON access_tokens (token_hash)"
+                    )
+                )
+                # Composite index for per-user token listing/limit checks.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE INDEX IF NOT EXISTS ix_access_tokens_user_global "
+                        "ON access_tokens (user_id, is_global)"
+                    )
+                )
+                # Trigram indexes so ILIKE search on title/sender_name (alongside
+                # message) can use an index instead of a sequential scan.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE INDEX IF NOT EXISTS ix_notifications_title_gin "
+                        "ON notifications USING gin (title gin_trgm_ops)"
+                    )
+                )
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE INDEX IF NOT EXISTS ix_notifications_sender_name_gin "
+                        "ON notifications USING gin (sender_name gin_trgm_ops)"
                     )
                 )
             logger.info("Database initialised successfully.")

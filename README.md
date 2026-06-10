@@ -124,6 +124,8 @@ All variables are read from `.env` (or from the process environment). The `.env.
 | `OIDC_ROLE_VIEWER` | no | `viewer` | The role string that grants read-only access. |
 | `OIDC_ROLE_ADMIN` | no | `admin` | The role string that grants full admin access. |
 | `WORKERS` | no | `4` | Number of Gunicorn/Uvicorn worker processes. |
+| `DB_POOL_SIZE` | no | `5` | SQLAlchemy connection pool size, *per worker*. Total connections ≈ `WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW)` — keep this under PostgreSQL's `max_connections` (default 100). |
+| `DB_MAX_OVERFLOW` | no | `5` | Extra burst connections allowed beyond `DB_POOL_SIZE`, per worker. |
 | `BACKEND_URL` | no | `http://localhost:9000` | Internal URL the Next.js server uses to reach FastAPI. Only change this if you run the two as separate services. |
 
 ---

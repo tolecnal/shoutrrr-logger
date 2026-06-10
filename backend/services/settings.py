@@ -78,6 +78,24 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         max_value=10000,
         unit="per minute",
     ),
+    SettingMeta(
+        key="api_metrics_retention_days",
+        label="API metrics retention",
+        description="Automatically delete API performance metric records older than this many days. Set to 0 to keep all records forever.",
+        default=30,
+        min_value=0,
+        max_value=3650,
+        unit="days",
+    ),
+    SettingMeta(
+        key="audit_log_retention_days",
+        label="Audit log retention",
+        description="Automatically delete audit log entries older than this many days. Set to 0 to keep all entries forever.",
+        default=365,
+        min_value=0,
+        max_value=3650,
+        unit="days",
+    ),
 ]
 
 _META_BY_KEY: dict[str, SettingMeta] = {s.key: s for s in KNOWN_SETTINGS}

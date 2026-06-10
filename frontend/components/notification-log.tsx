@@ -94,7 +94,12 @@ function customFieldValue(n: NotificationOut, key: string): string | null {
 }
 
 export function NotificationLog() {
-  const [serverPage, setServerPage] = useState(1);
+  // Keyset pagination: cursorStack[pageIndex] is the cursor for the current
+  // server page (cursorStack[0] is always null = first page). Moving forward
+  // appends the response's next_cursor; moving back just steps through what
+  // we've already visited.
+  const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [clientPage, setClientPage] = useState(1);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -133,7 +138,7 @@ export function NotificationLog() {
   // When filters are active we fetch a large page so client-side filtering
   // has enough raw material. When filters are off, use normal server pagination.
   const fetchSize = filtersActive ? FILTERED_FETCH_SIZE : pageSize;
-  const fetchPage = filtersActive ? serverPage : serverPage;
+  const cursor = cursorStack[pageIndex];
 
   // Resolve the currently selected time range to ISO strings. Depends on
   // refreshNonce so clicking Refresh slides the preset window to "now".
@@ -145,8 +150,8 @@ export function NotificationLog() {
   );
 
   const swrKey = useMemo(
-    () => notificationsKey(fetchPage, query, fetchSize, timeAfter, timeBefore, scope),
-    [fetchPage, query, fetchSize, timeAfter, timeBefore, scope]
+    () => notificationsKey(cursor, query, fetchSize, timeAfter, timeBefore, scope),
+    [cursor, query, fetchSize, timeAfter, timeBefore, scope]
   );
 
   const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
@@ -218,58 +223,70 @@ export function NotificationLog() {
   // Pagination metadata shown in the UI
   // When filters are active: client-side page over filtered results + a
   // "load more from server" button when we've exhausted the current fetch.
-  const displayPage = filtersActive ? clientPage : data?.page ?? 1;
+  const displayPage = filtersActive ? clientPage : pageIndex + 1;
   const displayPages = filtersActive
     ? clientPageCount
     : data?.pages ?? 1;
   const displayTotal = filtersActive ? groupFilteredItems.length : data?.total ?? 0;
   // True when filters are active, we've consumed all locally-fetched items,
-  // and the server has more pages.
+  // and the server has more rows beyond the current fetch.
   const serverHasMore =
     filtersActive &&
     clientPage >= clientPageCount &&
     data != null &&
-    serverPage < data.pages;
+    !!data.next_cursor;
+
+  // Reset to the first page (drops any visited cursors).
+  const resetPagination = useCallback(() => {
+    setCursorStack([null]);
+    setPageIndex(0);
+    setClientPage(1);
+  }, []);
+
+  // Advance to the next server page, appending the current response's
+  // next_cursor to the stack if we haven't visited it yet.
+  const advanceServerPage = useCallback(() => {
+    const next = data?.next_cursor;
+    if (!next) return;
+    setCursorStack((prev) => (pageIndex === prev.length - 1 ? [...prev, next] : prev));
+    setPageIndex((p) => p + 1);
+  }, [data, pageIndex]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      setServerPage(1);
-      setClientPage(1);
+      resetPagination();
       setQuery(search.trim());
     },
-    [search]
+    [search, resetPagination]
   );
 
   const handleScopeChange = useCallback((s: "all" | "global" | "mine") => {
     setScope(s);
-    setServerPage(1);
-    setClientPage(1);
-  }, []);
+    resetPagination();
+  }, [resetPagination]);
 
   const handleTimeRangeChange = useCallback((preset: Preset) => {
     setTimeRange(preset);
-    setServerPage(1);
-    setClientPage(1);
-  }, []);
+    resetPagination();
+  }, [resetPagination]);
 
   const handleClearSearch = () => {
     setSearch("");
     setQuery("");
-    setServerPage(1);
-    setClientPage(1);
+    resetPagination();
   };
 
   const handlePrev = () => {
     if (filtersActive) {
       if (clientPage > 1) {
         setClientPage((p) => p - 1);
-      } else if (serverPage > 1) {
-        setServerPage((p) => p - 1);
+      } else if (pageIndex > 0) {
+        setPageIndex((p) => p - 1);
         setClientPage(1);
       }
     } else {
-      setServerPage((p) => Math.max(1, p - 1));
+      setPageIndex((p) => Math.max(0, p - 1));
     }
   };
 
@@ -279,20 +296,20 @@ export function NotificationLog() {
         setClientPage((p) => p + 1);
       } else if (serverHasMore) {
         // Fetch the next server page; reset client page to 1 within new fetch
-        setServerPage((p) => p + 1);
+        advanceServerPage();
         setClientPage(1);
       }
     } else {
-      setServerPage((p) => p + 1);
+      advanceServerPage();
     }
   };
 
   const canGoPrev = filtersActive
-    ? clientPage > 1 || serverPage > 1
-    : serverPage > 1;
+    ? clientPage > 1 || pageIndex > 0
+    : pageIndex > 0;
   const canGoNext = filtersActive
     ? clientPage < clientPageCount || serverHasMore
-    : serverPage < (data?.pages ?? 1);
+    : !!data?.next_cursor;
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -533,8 +550,7 @@ export function NotificationLog() {
             onCustomChange={(after, before) => {
               setCustomAfter(after);
               setCustomBefore(before);
-              setServerPage(1);
-              setClientPage(1);
+              resetPagination();
             }}
           />
 
@@ -547,8 +563,7 @@ export function NotificationLog() {
               onFieldChange={(next) => {
                 setGroupField(next);
                 setGroupValues(new Set());
-                setServerPage(1);
-                setClientPage(1);
+                resetPagination();
               }}
               onToggleValue={(value) => {
                 setGroupValues((prev) => {
@@ -601,7 +616,7 @@ export function NotificationLog() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => { setServerPage((p) => p + 1); setClientPage(1); }}
+                  onClick={() => { advanceServerPage(); setClientPage(1); }}
                 >
                   Load more from server
                 </Button>

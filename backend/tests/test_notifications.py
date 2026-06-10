@@ -36,13 +36,14 @@ class TestListNotifications:
         assert data["total"] == 0
         assert data["items"] == []
         assert data["pages"] == 1
+        assert data["next_cursor"] is None
 
     async def test_pagination_page_size(self, client, viewer_session_headers, db, access_token):
         _, tok = access_token
         await _seed(db, tok.id, 25)
         resp = await client.get(
             "/api/v1/notifications",
-            params={"page": 1, "page_size": 10},
+            params={"page_size": 10},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 200
@@ -50,18 +51,43 @@ class TestListNotifications:
         assert data["total"] == 25
         assert len(data["items"]) == 10
         assert data["pages"] == 3
+        assert data["next_cursor"] is not None
 
-    async def test_second_page(self, client, viewer_session_headers, db, access_token):
+    async def test_second_page_via_cursor(self, client, viewer_session_headers, db, access_token):
         _, tok = access_token
         await _seed(db, tok.id, 5)
         resp = await client.get(
             "/api/v1/notifications",
-            params={"page": 2, "page_size": 3},
+            params={"page_size": 3},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data["items"]) == 2  # 5 total, 3 on page 1 → 2 on page 2
+        assert len(data["items"]) == 3
+        assert data["next_cursor"] is not None
+
+        resp2 = await client.get(
+            "/api/v1/notifications",
+            params={"page_size": 3, "cursor": data["next_cursor"]},
+            headers=viewer_session_headers,
+        )
+        assert resp2.status_code == 200
+        data2 = resp2.json()
+        assert len(data2["items"]) == 2  # 5 total, 3 on page 1 → 2 on page 2
+        assert data2["next_cursor"] is None
+
+        # No overlap between the two pages.
+        ids1 = {n["id"] for n in data["items"]}
+        ids2 = {n["id"] for n in data2["items"]}
+        assert ids1.isdisjoint(ids2)
+
+    async def test_invalid_cursor_returns_400(self, client, viewer_session_headers):
+        resp = await client.get(
+            "/api/v1/notifications",
+            params={"cursor": "not-a-valid-cursor"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 400
 
     async def test_search_matches_message(self, client, viewer_session_headers, db, access_token):
         _, tok = access_token

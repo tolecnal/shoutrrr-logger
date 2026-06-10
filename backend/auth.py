@@ -191,19 +191,12 @@ async def verify_bearer_access_token(
 
     now = datetime.now(UTC)
 
-    # Load all active, non-expired tokens and verify against the hash.
-    # We intentionally avoid a DB-side plaintext comparison for security.
-    tokens = await access_token_repository.list_active(db)
+    # token_hash is a deterministic SHA-256 digest, so we can look up the
+    # matching active token directly via its unique index instead of loading
+    # every active token and comparing hashes one by one.
+    matched = await access_token_repository.get_by_hash(db, hash_token(raw))
 
-    matched: AccessToken | None = None
-    for tok in tokens:
-        if tok.expires_at and tok.expires_at < now:
-            continue
-        if verify_token(raw, tok.token_hash):
-            matched = tok
-            break
-
-    if matched is None:
+    if matched is None or (matched.expires_at and matched.expires_at < now):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
         )

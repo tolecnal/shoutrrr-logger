@@ -8,6 +8,7 @@ from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import AccessToken, Notification
+from repositories.cursor import decode_cursor, encode_cursor
 
 
 class NotificationRepository:
@@ -29,19 +30,24 @@ class NotificationRepository:
         session: AsyncSession,
         *,
         query: str | None,
-        page: int,
+        cursor: str | None,
         page_size: int,
         after: datetime | None = None,
         before: datetime | None = None,
         scope: str = "all",
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
-    ) -> tuple[Sequence[Notification], int]:
-        """Return ``(rows, total)`` for a search-and-paginate query, newest first.
+    ) -> tuple[Sequence[Notification], int, str | None]:
+        """Return ``(rows, total, next_cursor)`` for a search-and-paginate query, newest first.
 
         scope="all"    admin → everything; viewer → global + own private
         scope="global" → notifications from global tokens (or orphaned)
         scope="mine"   → notifications from the caller's own private tokens
+
+        Pagination is keyset-based: ``cursor`` (if given) is the opaque
+        ``(received_at, id)`` of the last row of the previous page, decoded
+        and applied as a ``WHERE`` filter instead of an ``OFFSET`` so deep
+        pagination stays an indexed range scan.
         """
         base_query = select(Notification)
 
@@ -97,12 +103,34 @@ class NotificationRepository:
         count_query = select(func.count()).select_from(base_query.subquery())
         total: int = (await session.execute(count_query)).scalar_one()
 
+        if cursor:
+            cursor_ts, cursor_id = decode_cursor(cursor)
+            base_query = base_query.where(
+                or_(
+                    Notification.received_at < cursor_ts,
+                    and_(
+                        Notification.received_at == cursor_ts,
+                        Notification.id < cursor_id,
+                    ),
+                )
+            )
+
+        # Fetch one extra row to detect whether a next page exists, without
+        # a second query.
         result = await session.execute(
-            base_query.order_by(Notification.received_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            base_query.order_by(Notification.received_at.desc(), Notification.id.desc()).limit(
+                page_size + 1
+            )
         )
-        return result.scalars().all(), total
+        rows = list(result.scalars().all())
+
+        next_cursor: str | None = None
+        if len(rows) > page_size:
+            rows = rows[:page_size]
+            last = rows[-1]
+            next_cursor = encode_cursor(last.received_at, last.id)
+
+        return rows, total, next_cursor
 
     async def add(self, session: AsyncSession, notification: Notification) -> Notification:
         session.add(notification)
@@ -205,6 +233,7 @@ class NotificationRepository:
                     Notification.sender_name,
                     func.count(Notification.id).label("count"),
                 )
+                .where(Notification.received_at >= since)
                 .group_by(Notification.sender_name)
                 .order_by(func.count(Notification.id).desc())
                 .limit(10)

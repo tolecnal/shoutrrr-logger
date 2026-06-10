@@ -115,12 +115,15 @@ export interface ApiPerformanceStats {
   window_hours: number;
 }
 
-export interface PaginatedResponse<T> {
+// Keyset/cursor-paginated response, newest first. `total`/`pages` are
+// informational; navigation is driven by `next_cursor` — pass it back as the
+// `cursor` query parameter to fetch the next page. `null` on the last page.
+export interface CursorPage<T> {
   items: T[];
   total: number;
-  page: number;
   page_size: number;
   pages: number;
+  next_cursor: string | null;
 }
 
 export interface AccessTokenOut {

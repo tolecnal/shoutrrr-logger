@@ -1,5 +1,7 @@
 """Business logic for API performance metrics."""
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repositories.api_metrics import ApiMetricRepository, api_metric_repository
@@ -47,6 +49,10 @@ class ApiMetricService:
             "by_hour": by_hour,
             "window_hours": window_hours,
         }
+
+    async def purge_old(self, session: AsyncSession, *, retention_days: int) -> int:
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+        return await self._repo.delete_older_than(session, cutoff)
 
 
 api_metric_service = ApiMetricService()

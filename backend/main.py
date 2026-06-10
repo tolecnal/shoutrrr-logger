@@ -32,6 +32,8 @@ from plugins import registry as plugin_registry
 from routers import api_metrics, audit_logs, me, notifications, plugins, shoutrrr, tokens, users
 from routers import settings as settings_router
 from schemas import OIDCCallbackResponse, UserOut
+from services.api_metrics import api_metric_service
+from services.audit_logs import audit_log_service
 from services.notifications import notification_service
 from services.settings import settings_service
 from services.users import user_service
@@ -41,7 +43,8 @@ logger = logging.getLogger(__name__)
 
 
 async def _retention_loop() -> None:
-    """Background task: purge old notifications once per hour using the DB retention setting."""
+    """Background task: purge old notifications, API metric logs, and audit logs
+    once per hour using their respective DB retention settings."""
     from database import engine  # noqa: PLC0415
 
     while True:
@@ -50,16 +53,47 @@ async def _retention_loop() -> None:
             session_factory = async_sessionmaker(engine, expire_on_commit=False)
             async with session_factory() as session:
                 retention_days = await settings_service.get_int(session, "retention_days")
-                if retention_days <= 0:
-                    continue
-                count = await notification_service.purge_old(session, retention_days=retention_days)
-                if count:
-                    await session.commit()
-                    logger.info(
-                        "Retention: purged %d notification(s) older than %d day(s)",
-                        count,
-                        retention_days,
+                if retention_days > 0:
+                    count = await notification_service.purge_old(
+                        session, retention_days=retention_days
                     )
+                    if count:
+                        await session.commit()
+                        logger.info(
+                            "Retention: purged %d notification(s) older than %d day(s)",
+                            count,
+                            retention_days,
+                        )
+
+                metrics_retention_days = await settings_service.get_int(
+                    session, "api_metrics_retention_days"
+                )
+                if metrics_retention_days > 0:
+                    count = await api_metric_service.purge_old(
+                        session, retention_days=metrics_retention_days
+                    )
+                    if count:
+                        await session.commit()
+                        logger.info(
+                            "Retention: purged %d API metric log(s) older than %d day(s)",
+                            count,
+                            metrics_retention_days,
+                        )
+
+                audit_retention_days = await settings_service.get_int(
+                    session, "audit_log_retention_days"
+                )
+                if audit_retention_days > 0:
+                    count = await audit_log_service.purge_old(
+                        session, retention_days=audit_retention_days
+                    )
+                    if count:
+                        await session.commit()
+                        logger.info(
+                            "Retention: purged %d audit log entry(ies) older than %d day(s)",
+                            count,
+                            audit_retention_days,
+                        )
         except Exception:
             logger.exception("Retention loop encountered an error")
 

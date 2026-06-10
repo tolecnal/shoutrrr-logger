@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from models import AccessToken, Notification
 from repositories.notifications import NotificationRepository, notification_repository
 from repositories.plugin_configs import PluginConfigRepository, plugin_config_repository
-from schemas import NotificationOut, NotificationStats, PaginatedResponse
+from schemas import CursorPage, NotificationOut, NotificationStats
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +33,18 @@ class NotificationService:
         session: AsyncSession,
         *,
         query: str | None,
-        page: int,
+        cursor: str | None,
         page_size: int,
         after: datetime | None = None,
         before: datetime | None = None,
         scope: str = "all",
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
-    ) -> PaginatedResponse[NotificationOut]:
-        rows, total = await self._repo.search_paginated(
+    ) -> CursorPage[NotificationOut]:
+        rows, total, next_cursor = await self._repo.search_paginated(
             session,
             query=query,
-            page=page,
+            cursor=cursor,
             page_size=page_size,
             after=after,
             before=before,
@@ -52,12 +52,12 @@ class NotificationService:
             user_id=user_id,
             is_admin=is_admin,
         )
-        return PaginatedResponse(
+        return CursorPage(
             items=[NotificationOut.model_validate(r) for r in rows],
             total=total,
-            page=page,
             page_size=page_size,
             pages=max(1, math.ceil(total / page_size)),
+            next_cursor=next_cursor,
         )
 
     async def get_notification(

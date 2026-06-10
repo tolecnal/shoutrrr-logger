@@ -287,16 +287,26 @@ class TestListAuditLogs:
 
         resp = await client.get(
             "/api/v1/admin/audit-logs",
-            params={"action": "token.create", "page": 1, "page_size": 2},
+            params={"action": "token.create", "page_size": 2},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
         body = resp.json()
         assert len(body["items"]) == 2
         assert body["total"] == 3
-        assert body["page"] == 1
         assert body["page_size"] == 2
         assert body["pages"] == 2
+        assert body["next_cursor"] is not None
+
+        resp2 = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "token.create", "page_size": 2, "cursor": body["next_cursor"]},
+            headers=admin_session_headers,
+        )
+        assert resp2.status_code == 200
+        body2 = resp2.json()
+        assert len(body2["items"]) == 1
+        assert body2["next_cursor"] is None
 
     async def test_action_filter(self, client, admin_session_headers, extra_global_token):
         _, tok = extra_global_token

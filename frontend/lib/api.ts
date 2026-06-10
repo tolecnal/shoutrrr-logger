@@ -4,9 +4,9 @@ import type {
   ApiPerformanceStats,
   AppSettings,
   AuditLogOut,
+  CursorPage,
   NotificationOut,
   NotificationStats,
-  PaginatedResponse,
   PluginMeta,
   SettingOut,
   UserOut,
@@ -55,14 +55,15 @@ export const fetchVersion = () =>
 
 // ---- Notifications ----
 export function notificationsKey(
-  page: number,
+  cursor: string | null,
   q: string,
   pageSize = 20,
   after?: string,
   before?: string,
   scope?: string,
 ) {
-  let url = `/notifications?page=${page}&page_size=${pageSize}`;
+  let url = `/notifications?page_size=${pageSize}`;
+  if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
   if (q) url += `&q=${encodeURIComponent(q)}`;
   if (after) url += `&after=${encodeURIComponent(after)}`;
   if (before) url += `&before=${encodeURIComponent(before)}`;
@@ -72,7 +73,7 @@ export function notificationsKey(
 // notificationsKey returns a path relative to BASE (e.g. "/notifications?...")
 // so we pass it directly to apiFetch without any stripping needed.
 export const fetchNotifications = (url: string) =>
-  apiFetch<PaginatedResponse<NotificationOut>>(url);
+  apiFetch<CursorPage<NotificationOut>>(url);
 
 export const fetchStats = (days = 30) =>
   apiFetch<NotificationStats>(`/notifications/stats?days=${days}`);
@@ -204,10 +205,11 @@ export const testPlugin = (id: string) =>
   apiFetch<{ detail: string }>(`/admin/plugins/${id}/test`, { method: "POST" });
 
 // ---- Audit Log ----
-export function auditLogsKey(page: number, pageSize = 20, action?: string) {
-  let url = `/admin/audit-logs?page=${page}&page_size=${pageSize}`;
+export function auditLogsKey(cursor: string | null, pageSize = 20, action?: string) {
+  let url = `/admin/audit-logs?page_size=${pageSize}`;
+  if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
   if (action) url += `&action=${encodeURIComponent(action)}`;
   return url;
 }
 
-export const fetchAuditLogs = (url: string) => apiFetch<PaginatedResponse<AuditLogOut>>(url);
+export const fetchAuditLogs = (url: string) => apiFetch<CursorPage<AuditLogOut>>(url);

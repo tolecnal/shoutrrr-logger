@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import ApiMetricLog
@@ -66,6 +66,10 @@ class ApiMetricRepository:
         )
         rows = (await session.execute(stmt)).mappings().all()
         return [dict(r) for r in rows]
+
+    async def delete_older_than(self, session: AsyncSession, cutoff: datetime) -> int:
+        result = await session.execute(delete(ApiMetricLog).where(ApiMetricLog.created_at < cutoff))
+        return result.rowcount  # type: ignore[return-value]
 
 
 api_metric_repository = ApiMetricRepository()

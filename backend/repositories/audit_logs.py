@@ -4,10 +4,11 @@ import uuid
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import AuditLog
+from repositories.cursor import decode_cursor, encode_cursor
 
 
 class AuditLogRepository:
@@ -25,9 +26,14 @@ class AuditLogRepository:
         actor_user_id: uuid.UUID | None = None,
         after: datetime | None = None,
         before: datetime | None = None,
-        page: int,
+        cursor: str | None = None,
         page_size: int,
-    ) -> tuple[Sequence[AuditLog], int]:
+    ) -> tuple[Sequence[AuditLog], int, str | None]:
+        """Return ``(rows, total, next_cursor)``, newest first.
+
+        Pagination is keyset-based: see
+        ``repositories.notifications.NotificationRepository.search_paginated``.
+        """
         base_query = select(AuditLog)
 
         if action:
@@ -42,12 +48,34 @@ class AuditLogRepository:
         count_query = select(func.count()).select_from(base_query.subquery())
         total: int = (await session.execute(count_query)).scalar_one()
 
+        if cursor:
+            cursor_ts, cursor_id = decode_cursor(cursor)
+            base_query = base_query.where(
+                or_(
+                    AuditLog.created_at < cursor_ts,
+                    and_(
+                        AuditLog.created_at == cursor_ts,
+                        AuditLog.id < cursor_id,
+                    ),
+                )
+            )
+
         result = await session.execute(
-            base_query.order_by(AuditLog.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            base_query.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(page_size + 1)
         )
-        return result.scalars().all(), total
+        rows = list(result.scalars().all())
+
+        next_cursor: str | None = None
+        if len(rows) > page_size:
+            rows = rows[:page_size]
+            last = rows[-1]
+            next_cursor = encode_cursor(last.created_at, last.id)
+
+        return rows, total, next_cursor
+
+    async def delete_older_than(self, session: AsyncSession, cutoff: datetime) -> int:
+        result = await session.execute(delete(AuditLog).where(AuditLog.created_at < cutoff))
+        return result.rowcount  # type: ignore[return-value]
 
 
 audit_log_repository = AuditLogRepository()
