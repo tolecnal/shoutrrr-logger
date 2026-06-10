@@ -99,7 +99,7 @@ function RuleRow({
           value={rule.color}
           onValueChange={(v) => onUpdate({ color: v as TagColor })}
         >
-          <SelectTrigger className="h-7 w-24 text-xs bg-input shrink-0">
+          <SelectTrigger className="h-7 w-28 text-xs bg-input shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
