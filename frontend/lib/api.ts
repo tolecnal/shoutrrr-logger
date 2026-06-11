@@ -96,16 +96,35 @@ export function exportNotificationsUrl(params: {
   q?: string;
   after?: string;
   before?: string;
+  scope?: string;
   format?: "csv" | "json";
 }): string {
   const sp = new URLSearchParams();
   if (params.q) sp.set("q", params.q);
   if (params.after) sp.set("after", params.after);
   if (params.before) sp.set("before", params.before);
+  if (params.scope && params.scope !== "all") sp.set("scope", params.scope);
   if (params.format && params.format !== "csv") sp.set("format", params.format);
   const qs = sp.toString();
   return `/api/v1/notifications/export${qs ? `?${qs}` : ""}`;
 }
+
+export const bulkDeleteNotifications = (params: {
+  q?: string;
+  after?: string;
+  before?: string;
+  scope?: string;
+}) => {
+  const sp = new URLSearchParams();
+  if (params.q) sp.set("q", params.q);
+  if (params.after) sp.set("after", params.after);
+  if (params.before) sp.set("before", params.before);
+  if (params.scope && params.scope !== "all") sp.set("scope", params.scope);
+  const qs = sp.toString();
+  return apiFetch<{ deleted: number }>(`/notifications${qs ? `?${qs}` : ""}`, {
+    method: "DELETE",
+  });
+};
 
 export const fetchSearchFilters = () =>
   apiFetch<NotificationSearchFilters>("/notifications/search-filters");

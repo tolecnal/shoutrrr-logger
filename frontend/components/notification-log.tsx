@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle } from "lucide-react";
-import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, settingsToMap } from "@/lib/api";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2 } from "lucide-react";
+import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
@@ -40,6 +40,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
 import { SearchAutocomplete } from "./search-autocomplete";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ---------------------------------------------------------------------------
 // Time range helpers
@@ -118,6 +130,8 @@ export function NotificationLog() {
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
 
   // Load app settings (page size, auto-refresh interval)
   const { data: settingsList } = useSWR("/settings", fetchSettings, { revalidateOnFocus: false });
@@ -293,6 +307,43 @@ export function NotificationLog() {
     [search, resetPagination]
   );
 
+  const handleClearSearch = useCallback(() => {
+    setSearch("");
+    setQuery("");
+    resetPagination();
+    if (searchInputRef.current) searchInputRef.current.focus();
+  }, [resetPagination]);
+
+  const handleBulkDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await bulkDeleteNotifications({
+        q: query || undefined,
+        after: timeAfter,
+        before: timeBefore,
+        scope: scope,
+      });
+      toast({
+        title: "Bulk Delete Successful",
+        description: `Deleted ${res.deleted} matching notifications.`,
+      });
+      // Reset view
+      setPageIndex(0);
+      setCursorStack([null]);
+      setClientPage(1);
+      mutate();
+    } catch (err: any) {
+      toast({
+        title: "Bulk Delete Failed",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleScopeChange = useCallback((s: "all" | "global" | "mine") => {
     setScope(s);
     resetPagination();
@@ -300,12 +351,6 @@ export function NotificationLog() {
 
   const handleTimeRangeChange = useCallback((preset: Preset) => {
     setTimeRange(preset);
-    resetPagination();
-  }, [resetPagination]);
-
-  const handleClearSearch = useCallback(() => {
-    setSearch("");
-    setQuery("");
     resetPagination();
   }, [resetPagination]);
 
@@ -467,6 +512,44 @@ export function NotificationLog() {
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                title="Bulk delete visible notifications"
+                disabled={isDeleting || (data?.total === 0)}
+              >
+                {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete <strong>all matching notifications</strong> from the database.
+                  <br /><br />
+                  Notifications matching your current filter: <strong>{data?.total.toLocaleString() ?? 0}</strong>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleBulkDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Delete All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -481,7 +564,7 @@ export function NotificationLog() {
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem asChild>
                 <a
-                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, format: "csv" })}
+                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, scope, format: "csv" })}
                   download="notifications.csv"
                   className="flex items-center gap-2 cursor-pointer"
                 >
@@ -491,7 +574,7 @@ export function NotificationLog() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <a
-                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, format: "json" })}
+                  href={exportNotificationsUrl({ q: query || undefined, after: timeAfter, before: timeBefore, scope, format: "json" })}
                   download="notifications.json"
                   className="flex items-center gap-2 cursor-pointer"
                 >
