@@ -33,18 +33,28 @@ _SENSITIVE_KEY_RE = re.compile(r"(token|secret|password|passwd|key|hec|auth)", r
 _REDACTED = "***REDACTED***"
 
 
-def _redact(value: Any) -> Any:
+def _redact(value: Any, *, force: bool = False) -> Any:
+    """Recursively mask sensitive values in audit log details.
+
+    A dict key matching ``_SENSITIVE_KEY_RE`` marks its entire subtree as
+    sensitive (``force=True``), so nested shapes like
+    ``{"smtp_password": {"old": "...", "new": "..."}}`` get every string
+    leaf redacted, not just a directly-matching ``key: "value"`` pair.
+    """
     if isinstance(value, dict):
-        return {
-            k: (
+        result = {}
+        for k, v in value.items():
+            key_sensitive = force or (isinstance(k, str) and bool(_SENSITIVE_KEY_RE.search(k)))
+            result[k] = (
                 _REDACTED
-                if isinstance(k, str) and isinstance(v, str) and _SENSITIVE_KEY_RE.search(k)
-                else _redact(v)
+                if key_sensitive and isinstance(v, str)
+                else _redact(v, force=key_sensitive)
             )
-            for k, v in value.items()
-        }
+        return result
     if isinstance(value, list):
-        return [_redact(v) for v in value]
+        return [_redact(v, force=force) for v in value]
+    if force and isinstance(value, str):
+        return _REDACTED
     return value
 
 

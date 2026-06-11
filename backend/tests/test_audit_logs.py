@@ -204,6 +204,28 @@ class TestSettingsAuditLog:
         )
         assert logs_resp.json()["items"] == []
 
+    async def test_smtp_password_redacted_in_audit_details(self, client, admin_session_headers):
+        """The SMTP password must never be persisted in plaintext in the
+        audit log, for either the old or new value."""
+        resp = await client.patch(
+            "/api/v1/admin/settings",
+            json={"values": {"smtp_password": "hunter2"}},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+
+        logs_resp = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "settings.update"},
+            headers=admin_session_headers,
+        )
+        entry = logs_resp.json()["items"][0]
+        assert entry["details"]["smtp_password"] == {
+            "old": "***REDACTED***",
+            "new": "***REDACTED***",
+        }
+        assert "hunter2" not in str(entry["details"])
+
     async def test_max_private_tokens_not_redacted(self, client, admin_session_headers):
         """Setting keys containing 'token' but holding non-secret integer
         values (e.g. max_private_tokens) must not be redacted."""
