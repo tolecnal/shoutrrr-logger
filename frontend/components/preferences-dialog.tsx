@@ -33,6 +33,10 @@ import {
   updateMyToken,
   fetchSettings,
   settingsToMap,
+  fetchAlertRules,
+  createAlertRule,
+  updateAlertRule,
+  deleteAlertRule
 } from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
@@ -262,6 +266,31 @@ export function PreferencesDialog() {
     setTimeout(() => setCopiedToken(false), 2000);
   };
 
+
+  const { data: alertRules, mutate: mutateAlertRules } = useSWR(
+    open ? "/alerts/rules" : null,
+    fetchAlertRules,
+    { revalidateOnFocus: false }
+  );
+
+  const handleAddAlertRule = async () => {
+    await createAlertRule({ name: "New Alert Rule", enabled: true, match_tags: [], match_severities: [] });
+    await mutateAlertRules();
+  };
+
+  const handleUpdateAlertRule = async (id: string, patch: Partial<import("@/lib/types").AlertRuleOut>) => {
+    // Optimistic update
+    mutateAlertRules(prev => prev?.map(r => r.id === id ? { ...r, ...patch } : r), false);
+    await updateAlertRule(id, patch);
+    await mutateAlertRules();
+  };
+
+  const handleDeleteAlertRule = async (id: string) => {
+    await deleteAlertRule(id);
+    await mutateAlertRules();
+  };
+
+
   const handleAddRule = () => {
     addRule({
       name: "New tag",
@@ -293,6 +322,7 @@ export function PreferencesDialog() {
           <TabsList className="flex flex-wrap bg-secondary">
             <TabsTrigger value="display" className="flex-1">Display</TabsTrigger>
             <TabsTrigger value="tags" className="flex-1">Tag Rules</TabsTrigger>
+            <TabsTrigger value="alerts" className="flex-1">Alert Rules</TabsTrigger>
             <TabsTrigger value="tokens" className="flex-1">My Tokens</TabsTrigger>
             <TabsTrigger value="plugins" className="flex-1">My Plugins</TabsTrigger>
           </TabsList>
@@ -377,6 +407,77 @@ export function PreferencesDialog() {
               ))}
             </div>
           </TabsContent>
+
+          {/* ---- Alert Rules tab ---- */}
+          <TabsContent value="alerts" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Alert rules</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Define which notifications should trigger a visual alert.
+                </p>
+              </div>
+              <Button size="sm" onClick={handleAddAlertRule} className="gap-1">
+                <Plus className="h-3.5 w-3.5" /> Add rule
+              </Button>
+            </div>
+
+            {!alertRules && <p className="text-sm text-muted-foreground py-4">Loading rules...</p>}
+            
+            {alertRules?.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No alert rules defined. Add one to receive notifications.
+              </p>
+            )}
+
+            {alertRules?.map(rule => (
+              <div key={rule.id} className="rounded-md border border-border bg-card p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1">
+                    <Switch
+                      checked={rule.enabled}
+                      onCheckedChange={(v) => handleUpdateAlertRule(rule.id, { enabled: v })}
+                    />
+                    <Input 
+                      value={rule.name} 
+                      onChange={(e) => handleUpdateAlertRule(rule.id, { name: e.target.value })}
+                      className="h-7 text-sm font-medium border-transparent hover:border-input focus:border-input bg-transparent focus:bg-background"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => handleDeleteAlertRule(rule.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-2 pl-10">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Match Severities (comma-separated)</Label>
+                    <Input 
+                      placeholder="e.g. error, critical" 
+                      value={rule.match_severities.join(", ")}
+                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_severities: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+                      className="h-8 text-xs bg-input"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs text-muted-foreground">Match Tags (comma-separated)</Label>
+                    <Input 
+                      placeholder="e.g. production, database" 
+                      value={rule.match_tags.join(", ")}
+                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_tags: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+                      className="h-8 text-xs bg-input"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
           {/* ---- My Tokens tab ---- */}
           <TabsContent value="tokens" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4">
             {/* Reveal-once raw token banner */}

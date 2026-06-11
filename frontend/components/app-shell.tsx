@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BarChart2, Bell, Info, LogIn, LogOut, Settings, User } from "lucide-react";
+import { Activity, BarChart2, Bell, Inbox, Info, LogIn, LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PreferencesDialog } from "@/components/preferences-dialog";
+import { Topbar } from "@/components/topbar";
+import useSWR from "swr";
+import { fetchAlerts } from "@/lib/api";
 
 const navItems = [
-  { href: "/log", label: "Notification Log", icon: Bell, roles: ["viewer", "admin"] },
+  { href: "/log", label: "Notification Log", icon: Inbox, roles: ["viewer", "admin"] },
   { href: "/stats", label: "Statistics", icon: BarChart2, roles: ["admin"] },
   { href: "/performance", label: "API Performance", icon: Activity, roles: ["admin"] },
   { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
@@ -28,6 +31,8 @@ const navItems = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
+  const { data: alerts } = useSWR(user ? "/alerts" : null, fetchAlerts, { refreshInterval: 10000 });
+  const unreadCount = alerts?.filter((a) => a.state === "unread").length || 0;
 
   return (
     <div className="flex min-h-screen">
@@ -127,19 +132,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Bell className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">shoutrrr-logger</span>
         </div>
-        {user ? (
-          <a href="/api/auth/logout" className="text-xs text-muted-foreground hover:text-foreground">
-            Sign out
-          </a>
-        ) : (
-          <a href="/api/auth/login" className="text-xs text-primary">
-            Sign in
-          </a>
-        )}
+        <div className="flex items-center gap-4">
+          {user && (
+            <Link href="/alerts" className="relative text-muted-foreground hover:text-foreground">
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 rounded-full bg-destructive" />}
+            </Link>
+          )}
+          {user ? (
+            <a href="/api/auth/logout" className="text-xs text-muted-foreground hover:text-foreground">
+              Sign out
+            </a>
+          ) : (
+            <a href="/api/auth/login" className="text-xs text-primary">
+              Sign in
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col min-w-0 md:pt-0 pt-12">
+      <main className="flex-1 flex flex-col min-w-0 md:pt-0 pt-12 relative">
+        {user && <Topbar />}
         {children}
       </main>
     </div>
