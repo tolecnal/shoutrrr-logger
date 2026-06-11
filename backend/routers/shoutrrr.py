@@ -22,6 +22,7 @@ from models import AccessToken
 from schemas import NotificationOut
 from services.notifications import notification_service
 from services.rate_limit import rate_limit_service
+from services.trigger_engine import run_trigger_engine
 
 logger = logging.getLogger(__name__)
 
@@ -131,5 +132,12 @@ async def receive_notification(
         notification_service.dispatch_plugins,
         notification_dict,
         str(token.user_id) if token.user_id else None,
+    )
+    background_tasks.add_task(
+        run_trigger_engine,
+        str(notification.id),
+        str(token.id),
+        message,
+        title,
     )
     return out

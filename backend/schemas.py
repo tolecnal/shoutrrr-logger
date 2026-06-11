@@ -263,18 +263,18 @@ class UserPluginUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 class SettingOut(BaseModel):
     key: str
-    value: int
+    value: Any
     label: str
     description: str
-    default: int
-    min_value: int
-    max_value: int
+    default: Any
+    min_value: Any = None
+    max_value: Any = None
     unit: str = ""
     value_type: str = "int"
 
 
 class SettingsUpdate(BaseModel):
-    values: dict[str, int]
+    values: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -352,3 +352,58 @@ class AuditLogOut(BaseModel):
 class OIDCCallbackResponse(BaseModel):
     session_token: str
     user: UserOut
+
+
+# ---------------------------------------------------------------------------
+# Alerts
+# ---------------------------------------------------------------------------
+class AlertRuleBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    match_type: str = Field(default="contains", pattern="^(exact|contains|regex)$")
+    match_pattern: str = Field(..., min_length=1)
+    match_target: str = Field(default="all", pattern="^(title|message|all)$")
+    notification_scope: str = Field(default="all", pattern="^(global_only|personal_only|all)$")
+    send_email: bool = False
+
+
+class AlertRuleCreate(AlertRuleBase):
+    pass
+
+
+class AlertRuleUpdate(BaseModel):
+    name: str | None = None
+    match_type: str | None = Field(None, pattern="^(exact|contains|regex)$")
+    match_pattern: str | None = None
+    match_target: str | None = Field(None, pattern="^(title|message|all)$")
+    notification_scope: str | None = Field(None, pattern="^(global_only|personal_only|all)$")
+    send_email: bool | None = None
+
+
+class AlertRuleOut(AlertRuleBase):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserAlertOut(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    notification_id: uuid.UUID
+    rule_id: uuid.UUID | None
+    is_read: bool
+    created_at: datetime
+
+    notification: NotificationOut | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AlertTestRequest(AlertRuleBase):
+    pass
+
+
+class AlertTestResult(BaseModel):
+    matched_notifications: list[NotificationOut]

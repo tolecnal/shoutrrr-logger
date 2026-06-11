@@ -250,6 +250,7 @@ app.include_router(settings_router.public_router, prefix=_V1)
 app.include_router(settings_router.admin_router, prefix=_V1)
 app.include_router(me.router, prefix=_V1)
 app.include_router(api_metrics.router, prefix=_V1)
+app.include_router(alerts.router, prefix=_V1)
 
 
 # ---------------------------------------------------------------------------
