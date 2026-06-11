@@ -223,7 +223,7 @@ class NotificationService:
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
             # Load global plugins
-            global_stmt = select(PluginConfig).where(PluginConfig.enabled == True)
+            global_stmt = select(PluginConfig).where(PluginConfig.enabled.is_(True))
             global_configs = (await session.execute(global_stmt)).scalars().all()
 
             user_configs = []
@@ -233,7 +233,7 @@ class NotificationService:
                 try:
                     uid = uuid.UUID(user_id_str)
                     user_stmt = select(UserPluginConfig).where(
-                        UserPluginConfig.enabled == True, UserPluginConfig.user_id == uid
+                        UserPluginConfig.enabled.is_(True), UserPluginConfig.user_id == uid
                     )
                     user_configs = (await session.execute(user_stmt)).scalars().all()
                 except Exception as e:

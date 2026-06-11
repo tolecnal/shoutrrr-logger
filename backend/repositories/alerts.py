@@ -89,17 +89,17 @@ class AlertsRepository:
             stmt = select(Notification).join(
                 AccessToken, Notification.token_id == AccessToken.id, isouter=True
             )
-            stmt = stmt.where(AccessToken.user_id == user_id, AccessToken.is_global == False)
+            stmt = stmt.where(AccessToken.user_id == user_id, AccessToken.is_global.is_(False))
         elif notification_scope == "global_only":
             stmt = select(Notification).join(
                 AccessToken, Notification.token_id == AccessToken.id, isouter=True
             )
-            stmt = stmt.where(AccessToken.is_global == True)
+            stmt = stmt.where(AccessToken.is_global.is_(True))
         else:
             stmt = select(Notification).join(
                 AccessToken, Notification.token_id == AccessToken.id, isouter=True
             )
-            stmt = stmt.where(or_(AccessToken.is_global == True, AccessToken.user_id == user_id))
+            stmt = stmt.where(or_(AccessToken.is_global.is_(True), AccessToken.user_id == user_id))
 
         stmt = stmt.order_by(desc(Notification.received_at)).limit(100)
         result = await session.execute(stmt)

@@ -112,7 +112,7 @@ async def autocomplete_tags(
     # Restrict to user's tokens if not admin
     if current_user.role.value != settings.oidc_role_admin:
         token_stmt = select(AccessToken.id).where(
-            (AccessToken.user_id == current_user.id) | (AccessToken.is_global == True)
+            (AccessToken.user_id == current_user.id) | (AccessToken.is_global.is_(True))
         )
         stmt = stmt.select_from(Notification).where(Notification.token_id.in_(token_stmt))
     else:
@@ -131,7 +131,7 @@ async def autocomplete_custom_fields(
 
     if current_user.role.value != settings.oidc_role_admin:
         token_stmt = select(AccessToken.id).where(
-            (AccessToken.user_id == current_user.id) | (AccessToken.is_global == True)
+            (AccessToken.user_id == current_user.id) | (AccessToken.is_global.is_(True))
         )
         stmt = stmt.select_from(Notification).where(Notification.token_id.in_(token_stmt))
     else:
@@ -150,7 +150,7 @@ async def autocomplete_tokens(
         stmt = select(AccessToken)
     else:
         stmt = select(AccessToken).where(
-            (AccessToken.user_id == current_user.id) | (AccessToken.is_global == True)
+            (AccessToken.user_id == current_user.id) | (AccessToken.is_global.is_(True))
         )
     result = await db.execute(stmt)
     return [AccessTokenOut.model_validate(t) for t in result.scalars().all()]

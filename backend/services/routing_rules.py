@@ -87,7 +87,7 @@ class RoutingRuleService:
         if user_id is not None:
             # Users can only test against notifications they have access to
             token_stmt = select(AccessToken.id).where(
-                (AccessToken.user_id == user_id) | (AccessToken.is_global == True)
+                (AccessToken.user_id == user_id) | (AccessToken.is_global.is_(True))
             )
             stmt = stmt.where(Notification.token_id.in_(token_stmt))
 
