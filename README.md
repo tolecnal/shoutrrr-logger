@@ -540,9 +540,9 @@ Every signed-in user can open **Preferences** (gear icon in the top bar) to cust
 
 - **Display** — theme (Light / Dark / System) and time format (locale-aware, 12-hour, or 24-hour).
 - **Tag rules** — highlight notifications whose custom fields match a pattern with a chosen color, optionally excluding matches from the log entirely.
-- **Alert rules** — configure conditions to trigger visual alerts in the UI, and optionally receive emails via SMTP.
+- **Alert rules** — configure conditions (e.g. matching tags, severity, or message patterns) to trigger visual alerts in the UI, and optionally receive customized email notifications via SMTP.
 - **My Tokens** — create and manage personal access tokens (see [Access tokens](#access-tokens)).
-- **Plugins** — configure your own plugin settings, like a personal Slack webhook URL.
+- **Plugins** — configure your own plugin settings, like a personal Slack webhook URL, with custom routing rules.
 
 ---
 
@@ -595,6 +595,8 @@ Each token can optionally be given an expiry date — expired tokens are rejecte
 | Notification rate limit | `0` (unlimited) | Default per-token ingestion rate limit, in notifications per minute. Overridable per token — see [Rate limiting](#rate-limiting). |
 | API metrics retention | `30` days | Automatically delete `/performance` latency records older than this many days. `0` keeps them forever. |
 | Audit log retention | `365` days | Automatically delete audit log entries older than this many days. `0` keeps them forever. |
+| Email alerts enabled | disabled | Master toggle for email alerts. Enables the SMTP settings below. |
+| SMTP Settings | _(none)_ | Host, Port, Username, Password, and From Address. Used to dispatch email alerts. |
 
 Retention sweeps for notifications, API metrics, and audit logs run hourly. In multi-worker deployments, only one Gunicorn worker performs the sweep — workers coordinate via a PostgreSQL session-level advisory lock, so the same rows are never purged twice.
 
@@ -630,6 +632,13 @@ Both global admin configurations and individual user plugin configurations suppo
 - **Message Content**: only forward if the message matches a regex pattern.
 
 Routing rules are evaluated per plugin, meaning each integration can have its own distinct set of filters.
+
+### Security (SSRF Protection)
+
+All outbound plugin integrations that require HTTP connections (e.g., Slack webhooks, Splunk HEC) are strictly validated to prevent **Server-Side Request Forgery (SSRF)**. 
+- The target hostname is resolved via `socket.getaddrinfo`.
+- The resolved IP address is verified against a strict denylist, immediately rejecting connections to private (RFC 1918), loopback, link-local, multicast, or reserved IP ranges.
+- This ensures users cannot abuse the plugin system to blindly scan or attack services on the internal network or the Docker host.
 
 To build a custom plugin, see **[PLUGINS.md](PLUGINS.md)**.
 
