@@ -22,4 +22,7 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   slack: lazy(() =>
     import("./slack/config").then((m) => ({ default: m.SlackConfigPanel }))
   ),
+  webhook: lazy(() =>
+    import("./webhook/config").then((m) => ({ default: m.WebhookConfigPanel }))
+  ),
 };

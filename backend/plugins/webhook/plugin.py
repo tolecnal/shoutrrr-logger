@@ -18,6 +18,7 @@ class WebhookPlugin(BasePlugin):
         "method": "POST",
         "headers": '{"Content-Type": "application/json"}',
         "payload_template": '{"title": "{title}", "message": "{message}"}',
+        "tls_verification": True,
     }
 
     def validate_config(self, config: dict[str, Any]) -> tuple[bool, str]:
@@ -82,8 +83,9 @@ class WebhookPlugin(BasePlugin):
             pass
 
         method = config.get("method", "POST").upper()
+        tls_verification = config.get("tls_verification", True)
 
-        async with create_ssrf_safe_async_client(timeout=10.0) as client:
+        async with create_ssrf_safe_async_client(verify=tls_verification, timeout=10.0) as client:
             # We send payload_text as content (bytes) rather than json=, so they can use arbitrary formats.
             if method == "GET":
                 resp = await client.get(url, headers=headers)
