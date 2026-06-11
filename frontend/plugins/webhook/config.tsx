@@ -9,6 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { Send } from "lucide-react";
 import type { PluginConfigProps } from "../types";
 import { useState } from "react";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import jsonLang from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
+
+SyntaxHighlighter.registerLanguage("json", jsonLang);
 
 export function WebhookConfigPanel({
   config,
@@ -124,10 +129,16 @@ export function WebhookConfigPanel({
 
         <div className="space-y-1.5">
           <Label>Payload Preview</Label>
-          <div className="h-[212px] overflow-auto rounded-md border bg-zinc-950 p-4">
-            <pre className="text-xs font-mono text-zinc-50 whitespace-pre-wrap break-all">
+          <div className="h-[212px] overflow-auto rounded-md border bg-[#1e1e1e] p-0 relative">
+            <SyntaxHighlighter
+              language="json"
+              style={vs2015}
+              customStyle={{ margin: 0, padding: '1rem', background: 'transparent', fontSize: '11px', lineHeight: '1.5' }}
+              wrapLines={true}
+              wrapLongLines={true}
+            >
               {renderedPayload}
-            </pre>
+            </SyntaxHighlighter>
           </div>
           <p className="text-xs text-muted-foreground">
             Example payload generated from your template.

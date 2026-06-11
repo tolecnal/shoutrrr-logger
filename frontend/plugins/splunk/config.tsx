@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import jsonLang from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
+
+SyntaxHighlighter.registerLanguage("json", jsonLang);
 
 /** Top-level notification fields always available for mapping. */
 const NOTIFICATION_FIELDS = [
@@ -352,9 +357,16 @@ export function SplunkConfigPanel({
               (sample data — reflects current mappings and metadata)
             </span>
           </p>
-          <pre className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-[11px] font-mono text-foreground overflow-x-auto whitespace-pre leading-relaxed">
-            {JSON.stringify(previewPayload, null, 2)}
-          </pre>
+          <div className="rounded-md border border-border bg-[#1e1e1e] overflow-hidden">
+            <SyntaxHighlighter
+              language="json"
+              style={vs2015}
+              customStyle={{ margin: 0, padding: '0.625rem 0.75rem', background: 'transparent', fontSize: '11px', lineHeight: '1.6' }}
+              wrapLines={false}
+            >
+              {JSON.stringify(previewPayload, null, 2)}
+            </SyntaxHighlighter>
+          </div>
         </div>
       </div>
 
