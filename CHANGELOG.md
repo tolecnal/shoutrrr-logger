@@ -9,6 +9,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **User Plugin Configs**: Users can now configure their own plugin integrations from User Preferences. This allows users to receive notifications to their personal Slack/Teams/etc based on routing rules.
+- **Plugin Routing Rules**: Plugins can now have custom routing rules defined. A notification must match the severity, tags, or sender criteria for it to be routed to that plugin.
+- **Server-Sent Events (SSE)**: The notification log now uses SSE to stream real-time updates directly to the UI, eliminating the need for periodic polling or manual refreshing.
+- **Time Formatting**: Timestamps on the notifications page now intelligently format themselves. If a notification is from today, only the time is shown. For older notifications, the date is included.
+- **Audit Logging**: Added audit log capture for updates to User Plugin Configurations.
+
+### Added
+
 - **Admin toggle for private access tokens**: new `private_tokens_enabled` setting (default: enabled), configurable from **Admin → Settings**. When disabled, users can no longer create new private tokens from **Preferences → My Tokens**, and existing private tokens are rejected (`403`) for notification ingestion. Global tokens are unaffected.
 - **"Test this token" dialog**: the Admin → Access Tokens page and Preferences → My Tokens now have a "Test" action that opens a dialog with copy-paste examples (curl, PowerShell, Python, PHP, wget, and the shoutrrr generic URL scheme) for sending a notification with that token.
 - **README**: added PowerShell, Python (`requests`), PHP, and wget examples to the "Sending notifications" section, alongside the existing curl example.

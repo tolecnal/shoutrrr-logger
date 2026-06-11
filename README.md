@@ -612,7 +612,22 @@ The admin UI supports filtering by action and time range. The same data is avail
 
 Plugins react to every incoming notification — forward it to an external system, transform it, trigger an alert, and so on. The bundled **Splunk HEC** plugin forwards events to a Splunk HTTP Event Collector with configurable field mappings.
 
-Plugins are configured in **Admin → Plugins**. Click the plugin row to expand the configuration panel. Each plugin has an enabled/disabled toggle and a **Send test event** button to verify connectivity without waiting for a real notification.
+Plugins are configured globally in **Admin → Plugins**. Click the plugin row to expand the configuration panel. Each plugin has an enabled/disabled toggle and a **Send test event** button to verify connectivity without waiting for a real notification. Admins can also toggle the ability for individual users to configure the plugin for themselves.
+
+### User Plugin Configurations
+
+If enabled by the admin, users can manage their own plugin configurations under **Preferences → Plugins**. A user can set up their own Slack webhook, for example, to receive notifications directly to their channel.
+
+### Routing Rules
+
+Both global admin configurations and individual user plugin configurations support **Routing Rules**. By default, all notifications are routed to an enabled plugin. You can define routing rules to only forward notifications that match specific criteria:
+- **Severity**: only forward if severity is `critical` or `error`.
+- **Sender**: only forward if sender matches a specific name.
+- **Tags**: only forward if the notification contains specific tags.
+- **Token ID**: only forward if the notification was ingested using a specific access token.
+- **Message Content**: only forward if the message matches a regex pattern.
+
+Routing rules are evaluated per plugin, meaning each integration can have its own distinct set of filters.
 
 To build a custom plugin, see **[PLUGINS.md](PLUGINS.md)**.
 
