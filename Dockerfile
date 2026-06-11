@@ -71,7 +71,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         "httpx>=0.28.0" \
         "python-multipart>=0.0.20" \
         "pydantic-settings>=2.7.0" \
-        "markdown>=3.7.0"
+        "markdown>=3.7.0" \
+        "nh3>=0.3.5"
 
 # ============================================================
 # Stage 3 – Final runtime image
