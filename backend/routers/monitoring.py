@@ -6,7 +6,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import MonitoringToken, Notification, User, UserAlert
+from models import (
+    AccessToken,
+    AlertRule,
+    MonitoringToken,
+    Notification,
+    PluginConfig,
+    User,
+    UserAlert,
+)
 
 router = APIRouter()
 
@@ -66,9 +74,28 @@ async def monitoring_health(
             select(func.count(UserAlert.id)).where(not UserAlert.is_read)
         )
 
+        email_alerts_pending = await db.scalar(
+            select(func.count(UserAlert.id))
+            .join(AlertRule, UserAlert.rule_id == AlertRule.id)
+            .where(
+                not UserAlert.email_sent,
+                AlertRule.send_email,
+            )
+        )
+
+        active_plugins = await db.scalar(
+            select(func.count(PluginConfig.id)).where(PluginConfig.enabled)
+        )
+        active_ingest_tokens = await db.scalar(
+            select(func.count(AccessToken.id)).where(AccessToken.is_active)
+        )
+
         stats["notifications_total"] = total_notifications or 0
         stats["users_total"] = total_users or 0
         stats["users_active"] = active_users or 0
         stats["alerts_unread"] = unread_alerts or 0
+        stats["alerts_email_pending"] = email_alerts_pending or 0
+        stats["plugins_active"] = active_plugins or 0
+        stats["ingest_tokens_active"] = active_ingest_tokens or 0
 
     return stats
