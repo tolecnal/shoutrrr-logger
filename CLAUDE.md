@@ -526,3 +526,12 @@ When generating database code:
 - Assume UUID primary keys
 
 Always prefer maintainable, production-ready implementations over simplified examples.
+
+---
+
+# Version Control & Workflow
+
+When committing code, you must adhere to the following workflow:
+
+- Run relevant tests and verify that the build passes before committing.
+- You must execute `ruff check backend/` and `ruff format --check backend/ --exclude backend/build/` via the `.venv` to enforce CI linting compliance before every commit.

@@ -214,3 +214,4 @@ Follow these guidelines:
 - Ensure that `CHANGELOG.md` and `README.md` are updated in the same commit as the feature or fix they document.
 - Use Conventional Commits formatting for messages (e.g., `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`).
 - Run relevant tests and verify that the build passes before committing.
+- You must execute `ruff check backend/` and `ruff format --check backend/ --exclude backend/build/` via the `.venv` to enforce CI linting compliance before every commit.
