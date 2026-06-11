@@ -8,6 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from repositories.settings import SettingsRepository, settings_repository
 
+# Returned by GET /settings and /admin/settings in place of a configured
+# secret's real value, and accepted by PATCH /admin/settings to mean "leave
+# this secret unchanged".
+SECRET_PLACEHOLDER = "********"
+
 
 @dataclass(frozen=True)
 class SettingMeta:
@@ -19,6 +24,7 @@ class SettingMeta:
     max_value: Any = None
     unit: str = ""
     value_type: str = "int"
+    is_secret: bool = False
 
 
 KNOWN_SETTINGS: list[SettingMeta] = [
@@ -178,6 +184,7 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         description="Password for SMTP authentication. Leave blank if not required.",
         default="",
         value_type="string",
+        is_secret=True,
     ),
     SettingMeta(
         key="email_alert_template",
@@ -237,6 +244,9 @@ class SettingsService:
             else:
                 val = int(raw) if raw is not None else meta.default
 
+            if meta.is_secret and val:
+                val = SECRET_PLACEHOLDER
+
             result.append(
                 {
                     "key": meta.key,
@@ -279,8 +289,11 @@ class SettingsService:
             return fallback
         return str(row.value)
 
-    async def update(self, session: AsyncSession, updates: dict[str, Any]) -> list[dict]:
+    async def update(
+        self, session: AsyncSession, updates: dict[str, Any]
+    ) -> tuple[list[dict], set[str]]:
         coerced: dict[str, Any] = {}
+        changed_secrets: set[str] = set()
         for key, raw in updates.items():
             meta = _META_BY_KEY.get(key)
             if meta is None:
@@ -288,7 +301,13 @@ class SettingsService:
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=f"Unknown setting '{key}'",
                 )
+            if meta.is_secret and raw == SECRET_PLACEHOLDER:
+                # The placeholder was echoed back unchanged - leave the
+                # stored secret as-is.
+                continue
             coerced[key] = self._coerce(meta, raw)
+            if meta.is_secret and await self.get_string(session, key) != coerced[key]:
+                changed_secrets.add(key)
 
         merged: dict[str, Any] = {}
         for meta in KNOWN_SETTINGS:
@@ -327,7 +346,7 @@ class SettingsService:
 
         for key, value in coerced.items():
             await self._repo.set(session, key, value)
-        return await self.get_all(session)
+        return await self.get_all(session), changed_secrets
 
 
 settings_service = SettingsService()

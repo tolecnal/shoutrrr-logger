@@ -14,7 +14,7 @@ from database import get_db
 from models import User
 from schemas import SettingOut, SettingsUpdate, SmtpTestRequest
 from services.audit_logs import AuditAction, audit_log_service
-from services.settings import settings_service
+from services.settings import SECRET_PLACEHOLDER, settings_service
 from services.trigger_engine import send_email_async
 
 public_router = APIRouter(prefix="/settings", tags=["settings"])
@@ -47,13 +47,13 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
 ) -> list[SettingOut]:
     before = {s["key"]: s["value"] for s in await settings_service.get_all(db)}
-    result = await settings_service.update(db, body.values)
+    result, changed_secrets = await settings_service.update(db, body.values)
     after = {s["key"]: s["value"] for s in result}
 
     changes = {
         key: {"old": before.get(key), "new": after[key]}
         for key in body.values
-        if before.get(key) != after.get(key)
+        if before.get(key) != after.get(key) or key in changed_secrets
     }
     if changes:
         await audit_log_service.log(
@@ -73,6 +73,7 @@ async def update_settings(
 async def test_smtp_configuration(
     body: SmtpTestRequest,
     admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     if not admin.email:
         raise HTTPException(
@@ -80,12 +81,16 @@ async def test_smtp_configuration(
             detail="Admin user has no email address configured",
         )
 
+    password = body.smtp_password
+    if password == SECRET_PLACEHOLDER:
+        password = await settings_service.get_string(db, "smtp_password")
+
     try:
         await send_email_async(
             host=body.smtp_host,
             port=body.smtp_port,
             user=body.smtp_user,
-            password=body.smtp_password,
+            password=password,
             from_addr=body.smtp_from_address,
             to_addr=admin.email,
             subject="Test Email from Shoutrrr Logger",
