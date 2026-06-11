@@ -373,11 +373,12 @@ Use pnpm exclusively for frontend and uv for backend.
 Commands:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 pnpm build
-pnpm test
+pnpm test:run
 pnpm lint
+pnpm exec tsc --noEmit
 ```
 
 Never use:
@@ -395,10 +396,12 @@ yarn
 
 Use:
 
-- pytest
+- pytest (`pytest tests/ -v --tb=short`)
 - pytest-asyncio
 - httpx
-- ruff
+- ruff (`ruff check backend/` and `ruff format --check backend/ --exclude backend/build/`)
+
+**Crucial Constraint**: All Python packages must be installed within the virtual environment (`.venv`), and all backend scripts/tools must be executed using the `.venv` binaries (e.g., `.venv/bin/pytest`, `.venv/bin/ruff`).
 
 Requirements:
 

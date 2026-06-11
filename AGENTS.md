@@ -22,21 +22,22 @@ Agents should execute operations using the following designated tools:
 
 ### Backend (Python/uv)
 
-- Install dependencies: uv pip install -r pyproject.toml
-- Run local dev server: uvicorn main:app --reload
-- Run production container workflow: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
-- Run tests: pytest
-- Linting/Formatting: ruff check or ruff format
+All Python packages must be installed in the virtual environment and all scripts must be run inside the virtual environment (`.venv`).
+- Install dependencies: `cd backend && .venv/bin/python -m pip install -e ".[test]"`
+- Run local dev server: `cd backend && .venv/bin/uvicorn main:app --reload`
+- Run production container workflow: `cd backend && .venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app`
+- Run tests: `cd backend && .venv/bin/pytest tests/ -v --tb=short`
+- Linting/Formatting: `cd backend && .venv/bin/ruff check backend/` and `.venv/bin/ruff format --check backend/ --exclude backend/build/`
 
 ### Frontend (Node/pnpm)
 
-- Install dependencies: pnpm install
-- Run local dev server: pnpm dev
-- Build application: pnpm build
-- Run tests: pnpm test
-- Linting: pnpm lint
+- Install dependencies: `cd frontend && pnpm install --frozen-lockfile`
+- Run local dev server: `cd frontend && pnpm dev`
+- Build application: `cd frontend && pnpm build`
+- Run tests: `cd frontend && pnpm test:run`
+- Linting: `cd frontend && pnpm lint` and `pnpm exec tsc --noEmit`
 
-Strict Guardrail: Never use npm or yarn. Never bypass uv for backend package management.
+Strict Guardrail: Never use npm or yarn. Never bypass uv for backend package management. Always use the `.venv` for backend execution and strictly match CI linting and testing commands.
 
 ---
 
