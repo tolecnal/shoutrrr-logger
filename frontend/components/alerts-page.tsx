@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CheckCircle2, Circle, Trash2, Inbox } from "lucide-react";
+import { ArrowRight, Bell, CheckCircle2, Circle, Trash2, Inbox } from "lucide-react";
 import { fetchAlerts, updateAlertState, deleteAlert, deleteAlerts } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,21 +36,41 @@ export function AlertsPage() {
     }
   }, [mutate]);
 
-  // Keyboard shortcut: "r" toggles read/unread for the alert open in the dialog.
+  // Move to the next unread alert (in displayed order), or close the dialog
+  // if there are no more unread alerts.
+  const goToNextUnread = useCallback(() => {
+    if (!selectedAlertId || !alerts) return;
+    const sorted = [...alerts].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const idx = sorted.findIndex(a => a.id === selectedAlertId);
+    if (idx === -1) return;
+    const next = sorted.slice(idx + 1).find(a => !a.is_read);
+    setSelectedAlertId(next ? next.id : null);
+  }, [alerts, selectedAlertId]);
+
+  // Keyboard shortcuts while the alert dialog is open: "r" toggles
+  // read/unread, "n" jumps to the next unread alert.
   useEffect(() => {
     if (!selectedAlertId) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "r" || e.metaKey || e.ctrlKey || e.altKey) return;
-      const alert = alerts?.find(a => a.id === selectedAlertId);
-      if (!alert) return;
-      e.preventDefault();
-      handleToggleState(alert.id, alert.is_read);
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "r") {
+        const alert = alerts?.find(a => a.id === selectedAlertId);
+        if (!alert) return;
+        e.preventDefault();
+        handleToggleState(alert.id, alert.is_read);
+      } else if (key === "n") {
+        e.preventDefault();
+        goToNextUnread();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedAlertId, alerts, handleToggleState]);
+  }, [selectedAlertId, alerts, handleToggleState, goToNextUnread]);
 
   const handleDelete = async (id: string) => {
     setUpdating(prev => ({ ...prev, [id]: true }));
@@ -268,6 +288,13 @@ export function AlertsPage() {
                   {selectedAlert.is_read ? "Mark as unread" : "Mark as read"}
                   <kbd className="ml-2 hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
                     R
+                  </kbd>
+                </Button>
+                <Button variant="secondary" onClick={goToNextUnread}>
+                  Next unread
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <kbd className="ml-2 hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
+                    N
                   </kbd>
                 </Button>
               </DialogFooter>
