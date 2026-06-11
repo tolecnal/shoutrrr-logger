@@ -20,17 +20,15 @@ requires one additional line in ``frontend/plugins/registry.tsx``.
 
 from __future__ import annotations
 
-import ipaddress
 import json
 import logging
-import socket
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlparse
 
 import httpx
 
 from plugins.base import BasePlugin
+from utils.ssrf import validate_url_for_ssrf
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +134,17 @@ class SplunkPlugin(BasePlugin):
             "verify_tls": True,
         }
 
+    def validate_config(self, config: dict[str, Any]) -> tuple[bool, str]:
+        if not config.get("hec_url"):
+            return False, "hec_url is required"
+        try:
+            validate_url_for_ssrf(config.get("hec_url"))
+        except ValueError as e:
+            return False, f"Invalid URL (SSRF Policy): {str(e)}"
+        if not config.get("hec_token"):
+            return False, "hec_token is required"
+        return True, ""
+
     async def on_notification(
         self,
         notification: dict[str, Any],
@@ -148,30 +157,10 @@ class SplunkPlugin(BasePlugin):
             self.log("hec_url or hec_token not configured — skipping", "warning")
             return
 
-        def _is_safe_url(url: str) -> bool:
-            try:
-                parsed = urlparse(url)
-                host = parsed.hostname
-                if not host:
-                    return False
-                try:
-                    ip = socket.gethostbyname(host)
-                except socket.gaierror:
-                    return True
-                ip_obj = ipaddress.ip_address(ip)
-                if (
-                    ip_obj.is_loopback
-                    or ip_obj.is_link_local
-                    or ip_obj.is_unspecified
-                    or ip_obj.is_multicast
-                ):
-                    return False
-            except Exception:
-                return False
-            return True
-
-        if not _is_safe_url(hec_url):
-            msg = f"Security error: HEC URL '{hec_url}' resolves to a forbidden IP address (loopback/link-local/metadata)"
+        try:
+            validate_url_for_ssrf(hec_url)
+        except ValueError as e:
+            msg = f"Security error: HEC URL '{hec_url}' blocked by SSRF policy: {e}"
             self.log(msg, "error")
             raise RuntimeError(msg)
 

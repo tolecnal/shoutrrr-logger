@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 
 from plugins.base import BasePlugin
+from utils.ssrf import validate_url_for_ssrf
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +21,27 @@ class SlackPlugin(BasePlugin):
         "emoji": ":rotating_light:",
     }
 
+    def validate_config(self, config: dict[str, Any]) -> tuple[bool, str]:
+        if not config.get("webhook_url"):
+            return False, "webhook_url is required"
+        try:
+            validate_url_for_ssrf(config.get("webhook_url"))
+        except ValueError as e:
+            return False, f"Invalid URL (SSRF Policy): {str(e)}"
+        return True, ""
+
     async def on_notification(self, notification: dict[str, Any], config: dict[str, Any]) -> None:
         webhook_url = config.get("webhook_url", "").strip()
         if not webhook_url:
             logger.warning("Slack plugin enabled but webhook_url is not configured.")
             return
 
-        # Basic SSRF check placeholder - we should ideally share _is_safe_url from splunk
-        # but for simplicity we rely on the webhook domain. Since this is an official plugin,
-        # we assume admins won't put internal IPs, but SSRF checks can be centralized.
+        try:
+            validate_url_for_ssrf(webhook_url)
+        except ValueError as e:
+            msg = f"Security error: Slack Webhook URL blocked by SSRF policy: {e}"
+            self.log(msg, "error")
+            raise RuntimeError(msg)
 
         template = config.get("message_template") or self.default_config["message_template"]
         # Basic substitution

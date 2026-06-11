@@ -2,12 +2,13 @@ import asyncio
 import logging
 import re
 import smtplib
+import uuid
 from email.message import EmailMessage
 
 import markdown
 from sqlalchemy import select
 
-from database import async_session_factory
+import database
 from models import AccessToken, AlertRule, Notification, User, UserAlert
 from services.settings import settings_service
 
@@ -17,12 +18,18 @@ logger = logging.getLogger(__name__)
 async def run_trigger_engine(
     notification_id: str, token_id: str, message_text: str, title_text: str | None
 ) -> None:
-    async with async_session_factory() as db:
+    async with database.async_session_factory() as db:
+        try:
+            n_uuid = uuid.UUID(notification_id)
+            t_uuid = uuid.UUID(token_id)
+        except ValueError:
+            return
+
         # 1. Fetch Notification and Token info
-        notification = await db.get(Notification, notification_id)
+        notification = await db.get(Notification, n_uuid)
         if not notification:
             return
-        token = await db.get(AccessToken, token_id)
+        token = await db.get(AccessToken, t_uuid)
         if not token:
             return
 
@@ -31,12 +38,9 @@ async def run_trigger_engine(
             combined_texts.append(title_text)
         if message_text:
             combined_texts.append(message_text)
-        combined = " ".join(combined_texts)
 
         # 2. Query active AlertRules
-        stmt = (
-            select(AlertRule).join(User, AlertRule.user_id == User.id).where(User.is_active == True)
-        )
+        stmt = select(AlertRule).join(User, AlertRule.user_id == User.id).where(User.is_active)
         result = await db.execute(stmt)
         rules = result.scalars().all()
 

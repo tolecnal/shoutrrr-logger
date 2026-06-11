@@ -94,10 +94,14 @@ async def app(db: AsyncSession, engine, monkeypatch):
     registry.discover()  # ensure plugins are loaded
 
     # services.notifications.dispatch_plugins opens its own session straight off
-    # database.engine (it runs as a background task, after the request-scoped
     # session has closed). Point it at the in-memory test engine so it doesn't
     # try to reach a real PostgreSQL instance.
     monkeypatch.setattr(database, "engine", engine)
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    test_session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    monkeypatch.setattr(database, "async_session_factory", test_session_factory)
 
     async def _override_db():
         yield db
