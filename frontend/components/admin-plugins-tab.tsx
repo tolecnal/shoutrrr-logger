@@ -174,7 +174,7 @@ function PluginCard({
 
 export function PluginsTab() {
   const { data: customFields = [] } = useSWR<string[]>(
-    "/api/admin/plugins/custom-field-keys",
+    "/api/v1/admin/plugins/custom-field-keys",
     fetchCustomFieldKeys,
     { revalidateOnFocus: false }
   );

@@ -289,7 +289,7 @@ and the next plugin continues.  A plugin failure never affects the HTTP
 response returned to the shoutrrr caller, and the notification is always saved
 to the database before plugins run.
 
-The `POST /api/admin/plugins/{id}/test` endpoint surfaces errors directly to
+The `POST /api/v1/admin/plugins/{id}/test` endpoint surfaces errors directly to
 the admin UI so you can test your plugin configuration interactively.
 
 ---
@@ -301,11 +301,11 @@ Only keys that differ from `default_config` are stored; the defaults are merged
 at runtime.  All plugin API endpoints require the `admin` role:
 
 ```
-GET   /api/admin/plugins
-GET   /api/admin/plugins/{id}
-PATCH /api/admin/plugins/{id}             body: { "enabled": bool, "config": {...} }
-POST  /api/admin/plugins/{id}/test
-GET   /api/admin/plugins/custom-field-keys   returns distinct custom_fields keys
+GET   /api/v1/admin/plugins
+GET   /api/v1/admin/plugins/{id}
+PATCH /api/v1/admin/plugins/{id}             body: { "enabled": bool, "config": {...} }
+POST  /api/v1/admin/plugins/{id}/test
+GET   /api/v1/admin/plugins/custom-field-keys   returns distinct custom_fields keys
 ```
 
 ---

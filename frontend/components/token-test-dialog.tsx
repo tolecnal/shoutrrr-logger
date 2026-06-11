@@ -88,8 +88,8 @@ export function TokenTestDialog({
 
   const url =
     typeof window !== "undefined"
-      ? `${window.location.origin}/api/shoutrrr`
-      : "https://shoutrrr-logger.example.com/api/shoutrrr";
+      ? `${window.location.origin}/api/v1/shoutrrr`
+      : "https://shoutrrr-logger.example.com/api/v1/shoutrrr";
   const snippets = buildSnippets(url, token ?? PLACEHOLDER_TOKEN);
 
   return (

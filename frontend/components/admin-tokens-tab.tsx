@@ -404,7 +404,7 @@ export function TokensTab() {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Use this as a Bearer token in the <code className="font-mono">Authorization</code> header when sending notifications to <code className="font-mono">/api/shoutrrr</code>.
+              Use this as a Bearer token in the <code className="font-mono">Authorization</code> header when sending notifications to <code className="font-mono">/api/v1/shoutrrr</code>.
             </p>
           </div>
           <DialogFooter className="sm:justify-between">

@@ -324,7 +324,7 @@ This change is overwritten on the user's next login once the SSO role is correct
 The notification ingest endpoint accepts `POST` requests with a Bearer token:
 
 ```
-POST /api/shoutrrr
+POST /api/v1/shoutrrr
 Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
@@ -348,7 +348,7 @@ Any additional JSON fields are stored verbatim and accessible as `custom_fields`
 **curl example:**
 
 ```bash
-curl -X POST https://shoutrrr-logger.example.com/api/shoutrrr \
+curl -X POST https://shoutrrr-logger.example.com/api/v1/shoutrrr \
   -H "Authorization: Bearer <your-access-token>" \
   -H "Content-Type: application/json" \
   -d '{"message": "Backup completed", "title": "Backup job"}'
@@ -357,7 +357,7 @@ curl -X POST https://shoutrrr-logger.example.com/api/shoutrrr \
 **PowerShell example:**
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "https://shoutrrr-logger.example.com/api/shoutrrr" `
+Invoke-RestMethod -Method Post -Uri "https://shoutrrr-logger.example.com/api/v1/shoutrrr" `
   -Headers @{ Authorization = "Bearer <your-access-token>" } `
   -ContentType "application/json" `
   -Body (@{ message = "Backup completed"; title = "Backup job" } | ConvertTo-Json)
@@ -369,7 +369,7 @@ Invoke-RestMethod -Method Post -Uri "https://shoutrrr-logger.example.com/api/sho
 import requests
 
 requests.post(
-    "https://shoutrrr-logger.example.com/api/shoutrrr",
+    "https://shoutrrr-logger.example.com/api/v1/shoutrrr",
     headers={"Authorization": "Bearer <your-access-token>"},
     json={"message": "Backup completed", "title": "Backup job"},
 )
@@ -378,7 +378,7 @@ requests.post(
 **PHP example:**
 
 ```php
-$ch = curl_init("https://shoutrrr-logger.example.com/api/shoutrrr");
+$ch = curl_init("https://shoutrrr-logger.example.com/api/v1/shoutrrr");
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Authorization: Bearer <your-access-token>",
@@ -400,7 +400,7 @@ wget -q -O- --method=POST \
   --header="Authorization: Bearer <your-access-token>" \
   --header="Content-Type: application/json" \
   --body-data='{"message": "Backup completed", "title": "Backup job"}' \
-  https://shoutrrr-logger.example.com/api/shoutrrr
+  https://shoutrrr-logger.example.com/api/v1/shoutrrr
 ```
 
 **shoutrrr generic URL scheme:**
@@ -408,7 +408,7 @@ wget -q -O- --method=POST \
 shoutrrr's `generic` service forwards to arbitrary HTTP endpoints. Pass the Bearer token via the `@Authorization` header parameter:
 
 ```
-generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
+generic+https://shoutrrr-logger.example.com/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
 ```
 
 The `+` is URL-encoded space — shoutrrr decodes this before sending the header, so the server receives `Authorization: Bearer YOUR_TOKEN` correctly.
@@ -428,7 +428,7 @@ Requests over the limit receive `429 Too Many Requests` with a `Retry-After: 60`
 ### URL format
 
 ```
-generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
+generic+https://shoutrrr-logger.example.com/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
 ```
 
 > Behind the bundled nginx reverse proxy, port 9000 is **not** reachable from outside the Docker host — always send through the public HTTPS URL (port 443). For Watchtower running in the same compose stack, see [Same host / compose stack](#same-host--compose-stack) below.
@@ -439,7 +439,7 @@ generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+Y
 docker run -d \
   --name watchtower \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -e WATCHTOWER_NOTIFICATION_URL="generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN" \
+  -e WATCHTOWER_NOTIFICATION_URL="generic+https://shoutrrr-logger.example.com/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN" \
   -e WATCHTOWER_NOTIFICATION_REPORT="true" \
   nickfedor/watchtower
 ```
@@ -454,7 +454,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      WATCHTOWER_NOTIFICATION_URL: "generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN"
+      WATCHTOWER_NOTIFICATION_URL: "generic+https://shoutrrr-logger.example.com/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN"
       WATCHTOWER_NOTIFICATION_REPORT: "true"
       WATCHTOWER_POLL_INTERVAL: "86400"   # optional: check every 24 h
 ```
@@ -471,7 +471,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      WATCHTOWER_NOTIFICATION_URL: "generic+http://app:9000/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN&disabletls=Yes"
+      WATCHTOWER_NOTIFICATION_URL: "generic+http://app:9000/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN&disabletls=Yes"
       WATCHTOWER_NOTIFICATION_REPORT: "true"
     depends_on:
       - app
@@ -499,7 +499,7 @@ This is Watchtower's Go HTTP client refusing to trust a certificate that isn't i
         - /etc/ssl/certs/shoutrrr-logger.example.com.crt:/certs/shoutrrr-logger.crt:ro
       environment:
         SSL_CERT_FILE: /certs/shoutrrr-logger.crt
-        WATCHTOWER_NOTIFICATION_URL: "generic+https://shoutrrr-logger.example.com/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN"
+        WATCHTOWER_NOTIFICATION_URL: "generic+https://shoutrrr-logger.example.com/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN"
   ```
 
   Note: `SSL_CERT_FILE` **replaces** Go's default trust store entirely. If Watchtower also pulls from private registries over TLS, concatenate the system CA bundle and your certificate into a single PEM file and mount that instead.
@@ -562,7 +562,7 @@ Keyboard shortcuts are active whenever the dialog is open and no modifier key (C
 
 ## Access tokens
 
-Access tokens are opaque bearer tokens used to authenticate ingest requests to `POST /api/shoutrrr`. They are stored as HMAC-SHA256 hashes — the plaintext is shown only once at creation time.
+Access tokens are opaque bearer tokens used to authenticate ingest requests to `POST /api/v1/shoutrrr`. They are stored as HMAC-SHA256 hashes — the plaintext is shown only once at creation time.
 
 ### Global tokens (admin-managed)
 

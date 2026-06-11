@@ -61,7 +61,7 @@ See the full [environment variable reference](https://github.com/tolecnal/shoutr
 Create an access token in **Admin → Access Tokens**, then POST to the ingest endpoint:
 
 ```bash
-curl -X POST https://your-instance/api/shoutrrr \
+curl -X POST https://your-instance/api/v1/shoutrrr \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
   -d '{"message": "Deploy succeeded", "title": "CI/CD"}'
@@ -70,7 +70,7 @@ curl -X POST https://your-instance/api/shoutrrr \
 **shoutrrr generic URL** (e.g. for Watchtower):
 
 ```
-generic+https://your-instance/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
+generic+https://your-instance/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
 ```
 
 ---

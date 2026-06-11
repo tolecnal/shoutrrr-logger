@@ -130,7 +130,7 @@ function UserPluginCard({
 
 export function UserPluginsTab() {
   const { data: userPlugins, isLoading, mutate } = useSWR<UserPluginOut[]>("/api/v1/user-plugins", fetchUserPlugins, { revalidateOnFocus: false });
-  const { data: customFieldKeys = [] } = useSWR<string[]>("/api/admin/plugins/custom-field-keys", fetchCustomFieldKeys, { revalidateOnFocus: false });
+  const { data: customFieldKeys = [] } = useSWR<string[]>("/api/v1/admin/plugins/custom-field-keys", fetchCustomFieldKeys, { revalidateOnFocus: false });
 
   if (isLoading) {
     return (

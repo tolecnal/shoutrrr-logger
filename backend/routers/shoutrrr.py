@@ -3,7 +3,7 @@
 
 Authentication: ``Authorization: Bearer <token>`` header.
 When using the shoutrrr generic service, inject the header via the URL:
-    generic+https://host/api/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
+    generic+https://host/api/v1/shoutrrr?@Authorization=Bearer+YOUR_TOKEN
 
 Body: JSON (application/json) or plain text (text/plain).
 Watchtower sends plain text; curl / API clients typically send JSON.

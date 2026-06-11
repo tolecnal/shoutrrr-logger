@@ -1,10 +1,10 @@
 """
 Admin routes for plugin management.
 
-GET  /api/admin/plugins          — list all registered plugins with their DB config
-GET  /api/admin/plugins/{id}     — get one plugin
-PATCH /api/admin/plugins/{id}    — update enabled flag and/or config dict
-POST /api/admin/plugins/{id}/test — trigger a test notification through the plugin
+GET  /api/v1/admin/plugins          — list all registered plugins with their DB config
+GET  /api/v1/admin/plugins/{id}     — get one plugin
+PATCH /api/v1/admin/plugins/{id}    — update enabled flag and/or config dict
+POST /api/v1/admin/plugins/{id}/test — trigger a test notification through the plugin
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
