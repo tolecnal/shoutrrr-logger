@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { previewTemplate } from "@/lib/api";
 
 export function SettingsTab() {
   const { data, isLoading, mutate } = useSWR<SettingOut[]>(
@@ -22,6 +24,8 @@ export function SettingsTab() {
   const [draft, setDraft] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   // Sync draft whenever server data arrives (first load or after save)
   useEffect(() => {
@@ -130,13 +134,46 @@ export function SettingsTab() {
           )}
         </div>
         {setting.key === "email_alert_template" ? (
-          <Textarea
-            id={`setting-${setting.key}`}
-            value={val}
-            onChange={(e) => setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }))}
-            className={`min-h-[150px] font-mono text-sm ${changed ? "ring-2 ring-primary/50" : ""}`}
-            placeholder="Markdown template for alert emails..."
-          />
+          <div className="space-y-2">
+            <Textarea
+              id={`setting-${setting.key}`}
+              value={val}
+              onChange={(e) => setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }))}
+              className={`min-h-[150px] font-mono text-sm ${changed ? "ring-2 ring-primary/50" : ""}`}
+              placeholder="Markdown template for alert emails..."
+            />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={async () => {
+                    setPreviewing(true);
+                    try {
+                      const res = await previewTemplate({ template: val });
+                      setPreviewHtml(res.html);
+                    } catch (err) {
+                      toast.error("Failed to generate preview");
+                    } finally {
+                      setPreviewing(false);
+                    }
+                  }}
+                  disabled={previewing}
+                >
+                  {previewing ? "Generating Preview..." : "Preview Template"}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Email Template Preview</DialogTitle>
+                </DialogHeader>
+                <div 
+                  className="prose dark:prose-invert max-w-none mt-4 p-4 border rounded-md bg-background"
+                  dangerouslySetInnerHTML={{ __html: previewHtml || "<i>No content</i>" }} 
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         ) : (
           <Input
             id={`setting-${setting.key}`}
@@ -202,6 +239,7 @@ export function SettingsTab() {
         </TabsContent>
         <TabsContent value="alerts" className="space-y-4">
           {renderSetting("email_alerts_enabled")}
+          {renderSetting("email_alert_template")}
           <div className="pt-2 pb-2">
             <h4 className="text-sm font-semibold text-foreground border-b pb-1">SMTP Configuration</h4>
             <p className="text-xs text-muted-foreground mt-1 mb-3">Configure the SMTP server for dispatching email alerts.</p>

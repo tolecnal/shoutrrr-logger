@@ -161,8 +161,50 @@ async def test_email_alert(
             raise_errors=True,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
-    return None
+        import traceback
+
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {"detail": "Test email queued for sending via SMTP"}
+
+
+@router.post("/preview-template", response_model=schemas.TemplatePreviewResponse)
+async def preview_template(
+    payload: schemas.TemplatePreviewRequest,
+    current_user: models.User = Depends(require_role(settings.oidc_role_admin)),
+    db: AsyncSession = Depends(get_db),
+):
+    html_body = None
+    if payload.notification_id:
+        from sqlalchemy import select
+
+        from models import Notification
+
+        n = (
+            await db.execute(select(Notification).where(Notification.id == payload.notification_id))
+        ).scalar_one_or_none()
+        if n:
+            from config import settings
+
+            app_base_url = settings.app_base_url
+            try:
+                body = payload.template.format(
+                    username=current_user.username,
+                    rule_names="My Rules",
+                    title=n.title or "No title",
+                    message=n.message,
+                    base_url=app_base_url,
+                )
+            except Exception:
+                body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules (My Rules):\n\nTitle: {n.title or 'No title'}\nMessage: {n.message}\n\nView details in Shoutrrr Logger: {app_base_url}"
+            html_body = markdown.markdown(body)
+        else:
+            html_body = markdown.markdown(payload.template)
+    else:
+        html_body = markdown.markdown(payload.template)
+
+    return schemas.TemplatePreviewResponse(html=html_body)
 
 
 @router.get("", response_model=list[UserAlertOut])

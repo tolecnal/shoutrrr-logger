@@ -416,3 +416,12 @@ class AlertTestRequest(AlertRuleBase):
 class AlertTestResult(BaseModel):
     matched_notifications: list[NotificationOut]
     total_matches: int = 0
+
+
+class TemplatePreviewRequest(BaseModel):
+    template: str
+    notification_id: uuid.UUID | None = None
+
+
+class TemplatePreviewResponse(BaseModel):
+    html: str

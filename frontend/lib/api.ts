@@ -306,5 +306,8 @@ export const deleteAlertRule = (id: string) =>
 export const testAlertRule = (body: Partial<import("./types").AlertRuleOut>) =>
   apiFetch<{ matched_notifications: import("./types").NotificationOut[], total_matches: number }>("/alerts/test", { method: "POST", body: JSON.stringify(body) });
 
-export const testAlertEmail = (body: Partial<import("./types").AlertRuleOut>) =>
+export const testAlertEmail = (body: Partial<import("./types").AlertRuleOut> & { notification_id?: string }) =>
   apiFetch<void>("/alerts/test-email", { method: "POST", body: JSON.stringify(body) });
+
+export const previewTemplate = (body: { template: string, notification_id?: string }) =>
+  apiFetch<{ html: string }>("/alerts/preview-template", { method: "POST", body: JSON.stringify(body) });
