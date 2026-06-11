@@ -298,13 +298,13 @@ export function NotificationLog() {
     resetPagination();
   }, [resetPagination]);
 
-  const handleClearSearch = () => {
+  const handleClearSearch = useCallback(() => {
     setSearch("");
     setQuery("");
     resetPagination();
-  };
+  }, [resetPagination]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (filtersActive) {
       if (clientPage > 1) {
         setClientPage((p) => p - 1);
@@ -315,9 +315,9 @@ export function NotificationLog() {
     } else {
       setPageIndex((p) => Math.max(0, p - 1));
     }
-  };
+  }, [filtersActive, clientPage, pageIndex]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (filtersActive) {
       if (clientPage < clientPageCount) {
         setClientPage((p) => p + 1);
@@ -329,7 +329,7 @@ export function NotificationLog() {
     } else {
       advanceServerPage();
     }
-  };
+  }, [filtersActive, clientPage, clientPageCount, serverHasMore, advanceServerPage]);
 
   const canGoPrev = filtersActive
     ? clientPage > 1 || pageIndex > 0

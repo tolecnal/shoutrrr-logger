@@ -18,6 +18,12 @@ function makeNotif(overrides: Partial<NotificationOut> = {}): NotificationOut {
     sender_name: "myhost",
     received_at: "2024-06-01T12:00:00Z",
     source_ip: "127.0.0.1",
+    severity: "info",
+    tags: [],
+    fingerprint: null,
+    occurrences: 1,
+    state: "new",
+    last_received_at: "2024-06-01T12:00:00Z",
     custom_fields: {},
     ...overrides,
   };
