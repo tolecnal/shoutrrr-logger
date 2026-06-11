@@ -70,7 +70,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         "pyjwt[crypto]>=2.10.0" \
         "httpx>=0.28.0" \
         "python-multipart>=0.0.20" \
-        "pydantic-settings>=2.7.0"
+        "pydantic-settings>=2.7.0" \
+        "markdown>=3.7.0"
 
 # ============================================================
 # Stage 3 – Final runtime image
