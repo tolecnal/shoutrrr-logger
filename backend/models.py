@@ -334,6 +334,8 @@ class UserAlert(Base):
     email_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     notification: Mapped["Notification"] = relationship(lazy="noload")
+    rule: Mapped["AlertRule"] = relationship(lazy="noload")
+    user: Mapped["User"] = relationship(lazy="noload")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
