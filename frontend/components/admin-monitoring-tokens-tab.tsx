@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MonitoringTokenTestDialog } from "@/components/monitoring-token-test-dialog";
 
 export function MonitoringTokensTab() {
   const { data: tokens, error, isLoading, mutate } = useSWR("/admin/monitoring-tokens", fetchMonitoringTokens);
@@ -194,6 +195,19 @@ export function MonitoringTokensTab() {
                   <Pencil className="h-4 w-4" />
                 </Button>
 
+                <MonitoringTokenTestDialog
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                      title="Test token"
+                    >
+                      <span className="text-xs font-mono font-bold">{"{}"}</span>
+                    </Button>
+                  }
+                />
+
                 <Button
                   size="sm"
                   variant="ghost"
@@ -263,7 +277,15 @@ export function MonitoringTokensTab() {
               </p>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex sm:justify-between items-center w-full">
+            <MonitoringTokenTestDialog
+              token={createdToken?.raw_token}
+              trigger={
+                <Button variant="outline">
+                  Test this token
+                </Button>
+              }
+            />
             <Button onClick={() => setCreatedToken(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
