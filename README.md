@@ -612,7 +612,7 @@ The admin UI supports filtering by action and time range. The same data is avail
 
 ## Plugins
 
-Plugins react to every incoming notification — forward it to an external system, transform it, trigger an alert, and so on. The bundled **Splunk HEC** plugin forwards events to a Splunk HTTP Event Collector with configurable field mappings.
+Plugins react to every incoming notification — forward it to an external system, transform it, trigger an alert, and so on. The bundled **Splunk HEC** plugin forwards events to a Splunk HTTP Event Collector with configurable field mappings, and the **Slack** plugin forwards events to a Slack workspace via an Incoming Webhook URL.
 
 Plugins are configured globally in **Admin → Plugins**. Click the plugin row to expand the configuration panel. Each plugin has an enabled/disabled toggle and a **Send test event** button to verify connectivity without waiting for a real notification. Admins can also toggle the ability for individual users to configure the plugin for themselves.
 

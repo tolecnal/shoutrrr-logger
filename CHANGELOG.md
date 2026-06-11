@@ -9,8 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **User Plugin Configs**: Users can now configure their own plugin integrations from User Preferences. This allows users to receive notifications to their personal Slack/Teams/etc based on routing rules.
-- **Plugin Routing Rules**: Plugins can now have custom routing rules defined. A notification must match the severity, tags, or sender criteria for it to be routed to that plugin.
+- **Slack Plugin**: Added a new bundled Slack plugin that can post notifications directly to Slack via an Incoming Webhook URL.
+- **User Plugin Configs**: Users can now configure their own plugin integrations from User Preferences if the admin permits it. This allows users to receive notifications to their personal Slack/Teams/etc based on routing rules, completely separate from the global system plugins.
+- **Plugin Routing Rules**: Plugins can now have custom outbound routing rules defined at both the global and user levels. A notification must match the severity, tags, token ID, or sender criteria for it to be routed to that plugin.
 - **Server-Sent Events (SSE)**: The notification log now uses SSE to stream real-time updates directly to the UI, eliminating the need for periodic polling or manual refreshing.
 - **Time Formatting**: Timestamps on the notifications page now intelligently format themselves. If a notification is from today, only the time is shown. For older notifications, the date is included.
 - **Audit Logging**: Added audit log capture for updates to User Plugin Configurations.
