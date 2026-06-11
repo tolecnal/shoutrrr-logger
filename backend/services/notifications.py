@@ -29,6 +29,8 @@ class NotificationService:
     ) -> None:
         self._repo = repo
         self._plugin_config_repo = plugin_config_repo
+        self._filter_cache: dict[str, list[str]] | None = None
+        self._filter_cache_time: float = 0
 
     async def list_notifications(
         self,
@@ -58,9 +60,23 @@ class NotificationService:
             items=[NotificationOut.model_validate(r) for r in rows],
             total=total,
             page_size=page_size,
-            pages=max(1, math.ceil(total / page_size)),
+            pages=math.ceil(total / page_size) if total > 0 else 0,
             next_cursor=next_cursor,
         )
+
+    async def get_search_filters(self, session: AsyncSession) -> dict[str, list[str]]:
+        import time
+
+        now = time.time()
+        if self._filter_cache is None or now - self._filter_cache_time > 300:
+            senders, tags = await self._repo.get_recent_filters(session)
+            self._filter_cache = {
+                "senders": sorted(list(senders)),
+                "tags": sorted(list(tags)),
+                "severities": ["info", "warning", "error", "critical"],
+            }
+            self._filter_cache_time = now
+        return self._filter_cache
 
     async def get_notification(
         self,

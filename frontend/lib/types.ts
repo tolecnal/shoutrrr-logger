@@ -28,6 +28,12 @@ export interface NotificationOut {
   custom_fields: Record<string, unknown>;
 }
 
+export interface NotificationSearchFilters {
+  senders: string[];
+  tags: string[];
+  severities: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Plugins
 // ---------------------------------------------------------------------------

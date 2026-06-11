@@ -102,6 +102,12 @@ class NotificationOut(BaseModel):
         return values
 
 
+class NotificationSearchFilters(BaseModel):
+    senders: list[str]
+    tags: list[str]
+    severities: list[str]
+
+
 class NotificationStateUpdate(BaseModel):
     state: str = Field(..., pattern="^(new|acknowledged|resolved)$")
 

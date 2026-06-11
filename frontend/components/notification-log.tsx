@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet } from "lucide-react";
-import { fetchNotifications, fetchSettings, notificationsKey, exportNotificationsUrl, settingsToMap } from "@/lib/api";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle } from "lucide-react";
+import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
@@ -38,6 +38,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
+import { SearchAutocomplete } from "./search-autocomplete";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -120,6 +121,10 @@ export function NotificationLog() {
 
   // Load app settings (page size, auto-refresh interval)
   const { data: settingsList } = useSWR("/settings", fetchSettings, { revalidateOnFocus: false });
+  const { data: searchFilters } = useSWR("/notifications/search-filters", fetchSearchFilters, { 
+    revalidateOnFocus: false, 
+    dedupingInterval: 300000 
+  });
   const appSettings = useMemo(
     () => (settingsList ? settingsToMap(settingsList) : null),
     [settingsList]
@@ -410,21 +415,37 @@ export function NotificationLog() {
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/50">
           <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                id="notification-search"
-                name="notification-search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search… (press / to focus)"
-                className="pl-8 h-8 text-sm bg-input"
-              />
-            </div>
+            <SearchAutocomplete 
+              value={search} 
+              onChange={setSearch} 
+              filters={searchFilters} 
+              inputRef={searchInputRef}
+            />
             <Button type="submit" size="sm" variant="secondary" className="h-8">
               Search
             </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" title="Search syntax help">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-4 text-sm bg-card border-border shadow-md" align="start">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Advanced Search</h4>
+                  <p className="text-muted-foreground">Search specific fields and use regular expressions.</p>
+                  <ul className="space-y-1 mt-2 list-disc list-inside text-muted-foreground">
+                    <li><code className="text-foreground">title:"error"</code> - exact substring in title</li>
+                    <li><code className="text-foreground">message:/regex/</code> - regex search in message</li>
+                    <li><code className="text-foreground">tag:env:prod</code> - search in tags</li>
+                    <li><code className="text-foreground">sender:app*</code> - wildcard matching</li>
+                    <li><code className="text-foreground">severity:info</code> - search by severity</li>
+                    <li><code className="text-foreground">after:1h before:1d</code> - relative time filters</li>
+                  </ul>
+                  <p className="text-muted-foreground mt-2">Combine terms: <code className="text-foreground">severity:error tag:prod /timeout/</code></p>
+                </div>
+              </PopoverContent>
+            </Popover>
             {query && (
               <Button
                 type="button"

@@ -1,10 +1,11 @@
 """Database access for the ``notifications`` table."""
 
+import re
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, delete, func, or_, select, text
+from sqlalchemy import String, and_, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import AccessToken, Notification
@@ -56,6 +57,20 @@ class NotificationRepository:
             )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+    def _parse_time_string(self, val: str) -> datetime | None:
+        try:
+            val = val.lower().strip()
+            if val.endswith("m") and val[:-1].isdigit():
+                return datetime.now(UTC) - timedelta(minutes=int(val[:-1]))
+            if val.endswith("h") and val[:-1].isdigit():
+                return datetime.now(UTC) - timedelta(hours=int(val[:-1]))
+            if val.endswith("d") and val[:-1].isdigit():
+                return datetime.now(UTC) - timedelta(days=int(val[:-1]))
+            # Try absolute ISO
+            return datetime.fromisoformat(val).astimezone(UTC)
+        except ValueError:
+            return None
 
     async def search_paginated(
         self,
@@ -118,14 +133,98 @@ class NotificationRepository:
         # else: scope="all" for admin → no filter, sees everything
 
         if query:
-            term = f"%{query}%"
-            base_query = base_query.where(
-                or_(
-                    Notification.message.ilike(term),
-                    Notification.title.ilike(term),
-                    Notification.sender_name.ilike(term),
-                )
+            # Pattern matches optionally prefixed key (e.g. title:, message:, tag:),
+            # followed by either a /regex/ string, a "double quoted" string, a 'single quoted' string, or unquoted text.
+            pattern = re.compile(
+                r"(?:(?P<key>[a-zA-Z0-9_]+):)?"
+                r"(?:"
+                r"/(?P<regex>(?:\\/|[^/])+)/|"
+                r'"(?P<dquote>(?:\\"|[^"])+)"|'
+                r"'(?P<squote>(?:\\'|[^'])+)'|"
+                r"(?P<unquoted>[^\s]+)"
+                r")"
             )
+
+            for match in pattern.finditer(query):
+                d = match.groupdict()
+                key = d.get("key")
+                if key:
+                    key = key.lower()
+
+                is_regex = False
+                if d.get("regex") is not None:
+                    value = d["regex"].replace("\\/", "/")
+                    is_regex = True
+                elif d.get("dquote") is not None:
+                    value = d["dquote"].replace('\\"', '"')
+                elif d.get("squote") is not None:
+                    value = d["squote"].replace("\\'", "'")
+                elif d.get("unquoted") is not None:
+                    value = d["unquoted"]
+                else:
+                    continue
+
+                def build_condition(col, val, regex_mode):
+                    if regex_mode:
+                        return col.regexp_match(val, flags="i")
+                    val_sql = (
+                        val.replace("\\", "\\\\")
+                        .replace("%", "\\%")
+                        .replace("_", "\\_")
+                        .replace("*", "%")
+                        .replace("?", "_")
+                    )
+                    return col.ilike(f"%{val_sql}%", escape="\\")
+
+                if key == "title":
+                    base_query = base_query.where(
+                        build_condition(Notification.title, value, is_regex)
+                    )
+                elif key == "message":
+                    base_query = base_query.where(
+                        build_condition(Notification.message, value, is_regex)
+                    )
+                elif key == "sender":
+                    base_query = base_query.where(
+                        build_condition(Notification.sender_name, value, is_regex)
+                    )
+                elif key == "severity":
+                    base_query = base_query.where(
+                        build_condition(Notification.severity, value, is_regex)
+                    )
+                elif key == "tag":
+                    if is_regex:
+                        base_query = base_query.where(
+                            Notification.tags.cast(String).regexp_match(value, flags="i")
+                        )
+                    else:
+                        val_sql = (
+                            value.replace("\\", "\\\\")
+                            .replace("%", "\\%")
+                            .replace("_", "\\_")
+                            .replace("*", "%")
+                            .replace("?", "_")
+                        )
+                        base_query = base_query.where(
+                            Notification.tags.cast(String).ilike(f"%{val_sql}%", escape="\\")
+                        )
+                elif key == "after":
+                    dt = self._parse_time_string(value)
+                    if dt:
+                        base_query = base_query.where(Notification.last_received_at >= dt)
+                elif key == "before":
+                    dt = self._parse_time_string(value)
+                    if dt:
+                        base_query = base_query.where(Notification.last_received_at <= dt)
+                else:
+                    # Free-text: search across message, title, and sender_name
+                    base_query = base_query.where(
+                        or_(
+                            build_condition(Notification.message, value, is_regex),
+                            build_condition(Notification.title, value, is_regex),
+                            build_condition(Notification.sender_name, value, is_regex),
+                        )
+                    )
 
         if after:
             base_query = base_query.where(Notification.last_received_at >= after)
@@ -322,6 +421,27 @@ class NotificationRepository:
         """)
         result = await session.execute(sql, {"limit": limit})
         return [row[0] for row in result.fetchall()]
+
+    async def get_recent_filters(
+        self, session: AsyncSession, limit: int = 1000
+    ) -> tuple[set[str], set[str]]:
+        """Fetch the most recent notifications and extract distinct senders and tags."""
+        stmt = (
+            select(Notification.sender_name, Notification.tags)
+            .order_by(Notification.id.desc())
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+
+        senders = set()
+        tags = set()
+        for sender, tag_list in result:
+            if sender:
+                senders.add(sender)
+            if tag_list:
+                for t in tag_list:
+                    tags.add(t)
+        return senders, tags
 
 
 notification_repository = NotificationRepository()

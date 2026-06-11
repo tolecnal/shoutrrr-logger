@@ -6,6 +6,7 @@ import type {
   AuditLogOut,
   CursorPage,
   NotificationOut,
+  NotificationSearchFilters,
   NotificationStats,
   PluginMeta,
   SettingOut,
@@ -105,6 +106,9 @@ export function exportNotificationsUrl(params: {
   const qs = sp.toString();
   return `/api/v1/notifications/export${qs ? `?${qs}` : ""}`;
 }
+
+export const fetchSearchFilters = () =>
+  apiFetch<NotificationSearchFilters>("/notifications/search-filters");
 
 // ---- Users ----
 export const fetchUsers = () => apiFetch<UserOut[]>("/admin/users");

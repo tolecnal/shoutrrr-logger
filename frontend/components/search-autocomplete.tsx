@@ -1,0 +1,163 @@
+import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import type { NotificationSearchFilters } from "@/lib/types";
+
+interface SearchAutocompleteProps {
+  value: string;
+  onChange: (val: string) => void;
+  filters?: NotificationSearchFilters;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+const KEYS = ["title:", "message:", "sender:", "severity:", "tag:", "after:", "before:"];
+
+export function SearchAutocomplete({ value, onChange, filters, inputRef }: SearchAutocompleteProps) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const internalInputRef = useRef<HTMLInputElement>(null);
+  const activeInputRef = inputRef || internalInputRef;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const updateCursor = () => {
+    if (activeInputRef.current) {
+      setCursorPosition(activeInputRef.current.selectionStart || value.length);
+    }
+  };
+
+  const getActiveWordInfo = () => {
+    const cursor = cursorPosition;
+    let start = cursor;
+    while (start > 0 && value[start - 1] !== " ") start--;
+    let end = cursor;
+    while (end < value.length && value[end] !== " ") end++;
+    return { word: value.slice(start, end), start, end };
+  };
+
+  const getSuggestions = () => {
+    const { word } = getActiveWordInfo();
+    if (!word) return KEYS; // show keys by default when empty word
+
+    const colonIndex = word.indexOf(":");
+    if (colonIndex === -1) {
+      // Suggest keys
+      return KEYS.filter(k => k.startsWith(word.toLowerCase()));
+    }
+
+    // After colon
+    const key = word.slice(0, colonIndex + 1).toLowerCase();
+    const prefix = word.slice(colonIndex + 1).toLowerCase();
+
+    if (key === "severity:") {
+      const sevs = filters?.severities || ["info", "warning", "error", "critical"];
+      return sevs.filter(s => s.startsWith(prefix)).map(s => key + s);
+    }
+    if (key === "sender:") {
+      return (filters?.senders || []).filter(s => s.toLowerCase().startsWith(prefix)).map(s => key + s);
+    }
+    if (key === "tag:") {
+      return (filters?.tags || []).filter(s => s.toLowerCase().startsWith(prefix)).map(s => key + s);
+    }
+
+    return [];
+  };
+
+  const suggestions = getSuggestions();
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      const { word } = getActiveWordInfo();
+      if (word === suggestions[selectedIndex] && e.key === "Enter") {
+        setShowSuggestions(false);
+        return; // Allow form submission to proceed natively
+      }
+      e.preventDefault();
+      applySuggestion(suggestions[selectedIndex]);
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    const { start, end } = getActiveWordInfo();
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    
+    const newValue = before + suggestion + (suggestion.endsWith(":") ? "" : " ") + after;
+    onChange(newValue);
+    setShowSuggestions(false);
+    activeInputRef.current?.focus();
+    
+    // Set cursor position after the applied suggestion
+    const newCursor = start + suggestion.length + (suggestion.endsWith(":") ? 0 : 1);
+    setTimeout(() => {
+      activeInputRef.current?.setSelectionRange(newCursor, newCursor);
+    }, 0);
+  };
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [value]);
+
+  return (
+    <div className="relative flex-1 max-w-sm" ref={containerRef}>
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <Input
+        ref={activeInputRef}
+        id="notification-search"
+        name="notification-search"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setShowSuggestions(true);
+          updateCursor();
+        }}
+        onClick={updateCursor}
+        onKeyUp={updateCursor}
+        onFocus={() => {
+          setShowSuggestions(true);
+          updateCursor();
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder="Search… (press / to focus)"
+        className="pl-8 h-8 text-sm bg-input"
+        autoComplete="off"
+      />
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground rounded-md border border-border shadow-md max-h-60 overflow-auto">
+          {suggestions.map((s, i) => (
+            <div
+              key={s}
+              className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${i === selectedIndex ? "bg-accent text-accent-foreground" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault(); // keep input focused
+                applySuggestion(s);
+              }}
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

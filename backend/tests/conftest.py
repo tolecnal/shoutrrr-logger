@@ -58,6 +58,23 @@ async def engine():
     def _strip_pg_syntax(conn, cursor, statement, parameters, context, executemany):
         pass  # no-op — filtering happens at DDL reflection level
 
+    import re
+
+    @event.listens_for(eng.sync_engine, "connect")
+    def sqlite_engine_connect(dbapi_connection, connection_record):
+        if hasattr(dbapi_connection, "create_function"):
+
+            def regexp(expr, item):
+                if item is None:
+                    return False
+                try:
+                    reg = re.compile(expr, re.I)
+                    return reg.search(str(item)) is not None
+                except Exception:
+                    return False
+
+            dbapi_connection.create_function("REGEXP", 2, regexp)
+
     # Patch the models to remove PG-only kwargs before DDL is emitted
     from models import Notification as _Notif  # noqa: PLC0415
 

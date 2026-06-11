@@ -12,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_viewer
 from database import get_db
 from models import User, UserRole
-from schemas import CursorPage, NotificationOut, NotificationStateUpdate, NotificationStats
+from schemas import (
+    CursorPage,
+    NotificationOut,
+    NotificationSearchFilters,
+    NotificationStateUpdate,
+    NotificationStats,
+)
 from services.notifications import notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -82,6 +88,20 @@ async def stream_notifications(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get(
+    "/search-filters",
+    response_model=NotificationSearchFilters,
+    summary="Get available search filters",
+    description="Returns distinct values for senders, tags, and severities for auto-complete.",
+)
+async def get_search_filters(
+    _user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationSearchFilters:
+    data = await notification_service.get_search_filters(db)
+    return NotificationSearchFilters.model_validate(data)
 
 
 @router.get(
