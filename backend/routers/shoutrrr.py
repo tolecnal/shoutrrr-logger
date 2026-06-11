@@ -106,6 +106,12 @@ async def receive_notification(
         "X-Forwarded-For", request.client.host if request.client else None
     )
 
+    # Extract advanced fields from extra
+    severity = extra.pop("severity", None) or extra.pop("level", "info")
+    tags_raw = extra.pop("tags", "")
+    tags = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
+    fingerprint_group = extra.pop("group", None)
+
     notification = await notification_service.store_incoming(
         db,
         token=token,
@@ -114,8 +120,16 @@ async def receive_notification(
         message=message,
         raw_payload=raw_payload,
         source_ip=source_ip,
+        severity=severity,
+        tags=tags,
+        fingerprint_group=fingerprint_group,
     )
     out = NotificationOut.model_validate(notification)
-    # Dispatch enabled plugins as a background task (non-blocking)
-    background_tasks.add_task(notification_service.dispatch_plugins, out.model_dump(mode="json"))
+    notification_dict = out.model_dump(mode="json")
+    notification_dict["token_id"] = str(token.id)
+    background_tasks.add_task(
+        notification_service.dispatch_plugins,
+        notification_dict,
+        str(token.user_id) if token.user_id else None,
+    )
     return out

@@ -6,7 +6,10 @@ real PostgreSQL instance.  PostgreSQL-specific DDL (pg_trgm, JSONB, GIN
 indexes) is stripped out via event listeners before the schema is created.
 """
 
+import os
 from collections.abc import AsyncGenerator
+
+os.environ["ENVIRONMENT"] = "test"
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

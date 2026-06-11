@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_viewer
 from database import get_db
 from models import User, UserRole
-from schemas import CursorPage, NotificationOut, NotificationStats
+from schemas import CursorPage, NotificationOut, NotificationStateUpdate, NotificationStats
 from services.notifications import notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -58,6 +58,29 @@ async def export_notifications(
         iter([csv_data]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=notifications.csv"},
+    )
+
+
+@router.get(
+    "/stream",
+    summary="Real-time Server-Sent Events",
+    description="Streams an event when a new notification is received or updated.",
+    response_class=StreamingResponse,
+)
+async def stream_notifications(
+    _user: User = Depends(require_viewer),
+) -> StreamingResponse:
+    from services.sse import sse_service
+
+    return StreamingResponse(
+        sse_service.subscribe(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            # We don't need buffering on proxies
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -112,4 +135,32 @@ async def get_notification(
 ) -> NotificationOut:
     return NotificationOut.model_validate(
         await notification_service.get_notification(db, notification_id)
+    )
+
+
+@router.patch(
+    "/{notification_id}/state",
+    response_model=NotificationOut,
+    summary="Update notification state",
+)
+async def update_notification_state(
+    notification_id: str,
+    update: NotificationStateUpdate,
+    _user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationOut:
+    from services.settings import settings_service
+
+    # Optional check if states are enabled, though we can just allow it
+    enabled = await settings_service.get_bool(db, "alert_states_enabled")
+    if not enabled:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Alert states are disabled by the administrator.",
+        )
+
+    return NotificationOut.model_validate(
+        await notification_service.update_state(db, notification_id, update.state)
     )

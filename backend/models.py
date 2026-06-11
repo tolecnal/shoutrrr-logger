@@ -102,7 +102,15 @@ class Notification(Base):
     title: Mapped[str | None] = mapped_column(String(512), nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     raw_payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    severity: Mapped[str] = mapped_column(String(32), nullable=False, default="info")
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    fingerprint: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    occurrences: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="new")
     received_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    last_received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )
     source_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -132,16 +140,65 @@ class Notification(Base):
 
 
 class PluginConfig(Base):
-    """Persists the enabled state and config dict for each plugin."""
+    """Persists the enabled state and config dict for each global plugin."""
 
     __tablename__ = "plugin_configs"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)  # == plugin_id
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    allow_user_configs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Free-form JSON config merged on top of the plugin's default_config
     config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    rules: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class RoutingRule(Base):
+    """Reusable routing rule for plugins."""
+
+    __tablename__ = "routing_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # NULL user_id means it's a global rule
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    severities: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    tokens: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    custom_fields: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class UserPluginConfig(Base):
+    """Persists the enabled state and config dict for a plugin for a specific user."""
+
+    __tablename__ = "user_plugin_configs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    plugin_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    rules: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_user_plugin_configs_user_plugin", "user_id", "plugin_id", unique=True),
     )
 
 

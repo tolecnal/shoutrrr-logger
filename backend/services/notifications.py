@@ -8,6 +8,7 @@ import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import sqlalchemy
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -70,6 +71,22 @@ class NotificationService:
             )
         return notification
 
+    async def update_state(
+        self, session: AsyncSession, notification_id: uuid.UUID | str, state: str
+    ) -> Notification:
+        notification = await self.get_notification(session, notification_id)
+        notification.state = state
+        await session.flush()
+        await session.refresh(notification)
+        try:
+            await session.execute(
+                sqlalchemy.text("SELECT pg_notify('shoutrrr_updates', :payload)"),
+                {"payload": '{"event": "state_change"}'},
+            )
+        except sqlalchemy.exc.OperationalError:
+            pass  # SQLite during tests
+        return notification
+
     async def custom_field_keys(self, session: AsyncSession, *, limit: int) -> list[str]:
         return await self._repo.distinct_custom_field_keys(session, limit)
 
@@ -83,7 +100,39 @@ class NotificationService:
         message: str,
         raw_payload: str | None,
         source_ip: str | None,
+        severity: str = "info",
+        tags: list[str] | None = None,
+        fingerprint_group: str | None = None,
     ) -> Notification:
+        import hashlib
+
+        tags = tags or []
+
+        # Calculate fingerprint
+        if fingerprint_group:
+            fp_raw = fingerprint_group
+        else:
+            fp_raw = f"{title or ''}:{message}:{severity}"
+        fingerprint = hashlib.md5(fp_raw.encode()).hexdigest()
+
+        # Look for a recent duplicate (last 5 minutes)
+        cutoff = datetime.now(UTC) - timedelta(minutes=5)
+        existing = await self._repo.find_recent_by_fingerprint(session, fingerprint, cutoff)
+
+        if existing:
+            existing.occurrences += 1
+            existing.last_received_at = datetime.now(UTC)
+            await session.flush()
+            await session.refresh(existing)
+            try:
+                await session.execute(
+                    sqlalchemy.text("SELECT pg_notify('shoutrrr_updates', :payload)"),
+                    {"payload": '{"event": "update"}'},
+                )
+            except sqlalchemy.exc.OperationalError:
+                pass  # SQLite during tests
+            return existing
+
         notification = Notification(
             token_id=token.id,
             sender_name=sender_name,
@@ -91,8 +140,19 @@ class NotificationService:
             message=message,
             raw_payload=raw_payload,
             source_ip=source_ip,
+            severity=severity,
+            tags=tags,
+            fingerprint=fingerprint,
         )
-        return await self._repo.add(session, notification)
+        notification = await self._repo.add(session, notification)
+        try:
+            await session.execute(
+                sqlalchemy.text("SELECT pg_notify('shoutrrr_updates', :payload)"),
+                {"payload": '{"event": "new"}'},
+            )
+        except sqlalchemy.exc.OperationalError:
+            pass  # SQLite during tests
+        return notification
 
     async def get_stats(self, session: AsyncSession, *, days: int = 30) -> NotificationStats:
         raw = await self._repo.stats_summary(session, days=days)
@@ -150,27 +210,56 @@ class NotificationService:
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
         return await self._repo.delete_older_than(session, cutoff)
 
-    async def dispatch_plugins(self, notification_dict: dict) -> None:
+    async def dispatch_plugins(self, notification_dict: dict, user_id_str: str | None) -> None:
         """
         Run all enabled plugins against a saved notification.
-
-        Each plugin gets its own try/except so one failure doesn't block
-        others. Intended to run as a FastAPI BackgroundTask — obtains its own
-        session since the request-scoped session will already be closed.
         """
+        from sqlalchemy import select
+
         from database import engine  # noqa: PLC0415
+        from models import PluginConfig, UserPluginConfig
         from plugins import registry as plugin_registry  # noqa: PLC0415
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
-            rows = await self._plugin_config_repo.list_enabled(session)
+            # Load global plugins
+            global_stmt = select(PluginConfig).where(PluginConfig.enabled == True)
+            global_configs = (await session.execute(global_stmt)).scalars().all()
 
-        plugin_configs = {row.id: row for row in rows}
+            user_configs = []
+            if user_id_str:
+                import uuid
 
-        for plugin in plugin_registry.all_plugins():
-            row = plugin_configs.get(plugin.plugin_id)
-            if not row or not row.enabled:
+                try:
+                    uid = uuid.UUID(user_id_str)
+                    user_stmt = select(UserPluginConfig).where(
+                        UserPluginConfig.enabled == True, UserPluginConfig.user_id == uid
+                    )
+                    user_configs = (await session.execute(user_stmt)).scalars().all()
+                except Exception as e:
+                    logger.error(f"Error loading user configs: {e}")
+
+        configs_to_run = list(global_configs) + list(user_configs)
+
+        for row in configs_to_run:
+            plugin_id = getattr(row, "plugin_id", getattr(row, "id", None))
+            plugin = plugin_registry.get_plugin(plugin_id)
+            if not plugin:
                 continue
+
+            if row.rules:
+                from schemas import RoutingRuleCreate
+                from services.routing_rules import routing_rule_service
+
+                # Instantiate rules dynamically from the JSON objects
+                rule_objs = [RoutingRuleCreate.model_validate(r) for r in row.rules]
+
+                matched_any = any(
+                    routing_rule_service.rule_matches(rule, notification_dict) for rule in rule_objs
+                )
+                if not matched_any:
+                    continue
+
             merged_config = {**plugin.default_config, **row.config}
             try:
                 await plugin.on_notification(notification_dict, merged_config)

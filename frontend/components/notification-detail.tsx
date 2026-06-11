@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { updateNotificationState } from "@/lib/api";
 
 interface Props {
   notification: NotificationOut;
@@ -16,6 +17,8 @@ interface Props {
   rules: TagRule[];
   formatTimestamp: (iso: string) => string;
   onClose: () => void;
+  onUpdate: (n: NotificationOut) => void;
+  alertStatesEnabled: boolean;
 }
 
 function DetailRow({
@@ -38,7 +41,16 @@ function DetailRow({
   );
 }
 
-export function NotificationDetail({ notification: n, tags, rules, formatTimestamp, onClose }: Props) {
+export function NotificationDetail({ notification: n, tags, rules, formatTimestamp, onClose, onUpdate, alertStatesEnabled }: Props) {
+  const handleStateUpdate = async (newState: "new" | "acknowledged" | "resolved") => {
+    try {
+      const updated = await updateNotificationState(n.id, newState);
+      onUpdate(updated);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="hidden lg:flex w-80 xl:w-96 flex-col border-l border-border bg-card shrink-0">
       {/* Header */}
@@ -72,6 +84,46 @@ export function NotificationDetail({ notification: n, tags, rules, formatTimesta
             value={
               <span className="font-mono text-xs">
                 {formatTimestamp(n.received_at)}
+              </span>
+            }
+          />
+
+          {n.occurrences > 1 && (
+            <DetailRow
+              icon={Clock}
+              label="Last received at"
+              value={
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs">
+                    {formatTimestamp(n.last_received_at)}
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {n.occurrences} occurrences
+                  </Badge>
+                </div>
+              }
+            />
+          )}
+
+          <DetailRow
+            icon={Tag}
+            label="Severity"
+            value={
+              <span
+                className={cn(
+                  "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase border",
+                  (() => {
+                    const colorKey = 
+                      n.severity === "critical" ? "red" :
+                      n.severity === "error" ? "orange" :
+                      n.severity === "warning" ? "yellow" :
+                      n.severity === "info" ? "blue" : "slate";
+                    const colors = TAG_COLOR_CLASSES[colorKey as keyof typeof TAG_COLOR_CLASSES];
+                    return `${colors.bg} ${colors.text} ${colors.border}`;
+                  })()
+                )}
+              >
+                {n.severity}
               </span>
             }
           />
@@ -111,6 +163,14 @@ export function NotificationDetail({ notification: n, tags, rules, formatTimesta
                       </span>
                     );
                   })}
+                  {n.tags?.map((tag) => (
+                    <span
+                      key={`explicit-${tag}`}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-slate-500/10 text-slate-500 border-slate-500/20"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               }
             />
@@ -164,6 +224,34 @@ export function NotificationDetail({ notification: n, tags, rules, formatTimesta
             <p className="text-[11px] text-muted-foreground mb-1">ID</p>
             <p className="font-mono text-[11px] text-muted-foreground break-all">{n.id}</p>
           </div>
+
+          {alertStatesEnabled && (
+            <>
+              <Separator />
+              <div className="pt-2 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                  State: {n.state}
+                </span>
+                <div className="flex gap-2">
+                  {n.state !== "acknowledged" && n.state !== "resolved" && (
+                    <Button size="sm" variant="secondary" onClick={() => handleStateUpdate("acknowledged")}>
+                      Acknowledge
+                    </Button>
+                  )}
+                  {n.state !== "resolved" && (
+                    <Button size="sm" onClick={() => handleStateUpdate("resolved")}>
+                      Resolve
+                    </Button>
+                  )}
+                  {n.state !== "new" && (
+                    <Button size="sm" variant="outline" onClick={() => handleStateUpdate("new")}>
+                      Reset
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>

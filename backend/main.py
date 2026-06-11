@@ -11,7 +11,6 @@ import urllib.parse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
-import jwt
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -30,8 +29,21 @@ from database import get_db, init_db
 from middleware.performance import PerformanceMiddleware
 from models import User, UserRole
 from plugins import registry as plugin_registry
-from routers import api_metrics, audit_logs, me, notifications, plugins, shoutrrr, tokens, users
-from routers import settings as settings_router
+from routers import (
+    api_metrics,
+    audit_logs,
+    me,
+    notifications,
+    plugins,
+    routing_rules,
+    shoutrrr,
+    tokens,
+    user_plugins,
+    users,
+)
+from routers import (
+    settings as settings_router,
+)
 from schemas import OIDCCallbackResponse, UserOut
 from services.api_metrics import api_metric_service
 from services.audit_logs import audit_log_service
@@ -45,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 # Arbitrary fixed key for the cross-worker "retention loop owner" advisory
 # lock (see _acquire_retention_leadership below).
-_RETENTION_LOCK_KEY = 0x73685F7274  # "sh_rt" packed into an int, just needs to be stable
+_RETENTION_LOCK_KEY = 0x7368F57274  # "sh_rt" packed into an int, just needs to be stable
 
 
 async def _acquire_retention_leadership(engine: AsyncEngine) -> tuple[bool, AsyncConnection | None]:
@@ -136,9 +148,11 @@ async def _retention_loop() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from database import engine  # noqa: PLC0415
+    from services.sse import sse_service
 
     await init_db()
     plugin_registry.discover()
+    await sse_service.start()
 
     is_retention_leader, retention_lock_conn = await _acquire_retention_leadership(engine)
     retention_task: asyncio.Task | None = None
@@ -156,6 +170,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await retention_task
     if retention_lock_conn is not None:
         await retention_lock_conn.close()
+
+    await sse_service.stop()
 
 
 app = FastAPI(
@@ -228,6 +244,8 @@ app.include_router(users.router, prefix=f"{_V1}/admin")
 app.include_router(tokens.router, prefix=f"{_V1}/admin")
 app.include_router(audit_logs.router, prefix=f"{_V1}/admin")
 app.include_router(plugins.router, prefix=_V1)
+app.include_router(routing_rules.router, prefix=_V1)
+app.include_router(user_plugins.router, prefix=_V1)
 app.include_router(settings_router.public_router, prefix=_V1)
 app.include_router(settings_router.admin_router, prefix=_V1)
 app.include_router(me.router, prefix=_V1)
@@ -360,8 +378,11 @@ async def oidc_callback(
     # expose on the UserInfo endpoint unless a protocol mapper is configured.
     # Merging gives _extract_role_from_claims the full picture.
     try:
-        token_claims: dict = jwt.decode(access_token, options={"verify_signature": False})
-    except Exception:
+        from auth import verify_oidc_jwt
+
+        token_claims: dict = await verify_oidc_jwt(access_token)
+    except Exception as exc:
+        logger.warning(f"OIDC token signature verification failed: {exc}")
         token_claims = {}
 
     # Merge: token_claims first so that UserInfo values (sub, email, etc.)

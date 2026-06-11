@@ -20,10 +20,13 @@ requires one additional line in ``frontend/plugins/registry.tsx``.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
+import socket
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -144,6 +147,33 @@ class SplunkPlugin(BasePlugin):
         if not hec_url or not hec_token:
             self.log("hec_url or hec_token not configured — skipping", "warning")
             return
+
+        def _is_safe_url(url: str) -> bool:
+            try:
+                parsed = urlparse(url)
+                host = parsed.hostname
+                if not host:
+                    return False
+                try:
+                    ip = socket.gethostbyname(host)
+                except socket.gaierror:
+                    return True
+                ip_obj = ipaddress.ip_address(ip)
+                if (
+                    ip_obj.is_loopback
+                    or ip_obj.is_link_local
+                    or ip_obj.is_unspecified
+                    or ip_obj.is_multicast
+                ):
+                    return False
+            except Exception:
+                return False
+            return True
+
+        if not _is_safe_url(hec_url):
+            msg = f"Security error: HEC URL '{hec_url}' resolves to a forbidden IP address (loopback/link-local/metadata)"
+            self.log(msg, "error")
+            raise RuntimeError(msg)
 
         field_mappings: list[dict[str, str]] = config.get("field_mappings", [])
         event_body = _build_event(notification, field_mappings)

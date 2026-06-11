@@ -46,7 +46,13 @@ class NotificationOut(BaseModel):
     sender_name: str | None
     title: str | None
     message: str
+    severity: str
+    tags: list[str]
+    fingerprint: str | None
+    occurrences: int
+    state: str
     received_at: datetime
+    last_received_at: datetime
     source_ip: str | None
     # Parsed from raw_payload at serialization time — never stored directly
     custom_fields: dict[str, Any] = {}
@@ -78,7 +84,13 @@ class NotificationOut(BaseModel):
                                 "sender_name",
                                 "title",
                                 "message",
+                                "severity",
+                                "tags",
+                                "fingerprint",
+                                "occurrences",
+                                "state",
                                 "received_at",
+                                "last_received_at",
                                 "source_ip",
                                 "raw_payload",
                             ]
@@ -88,6 +100,10 @@ class NotificationOut(BaseModel):
             except (json.JSONDecodeError, TypeError):
                 pass
         return values
+
+
+class NotificationStateUpdate(BaseModel):
+    state: str = Field(..., pattern="^(new|acknowledged|resolved)$")
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +184,38 @@ class AccessTokenCreated(AccessTokenOut):
 
 
 # ---------------------------------------------------------------------------
+# Routing Rules
+# ---------------------------------------------------------------------------
+class RoutingRuleBase(BaseModel):
+    name: str
+    severities: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    tokens: list[str] = Field(default_factory=list)
+    custom_fields: dict[str, str] = Field(default_factory=dict)
+
+
+class RoutingRuleCreate(RoutingRuleBase):
+    pass
+
+
+class RoutingRuleUpdate(BaseModel):
+    name: str | None = None
+    severities: list[str] | None = None
+    tags: list[str] | None = None
+    tokens: list[str] | None = None
+    custom_fields: dict[str, str] | None = None
+
+
+class RoutingRuleOut(RoutingRuleBase):
+    id: uuid.UUID
+    user_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Plugins
 # ---------------------------------------------------------------------------
 class PluginOut(BaseModel):
@@ -175,14 +223,39 @@ class PluginOut(BaseModel):
     name: str
     description: str
     enabled: bool
+    allow_user_configs: bool
     config: dict[str, Any]
+    rules: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
 
 class PluginUpdate(BaseModel):
     enabled: bool | None = None
+    allow_user_configs: bool | None = None
     config: dict[str, Any] | None = None
+    rules: list[dict[str, Any]] | None = None
+
+
+class UserPluginOut(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    plugin_id: str
+    enabled: bool
+    config: dict[str, Any]
+    rules: list[dict[str, Any]] = Field(default_factory=list)
+
+    # Plugin metadata (not stored in DB, injected by service)
+    name: str = ""
+    description: str = ""
+
+    model_config = {"from_attributes": True}
+
+
+class UserPluginUpdate(BaseModel):
+    enabled: bool | None = None
+    config: dict[str, Any] | None = None
+    rules: list[dict[str, Any]] | None = None
 
 
 # ---------------------------------------------------------------------------

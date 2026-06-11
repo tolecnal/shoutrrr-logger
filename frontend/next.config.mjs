@@ -12,9 +12,6 @@ const nextConfig = {
   // Disabled in development so the v0 preview dev server works normally.
   ...(process.env.NODE_ENV === "production" ? { output: "standalone" } : {}),
 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 
   // Proxy /api/* → FastAPI backend.
   // In Docker the backend runs on port 9000 (set via BACKEND_URL env var).

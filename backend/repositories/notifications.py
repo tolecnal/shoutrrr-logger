@@ -96,9 +96,9 @@ class NotificationRepository:
             )
 
         if after:
-            base_query = base_query.where(Notification.received_at >= after)
+            base_query = base_query.where(Notification.last_received_at >= after)
         if before:
-            base_query = base_query.where(Notification.received_at <= before)
+            base_query = base_query.where(Notification.last_received_at <= before)
 
         count_query = select(func.count()).select_from(base_query.subquery())
         total: int = (await session.execute(count_query)).scalar_one()
@@ -107,9 +107,9 @@ class NotificationRepository:
             cursor_ts, cursor_id = decode_cursor(cursor)
             base_query = base_query.where(
                 or_(
-                    Notification.received_at < cursor_ts,
+                    Notification.last_received_at < cursor_ts,
                     and_(
-                        Notification.received_at == cursor_ts,
+                        Notification.last_received_at == cursor_ts,
                         Notification.id < cursor_id,
                     ),
                 )
@@ -118,7 +118,7 @@ class NotificationRepository:
         # Fetch one extra row to detect whether a next page exists, without
         # a second query.
         result = await session.execute(
-            base_query.order_by(Notification.received_at.desc(), Notification.id.desc()).limit(
+            base_query.order_by(Notification.last_received_at.desc(), Notification.id.desc()).limit(
                 page_size + 1
             )
         )
@@ -128,7 +128,7 @@ class NotificationRepository:
         if len(rows) > page_size:
             rows = rows[:page_size]
             last = rows[-1]
-            next_cursor = encode_cursor(last.received_at, last.id)
+            next_cursor = encode_cursor(last.last_received_at, last.id)
 
         return rows, total, next_cursor
 
@@ -137,6 +137,20 @@ class NotificationRepository:
         await session.flush()
         await session.refresh(notification)
         return notification
+
+    async def find_recent_by_fingerprint(
+        self, session: AsyncSession, fingerprint: str, since: datetime
+    ) -> Notification | None:
+        result = await session.execute(
+            select(Notification)
+            .where(
+                Notification.fingerprint == fingerprint,
+                Notification.last_received_at >= since,
+            )
+            .order_by(Notification.last_received_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def export_all(
         self,
@@ -172,7 +186,7 @@ class NotificationRepository:
         ``ix_notifications_token_received`` index for efficiency.
         """
         result = await session.execute(
-            select(func.count(Notification.id)).where(
+            select(func.coalesce(func.sum(Notification.occurrences), 0)).where(
                 Notification.token_id == token_id,
                 Notification.received_at >= since,
             )

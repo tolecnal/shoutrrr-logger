@@ -45,7 +45,13 @@ class TestNotificationOutCustomFields:
         "title": "Test",
         "message": "A message",
         "received_at": datetime.now(UTC).isoformat(),
+        "last_received_at": datetime.now(UTC).isoformat(),
         "source_ip": "127.0.0.1",
+        "severity": "info",
+        "tags": [],
+        "fingerprint": "xyz",
+        "occurrences": 1,
+        "state": "new",
     }
 
     def test_dict_with_valid_json_raw_payload(self):
@@ -77,7 +83,13 @@ class TestNotificationOutCustomFields:
             title="Test",
             message="A message",
             received_at=datetime.now(UTC),
+            last_received_at=datetime.now(UTC),
             source_ip="127.0.0.1",
+            severity="info",
+            tags=[],
+            fingerprint="xyz",
+            occurrences=1,
+            state="new",
             raw_payload=json.dumps({"region": "eu-west-1"}),
         )
         out = NotificationOut.model_validate(orm_obj)

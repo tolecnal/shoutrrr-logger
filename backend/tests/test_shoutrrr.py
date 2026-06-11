@@ -137,7 +137,7 @@ class TestShoutrrrRateLimiting:
         in-memory SQLite connection would roll back the request transaction
         and wipe the token/setting rows these multi-request tests rely on."""
 
-        async def _noop(notification_dict):
+        async def _noop(*args, **kwargs):
             return None
 
         monkeypatch.setattr(notification_service, "dispatch_plugins", _noop)
@@ -196,7 +196,7 @@ class TestShoutrrrRateLimiting:
 class TestShoutrrrPrivateTokensToggle:
     @pytest_asyncio.fixture(autouse=True)
     async def _disable_plugin_dispatch(self, monkeypatch):
-        async def _noop(notification_dict):
+        async def _noop(*args, **kwargs):
             return None
 
         monkeypatch.setattr(notification_service, "dispatch_plugins", _noop)

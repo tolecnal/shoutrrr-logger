@@ -19,4 +19,7 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   splunk: lazy(() =>
     import("./splunk/config").then((m) => ({ default: m.SplunkConfigPanel }))
   ),
+  slack: lazy(() =>
+    import("./slack/config").then((m) => ({ default: m.SlackConfigPanel }))
+  ),
 };

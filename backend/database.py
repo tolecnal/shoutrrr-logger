@@ -25,8 +25,24 @@ async def get_db() -> AsyncSession:  # type: ignore[return]
     async with async_session_factory() as session:
         try:
             yield session
-            await session.commit()
-        except Exception:
+            try:
+                await session.commit()
+                import logging
+
+                logging.getLogger("database").info("Session committed successfully")
+            except Exception as commit_exc:
+                import logging
+
+                logging.getLogger("database").error(
+                    f"Failed to commit session: {commit_exc}", exc_info=True
+                )
+                raise
+        except Exception as e:
+            import logging
+
+            logging.getLogger("database").error(
+                f"Rolling back session due to error: {e}", exc_info=True
+            )
             await session.rollback()
             raise
 

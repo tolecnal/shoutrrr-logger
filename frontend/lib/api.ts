@@ -82,6 +82,12 @@ export function notificationsKey(
 export const fetchNotifications = (url: string) =>
   apiFetch<CursorPage<NotificationOut>>(url);
 
+export const updateNotificationState = (id: string, state: "new" | "acknowledged" | "resolved") =>
+  apiFetch<NotificationOut>(`/notifications/${id}/state`, {
+    method: "PATCH",
+    body: JSON.stringify({ state }),
+  });
+
 export const fetchStats = (days = 30) =>
   apiFetch<NotificationStats>(`/notifications/stats?days=${days}`);
 
@@ -165,6 +171,7 @@ export function settingsToMap(list: SettingOut[]): AppSettings {
     stats_window_days: map.stats_window_days ?? 30,
     rate_limit_per_minute: map.rate_limit_per_minute ?? 0,
     private_tokens_enabled: (map.private_tokens_enabled ?? 1) !== 0,
+    alert_states_enabled: (map.alert_states_enabled ?? 0) !== 0,
   };
 }
 
@@ -206,11 +213,43 @@ export const fetchPlugins = () => apiFetch<PluginMeta[]>("/admin/plugins");
 export const fetchCustomFieldKeys = () =>
   apiFetch<string[]>("/admin/plugins/custom-field-keys");
 
-export const updatePlugin = (id: string, body: { enabled?: boolean; config?: Record<string, unknown> }) =>
-  apiFetch<PluginMeta>(`/admin/plugins/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+export const updatePlugin = (id: string, updates: { enabled?: boolean; allow_user_configs?: boolean; config?: Record<string, unknown>; rules?: any[] }) =>
+  apiFetch<PluginMeta>(`/admin/plugins/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
 
 export const testPlugin = (id: string) =>
   apiFetch<{ detail: string }>(`/admin/plugins/${id}/test`, { method: "POST" });
+
+// ---- User Plugins ----
+export const fetchUserPlugins = () => apiFetch<import("./types").UserPluginOut[]>("/user-plugins");
+
+export const updateUserPlugin = (id: string, updates: { enabled?: boolean; config?: Record<string, unknown>; rules?: any[] }) =>
+  apiFetch<import("./types").UserPluginOut>(`/user-plugins/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+
+// ---- Routing Rules ----
+export const fetchRoutingRules = () => apiFetch<import("./types").RoutingRuleOut[]>("/routing-rules");
+export const fetchMyRoutingRules = () => apiFetch<import("./types").RoutingRuleOut[]>("/routing-rules/me");
+
+export const createRoutingRule = (body: { name: string; severities?: string[]; tags?: string[]; tokens?: string[]; custom_fields?: Record<string, string> }) =>
+  apiFetch<import("./types").RoutingRuleOut>("/routing-rules", { method: "POST", body: JSON.stringify(body) });
+
+export const testRoutingRule = (body: { name: string; severities?: string[]; tags?: string[]; tokens?: string[]; custom_fields?: Record<string, string> }) =>
+  apiFetch<import("./types").NotificationOut[]>("/routing-rules/test", { method: "POST", body: JSON.stringify(body) });
+
+export const updateRoutingRule = (id: string, updates: { name?: string; severities?: string[]; tags?: string[]; tokens?: string[]; custom_fields?: Record<string, string> }) =>
+  apiFetch<import("./types").RoutingRuleOut>(`/routing-rules/${id}`, { method: "PATCH", body: JSON.stringify(updates) });
+
+export const deleteRoutingRule = (id: string) =>
+  apiFetch<void>(`/routing-rules/${id}`, { method: "DELETE" });
+
+export const fetchAutocompleteTags = () => apiFetch<string[]>("/routing-rules/autocomplete/tags");
+export const fetchAutocompleteCustomFields = () => apiFetch<string[]>("/routing-rules/autocomplete/custom-fields");
+export const fetchAutocompleteTokens = () => apiFetch<import("./types").AccessTokenOut[]>("/routing-rules/autocomplete/tokens");
 
 // ---- Audit Log ----
 export function auditLogsKey(cursor: string | null, pageSize = 20, action?: string) {

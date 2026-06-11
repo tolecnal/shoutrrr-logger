@@ -41,6 +41,7 @@ import {
   type TagColor,
   type TagRule,
 } from "@/lib/use-tag-rules";
+import { UserPluginsTab } from "@/components/user-plugins-tab";
 
 const TAG_COLORS: TagColor[] = [
   "slate","blue","green","yellow","orange","red","purple","pink","teal",
@@ -283,16 +284,17 @@ export function PreferencesDialog() {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl h-[600px] max-h-[85vh] flex flex-col bg-card border-border">
+      <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] md:max-w-6xl h-[85vh] flex flex-col bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Preferences</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="display" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3 bg-secondary">
-            <TabsTrigger value="display">Display</TabsTrigger>
-            <TabsTrigger value="tags">Tag Rules</TabsTrigger>
-            <TabsTrigger value="tokens">My Tokens</TabsTrigger>
+          <TabsList className="flex flex-wrap bg-secondary">
+            <TabsTrigger value="display" className="flex-1">Display</TabsTrigger>
+            <TabsTrigger value="tags" className="flex-1">Tag Rules</TabsTrigger>
+            <TabsTrigger value="tokens" className="flex-1">My Tokens</TabsTrigger>
+            <TabsTrigger value="plugins" className="flex-1">My Plugins</TabsTrigger>
           </TabsList>
 
           {/* ---- Display tab ---- */}
@@ -523,9 +525,13 @@ export function PreferencesDialog() {
                 </div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            </TabsContent>
+
+            <TabsContent value="plugins" className="mt-0 h-full flex flex-col min-h-0">
+              <UserPluginsTab />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
   );
 }

@@ -158,6 +158,33 @@ export function NotificationLog() {
     refreshInterval: autoRefreshMs > 0 ? autoRefreshMs : 0,
   });
 
+  // Listen for real-time updates via Server-Sent Events (SSE)
+  useEffect(() => {
+    const url = new URL("/api/v1/notifications/stream", window.location.origin);
+    const source = new EventSource(url.toString(), { withCredentials: true });
+
+    source.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload && (payload.event === "new" || payload.event === "update")) {
+          // Re-fetch the current page to get the new or updated notifications
+          mutate();
+        }
+      } catch (err) {
+        // Ignore parse errors from ping messages or malformed data
+      }
+    };
+
+    source.onerror = () => {
+      // EventSource will automatically attempt to reconnect
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [mutate]);
+
+
   // Classify + exclude on every page fetch
   const classifiedItems = useMemo(() => {
     if (!data?.items) return [];
@@ -657,6 +684,9 @@ export function NotificationLog() {
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-44">
                     Received
                   </th>
+                  <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-24">
+                    Severity
+                  </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-32">
                     Sender
                   </th>
@@ -666,6 +696,9 @@ export function NotificationLog() {
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-32">
                     Tags
                   </th>
+                  <th className="text-right text-xs text-muted-foreground font-medium px-4 py-2 w-24">
+                    Count
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -673,7 +706,7 @@ export function NotificationLog() {
                   ? groupedSections.flatMap(({ value, items }) => [
                       <tr key={`group-${value}`} className="bg-muted/40">
                         <td
-                          colSpan={4}
+                          colSpan={6}
                           className="px-4 py-1.5 text-[11px] font-medium text-muted-foreground"
                         >
                           <span className="font-mono">{groupField}</span> = {" "}
@@ -718,6 +751,11 @@ export function NotificationLog() {
           rules={rules}
           formatTimestamp={formatTimestamp}
           onClose={() => setSelected(null)}
+          onUpdate={(updated) => {
+            mutate();
+            setSelected(updated);
+          }}
+          alertStatesEnabled={appSettings?.alert_states_enabled ?? false}
         />
       )}
     </div>
@@ -1075,6 +1113,24 @@ function NotificationRow({
       <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
         {formatTime(n.received_at)}
       </td>
+      <td className="px-4 py-2.5">
+        <span
+          className={cn(
+            "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider",
+            (() => {
+              const colorKey = 
+                n.severity === "critical" ? "red" :
+                n.severity === "error" ? "orange" :
+                n.severity === "warning" ? "yellow" :
+                n.severity === "info" ? "blue" : "slate";
+              const colors = TAG_COLOR_CLASSES[colorKey as keyof typeof TAG_COLOR_CLASSES];
+              return `${colors.bg} ${colors.text} ${colors.border}`;
+            })()
+          )}
+        >
+          {n.severity}
+        </span>
+      </td>
       <td className="px-4 py-2.5 max-w-[8rem]">
         {n.sender_name ? (
           <Badge variant="secondary" className="text-xs font-normal truncate max-w-full">
@@ -1110,6 +1166,15 @@ function NotificationRow({
             );
           })}
         </div>
+      </td>
+      <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
+        {n.occurrences > 1 ? (
+          <Badge variant="outline" className="text-[10px]">
+            {n.occurrences}
+          </Badge>
+        ) : (
+          "—"
+        )}
       </td>
     </tr>
   );

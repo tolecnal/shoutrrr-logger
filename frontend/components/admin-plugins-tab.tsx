@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchPlugins, fetchCustomFieldKeys, updatePlugin, testPlugin } from "@/lib/api";
-import type { PluginMeta } from "@/lib/types";
+import type { PluginMeta, RoutingRuleOut } from "@/lib/types";
 import { PLUGIN_CONFIG_PANELS } from "@/plugins/registry";
+import { RoutingRulesEditor } from "@/components/routing-rules-editor";
 
 // ---------------------------------------------------------------------------
 // Per-plugin card — owns all local edit state for that plugin
@@ -27,7 +28,9 @@ function PluginCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [enabled, setEnabled] = useState(plugin.enabled);
+  const [allowUserConfigs, setAllowUserConfigs] = useState(plugin.allow_user_configs ?? true);
   const [config, setConfig] = useState<Record<string, unknown>>(plugin.config);
+  const [rules, setRules] = useState<any[]>(plugin.rules ?? []);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
@@ -35,13 +38,15 @@ function PluginCard({
 
   const dirty =
     enabled !== plugin.enabled ||
-    JSON.stringify(config) !== JSON.stringify(plugin.config);
+    allowUserConfigs !== (plugin.allow_user_configs ?? true) ||
+    JSON.stringify(config) !== JSON.stringify(plugin.config) ||
+    JSON.stringify(rules) !== JSON.stringify(plugin.rules ?? []);
 
   async function handleSave() {
     setSaving(true);
     setSaveMsg(null);
     try {
-      await updatePlugin(plugin.id, { enabled, config });
+      await updatePlugin(plugin.id, { enabled, allow_user_configs: allowUserConfigs, config, rules });
       setSaveMsg("Saved.");
       onSaved();
     } catch (e: unknown) {
@@ -119,7 +124,31 @@ function PluginCard({
       {ConfigPanel && expanded && (
         <>
           <Separator />
-          <div className="px-4 py-4">
+          <div className="px-4 py-4 space-y-6">
+            <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Allow User Configurations</p>
+                <p className="text-xs text-muted-foreground">
+                  Allow regular users to configure this plugin with their own private settings.
+                </p>
+              </div>
+              <Switch
+                checked={allowUserConfigs}
+                onCheckedChange={(v) => {
+                  setAllowUserConfigs(v);
+                  setSaveMsg(null);
+                }}
+              />
+            </div>
+            <Separator />
+            <RoutingRulesEditor
+              rules={rules}
+              onChange={(next) => {
+                setRules(next);
+                setSaveMsg(null);
+              }}
+            />
+            <Separator />
             <Suspense fallback={<Skeleton className="h-40 w-full" />}>
               <ConfigPanel
                 config={config}
@@ -144,21 +173,17 @@ function PluginCard({
 // ---------------------------------------------------------------------------
 
 export function PluginsTab() {
-  const {
-    data: plugins,
-    isLoading,
-    mutate,
-  } = useSWR<PluginMeta[]>("/api/admin/plugins", fetchPlugins, {
-    revalidateOnFocus: false,
-  });
-
-  const { data: customFieldKeys = [] } = useSWR<string[]>(
+  const { data: customFields = [] } = useSWR<string[]>(
     "/api/admin/plugins/custom-field-keys",
     fetchCustomFieldKeys,
     { revalidateOnFocus: false }
   );
 
-  if (isLoading) {
+  const { data: plugins, mutate: mutatePlugins } = useSWR("/admin/plugins", fetchPlugins, {
+    revalidateOnFocus: false
+  });
+
+  if (!plugins) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-14 w-full rounded-lg" />
@@ -184,12 +209,12 @@ export function PluginsTab() {
 
   return (
     <div className="space-y-3">
-      {plugins.map((plugin) => (
+      {plugins.map((p) => (
         <PluginCard
-          key={plugin.id}
-          plugin={plugin}
-          availableCustomFields={customFieldKeys}
-          onSaved={() => mutate()}
+          key={p.id}
+          plugin={p}
+          availableCustomFields={customFields}
+          onSaved={() => mutatePlugins()}
         />
       ))}
     </div>

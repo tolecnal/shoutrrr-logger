@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +41,17 @@ class Settings(BaseSettings):
     oidc_roles_claim: str = "realm_access.roles"
     oidc_role_viewer: str = "viewer"
     oidc_role_admin: str = "admin"
+
+    environment: str = "production"
+
+    @model_validator(mode="after")
+    def validate_secrets(self) -> "Settings":
+        if self.environment.lower() == "production":
+            if self.secret_key == "change-me-in-production":
+                raise ValueError("SECRET_KEY must be changed from the default in production")
+            if not self.oidc_client_secret:
+                raise ValueError("OIDC_CLIENT_SECRET must be set in production")
+        return self
 
 
 settings = Settings()

@@ -112,6 +112,50 @@ async def exchange_code_for_tokens(code: str, redirect_uri: str) -> dict:
         return resp.json()
 
 
+_jwks_keys: dict | None = None
+
+
+async def get_jwks_keys() -> dict:
+    global _jwks_keys
+    if _jwks_keys is None:
+        config = await get_oidc_config()
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(config["jwks_uri"], timeout=10)
+            resp.raise_for_status()
+            _jwks_keys = resp.json()
+    return _jwks_keys
+
+
+async def verify_oidc_jwt(token: str) -> dict:
+    """Verifies the JWT signature using the provider's JWKS."""
+    unverified_header = jwt.get_unverified_header(token)
+    jwks = await get_jwks_keys()
+
+    rsa_key = {}
+    for key in jwks.get("keys", []):
+        if key["kid"] == unverified_header["kid"]:
+            rsa_key = {
+                "kty": key["kty"],
+                "kid": key["kid"],
+                "use": key.get("use", "sig"),
+                "n": key["n"],
+                "e": key["e"],
+            }
+            break
+
+    if not rsa_key:
+        raise HTTPException(status_code=401, detail="Unable to find appropriate key")
+
+    config = await get_oidc_config()
+    return jwt.decode(
+        token,
+        jwt.algorithms.RSAAlgorithm.from_jwk(rsa_key),
+        algorithms=["RS256"],
+        audience=settings.oidc_client_id,
+        issuer=config["issuer"],
+    )
+
+
 async def get_userinfo(access_token: str) -> dict:
     config = await get_oidc_config()
     async with httpx.AsyncClient() as client:

@@ -112,6 +112,25 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         max_value=3650,
         unit="days",
     ),
+    SettingMeta(
+        key="alert_states_enabled",
+        label="Enable alert states (Ack/Resolve)",
+        description="Enable tracking state (new, acknowledged, resolved) for notifications.",
+        default=0,
+        min_value=0,
+        max_value=1,
+        unit="",
+        value_type="bool",
+    ),
+    SettingMeta(
+        key="test_rule_limit",
+        label="Test rule preview limit",
+        description="Maximum number of matched notifications to display when testing a routing rule.",
+        default=10,
+        min_value=1,
+        max_value=100,
+        unit="notifications",
+    ),
 ]
 
 _META_BY_KEY: dict[str, SettingMeta] = {s.key: s for s in KNOWN_SETTINGS}

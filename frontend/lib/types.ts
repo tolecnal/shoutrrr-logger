@@ -17,7 +17,13 @@ export interface NotificationOut {
   sender_name: string | null;
   title: string | null;
   message: string;
+  severity: string;
+  tags: string[];
+  fingerprint: string | null;
+  occurrences: number;
+  state: "new" | "acknowledged" | "resolved" | string;
   received_at: string;
+  last_received_at: string;
   source_ip: string | null;
   custom_fields: Record<string, unknown>;
 }
@@ -30,7 +36,35 @@ export interface PluginMeta {
   name: string;      // display name
   description: string;
   enabled: boolean;
+  allow_user_configs: boolean;
   config: Record<string, unknown>;
+  rules: any[];
+}
+
+export interface UserPluginOut {
+  id: string;
+  user_id: string;
+  plugin_id: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  rules: any[];
+  name: string;
+  description: string;
+}
+
+// ---------------------------------------------------------------------------
+// Routing Rules
+// ---------------------------------------------------------------------------
+export interface RoutingRuleOut {
+  id: string;
+  user_id: string | null;
+  name: string;
+  severities: string[];
+  tags: string[];
+  tokens: string[];
+  custom_fields: Record<string, string>;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface VersionInfo {
@@ -63,6 +97,7 @@ export interface AppSettings {
   stats_window_days: number;
   rate_limit_per_minute: number;
   private_tokens_enabled: boolean;
+  alert_states_enabled: boolean;
 }
 
 // ---------------------------------------------------------------------------
