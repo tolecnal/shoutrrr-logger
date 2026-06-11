@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CopyButton } from "@/components/copy-button";
+import { CodeBlock } from "@/components/code-block";
 
 const PLACEHOLDER_TOKEN = "YOUR_TOKEN";
 
@@ -17,6 +18,7 @@ function buildSnippets(url: string, token: string) {
   return [
     {
       label: "curl",
+      language: "bash",
       code: `curl -X POST ${url} \\
   -H "Authorization: Bearer ${token}" \\
   -H "Content-Type: application/json" \\
@@ -24,6 +26,7 @@ function buildSnippets(url: string, token: string) {
     },
     {
       label: "PowerShell",
+      language: "powershell",
       code: `Invoke-RestMethod -Method Post -Uri "${url}" \`
   -Headers @{ Authorization = "Bearer ${token}" } \`
   -ContentType "application/json" \`
@@ -31,6 +34,7 @@ function buildSnippets(url: string, token: string) {
     },
     {
       label: "Python (requests)",
+      language: "python",
       code: `import requests
 
 requests.post(
@@ -41,6 +45,7 @@ requests.post(
     },
     {
       label: "PHP",
+      language: "php",
       code: `$ch = curl_init("${url}");
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -57,6 +62,7 @@ curl_close($ch);`,
     },
     {
       label: "wget",
+      language: "bash",
       code: `wget -q -O- --method=POST \\
   --header="Authorization: Bearer ${token}" \\
   --header="Content-Type: application/json" \\
@@ -65,6 +71,7 @@ curl_close($ch);`,
     },
     {
       label: "shoutrrr generic URL",
+      language: undefined,
       code: `generic+${url}?@Authorization=Bearer+${token}`,
     },
   ];
@@ -102,9 +109,9 @@ export function TokenTestDialog({
             <div key={snippet.label} className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">{snippet.label}</p>
               <div className="flex items-start gap-2">
-                <pre className="flex-1 rounded-md bg-muted border border-border px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre-wrap break-all">
-                  {snippet.code}
-                </pre>
+                <div className="flex-1 min-w-0">
+                  <CodeBlock code={snippet.code} language={snippet.language} />
+                </div>
                 <CopyButton value={snippet.code} className="mt-0" />
               </div>
             </div>
