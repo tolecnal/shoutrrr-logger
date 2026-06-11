@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
 import { Bell, CheckCircle2, Circle, Trash2, Inbox } from "lucide-react";
 import { fetchAlerts, updateAlertState, deleteAlert, deleteAlerts } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { usePreferences } from "@/lib/use-preferences";
-import { NotificationDetail } from "@/components/notification-detail";
+import { NotificationDetailContent } from "@/components/notification-detail";
 
 export function AlertsPage() {
   const { data: alerts, mutate, isLoading } = useSWR("/alerts", fetchAlerts, { refreshInterval: 10000 });
@@ -17,7 +26,7 @@ export function AlertsPage() {
   const { formatTimestamp } = usePreferences();
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
 
-  const handleToggleState = async (id: string, currentStateIsRead: boolean) => {
+  const handleToggleState = useCallback(async (id: string, currentStateIsRead: boolean) => {
     setUpdating(prev => ({ ...prev, [id]: true }));
     try {
       await updateAlertState([id], !currentStateIsRead);
@@ -25,7 +34,23 @@ export function AlertsPage() {
     } finally {
       setUpdating(prev => ({ ...prev, [id]: false }));
     }
-  };
+  }, [mutate]);
+
+  // Keyboard shortcut: "r" toggles read/unread for the alert open in the dialog.
+  useEffect(() => {
+    if (!selectedAlertId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "r" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const alert = alerts?.find(a => a.id === selectedAlertId);
+      if (!alert) return;
+      e.preventDefault();
+      handleToggleState(alert.id, alert.is_read);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedAlertId, alerts, handleToggleState]);
 
   const handleDelete = async (id: string) => {
     setUpdating(prev => ({ ...prev, [id]: true }));
@@ -208,17 +233,48 @@ export function AlertsPage() {
           )}
         </div>
       </div>
-      {selectedAlert && selectedAlert.notification && (
-        <NotificationDetail
-          notification={selectedAlert.notification}
-          tags={[]}
-          rules={[]}
-          formatTimestamp={formatTimestamp}
-          onClose={() => setSelectedAlertId(null)}
-          onUpdate={(updated) => {}}
-          alertStatesEnabled={false}
-        />
-      )}
+      <Dialog open={!!selectedAlert} onOpenChange={(open) => !open && setSelectedAlertId(null)}>
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
+          {selectedAlert && selectedAlert.notification && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-6">
+                  {selectedAlert.notification.title || selectedAlert.notification.sender_name || "Alert details"}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Alert notification details
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 -mx-6 px-6">
+                <NotificationDetailContent
+                  notification={selectedAlert.notification}
+                  tags={[]}
+                  rules={[]}
+                  formatTimestamp={formatTimestamp}
+                  onUpdate={() => {}}
+                  alertStatesEnabled={false}
+                />
+              </ScrollArea>
+              <DialogFooter>
+                <Button
+                  variant={selectedAlert.is_read ? "outline" : "default"}
+                  onClick={() => handleToggleState(selectedAlert.id, selectedAlert.is_read)}
+                >
+                  {selectedAlert.is_read ? (
+                    <Circle className="mr-2 h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  {selectedAlert.is_read ? "Mark as unread" : "Mark as read"}
+                  <kbd className="ml-2 hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
+                    R
+                  </kbd>
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

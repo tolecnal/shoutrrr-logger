@@ -21,6 +21,15 @@ interface Props {
   alertStatesEnabled: boolean;
 }
 
+interface ContentProps {
+  notification: NotificationOut;
+  tags: string[];
+  rules: TagRule[];
+  formatTimestamp: (iso: string) => string;
+  onUpdate: (n: NotificationOut) => void;
+  alertStatesEnabled: boolean;
+}
+
 function DetailRow({
   icon: Icon,
   label,
@@ -41,7 +50,7 @@ function DetailRow({
   );
 }
 
-export function NotificationDetail({ notification: n, tags, rules, formatTimestamp, onClose, onUpdate, alertStatesEnabled }: Props) {
+export function NotificationDetailContent({ notification: n, tags, rules, formatTimestamp, onUpdate, alertStatesEnabled }: ContentProps) {
   const handleStateUpdate = async (newState: "new" | "acknowledged" | "resolved") => {
     try {
       const updated = await updateNotificationState(n.id, newState);
@@ -52,24 +61,7 @@ export function NotificationDetail({ notification: n, tags, rules, formatTimesta
   };
 
   return (
-    <div className="hidden lg:flex w-80 xl:w-96 flex-col border-l border-border bg-card shrink-0">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Detail
-        </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-          onClick={onClose}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="px-4 py-4 space-y-4">
+    <div className="space-y-4">
           {/* Title */}
           {n.title && (
             <div>
@@ -252,6 +244,38 @@ export function NotificationDetail({ notification: n, tags, rules, formatTimesta
               </div>
             </>
           )}
+    </div>
+  );
+}
+
+export function NotificationDetail({ notification, tags, rules, formatTimestamp, onClose, onUpdate, alertStatesEnabled }: Props) {
+  return (
+    <div className="hidden lg:flex w-80 xl:w-96 flex-col border-l border-border bg-card shrink-0">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Detail
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+          onClick={onClose}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="px-4 py-4">
+          <NotificationDetailContent
+            notification={notification}
+            tags={tags}
+            rules={rules}
+            formatTimestamp={formatTimestamp}
+            onUpdate={onUpdate}
+            alertStatesEnabled={alertStatesEnabled}
+          />
         </div>
       </ScrollArea>
     </div>
