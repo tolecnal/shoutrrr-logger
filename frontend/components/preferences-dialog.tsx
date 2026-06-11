@@ -274,7 +274,14 @@ export function PreferencesDialog() {
   );
 
   const handleAddAlertRule = async () => {
-    await createAlertRule({ name: "New Alert Rule", enabled: true, match_tags: [], match_severities: [] });
+    await createAlertRule({ 
+      name: "New Alert Rule", 
+      match_type: "contains", 
+      match_target: "all", 
+      match_pattern: "", 
+      notification_scope: "all", 
+      send_email: false 
+    });
     await mutateAlertRules();
   };
 
@@ -434,14 +441,11 @@ export function PreferencesDialog() {
               <div key={rule.id} className="rounded-md border border-border bg-card p-3 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1">
-                    <Switch
-                      checked={rule.enabled}
-                      onCheckedChange={(v) => handleUpdateAlertRule(rule.id, { enabled: v })}
-                    />
                     <Input 
                       value={rule.name} 
                       onChange={(e) => handleUpdateAlertRule(rule.id, { name: e.target.value })}
-                      className="h-7 text-sm font-medium border-transparent hover:border-input focus:border-input bg-transparent focus:bg-background"
+                      className="h-7 text-sm font-medium border-transparent hover:border-input focus:border-input bg-transparent focus:bg-background flex-1"
+                      placeholder="Rule Name"
                     />
                   </div>
                   <Button
@@ -454,24 +458,63 @@ export function PreferencesDialog() {
                   </Button>
                 </div>
                 
-                <div className="space-y-2 pl-10">
+                <div className="space-y-3 pl-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs text-muted-foreground">Match Type</Label>
+                      <select 
+                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                        value={rule.match_type}
+                        onChange={(e) => handleUpdateAlertRule(rule.id, { match_type: e.target.value as any })}
+                      >
+                        <option value="contains">Contains</option>
+                        <option value="exact">Exact Match</option>
+                        <option value="regex">RegEx</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs text-muted-foreground">Match Target</Label>
+                      <select 
+                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                        value={rule.match_target}
+                        onChange={(e) => handleUpdateAlertRule(rule.id, { match_target: e.target.value as any })}
+                      >
+                        <option value="all">Anywhere</option>
+                        <option value="title">Title Only</option>
+                        <option value="message">Message Only</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Match Severities (comma-separated)</Label>
+                    <Label className="text-xs text-muted-foreground">Pattern</Label>
                     <Input 
-                      placeholder="e.g. error, critical" 
-                      value={rule.match_severities.join(", ")}
-                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_severities: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
+                      placeholder="String or regex to match..." 
+                      value={rule.match_pattern}
+                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_pattern: e.target.value })}
                       className="h-8 text-xs bg-input"
                     />
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Match Tags (comma-separated)</Label>
-                    <Input 
-                      placeholder="e.g. production, database" 
-                      value={rule.match_tags.join(", ")}
-                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_tags: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-                      className="h-8 text-xs bg-input"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs text-muted-foreground">Scope</Label>
+                      <select 
+                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                        value={rule.notification_scope}
+                        onChange={(e) => handleUpdateAlertRule(rule.id, { notification_scope: e.target.value as any })}
+                      >
+                        <option value="all">All Notifications</option>
+                        <option value="global_only">Global Only</option>
+                        <option value="personal_only">Personal Only</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 mt-4">
+                      <Switch
+                        checked={rule.send_email}
+                        onCheckedChange={(v) => handleUpdateAlertRule(rule.id, { send_email: v })}
+                        id={`email-${rule.id}`}
+                      />
+                      <Label htmlFor={`email-${rule.id}`} className="text-xs text-muted-foreground">Send Email Alert</Label>
+                    </div>
                   </div>
                 </div>
               </div>

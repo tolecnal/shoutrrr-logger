@@ -89,5 +89,18 @@ class AlertsService:
             notification_scope=payload.notification_scope,
         )
 
+    async def delete_alerts(
+        self,
+        session: AsyncSession,
+        user_id: uuid.UUID,
+        alert_ids: list[uuid.UUID],
+        delete_all: bool,
+    ) -> None:
+        if delete_all:
+            await self._repo.delete_all_user_alerts(session, user_id)
+        elif alert_ids:
+            await self._repo.delete_user_alerts(session, user_id, alert_ids)
+        await session.commit()
+
 
 alerts_service = AlertsService()

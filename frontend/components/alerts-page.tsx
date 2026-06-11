@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { formatDistanceToNow } from "date-fns";
 import { Bell, CheckCircle2, Circle, Trash2, ShieldAlert } from "lucide-react";
-import { fetchAlerts, updateAlertState, deleteAlert } from "@/lib/api";
+import { fetchAlerts, updateAlertState, deleteAlert, deleteAlerts } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,11 +12,10 @@ export function AlertsPage() {
   const { data: alerts, mutate, isLoading } = useSWR("/alerts", fetchAlerts, { refreshInterval: 10000 });
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
 
-  const handleToggleState = async (id: string, currentState: "read" | "unread") => {
+  const handleToggleState = async (id: string, currentStateIsRead: boolean) => {
     setUpdating(prev => ({ ...prev, [id]: true }));
     try {
-      const newState = currentState === "read" ? "unread" : "read";
-      await updateAlertState(id, newState);
+      await updateAlertState([id], !currentStateIsRead);
       await mutate();
     } finally {
       setUpdating(prev => ({ ...prev, [id]: false }));
@@ -35,12 +34,12 @@ export function AlertsPage() {
 
   const markAllRead = async () => {
     if (!alerts) return;
-    const unread = alerts.filter(a => a.state === "unread");
-    for (const a of unread) {
-      setUpdating(prev => ({ ...prev, [a.id]: true }));
-      await updateAlertState(a.id, "read");
+    try {
+      await updateAlertState([], true, true);
+      await mutate();
+    } catch (e) {
+      console.error(e);
     }
-    await mutate();
   };
 
   if (isLoading && !alerts) {
@@ -60,7 +59,7 @@ export function AlertsPage() {
             Stay on top of critical notifications
           </p>
         </div>
-        <Button onClick={markAllRead} variant="outline" size="sm" disabled={!alerts?.some(a => a.state === "unread")}>
+        <Button onClick={markAllRead} variant="outline" size="sm" disabled={!alerts?.some(a => !a.is_read)}>
           <CheckCircle2 className="mr-2 h-4 w-4" />
           Mark all as read
         </Button>
@@ -81,16 +80,16 @@ export function AlertsPage() {
               key={alert.id}
               className={cn(
                 "flex items-start gap-4 p-4 rounded-lg border transition-colors",
-                alert.state === "unread" ? "bg-accent/50 border-accent-foreground/20" : "bg-card border-border",
+                !alert.is_read ? "bg-accent/50 border-accent-foreground/20" : "bg-card border-border",
                 updating[alert.id] && "opacity-50 pointer-events-none"
               )}
             >
               <button
-                onClick={() => handleToggleState(alert.id, alert.state)}
+                onClick={() => handleToggleState(alert.id, alert.is_read)}
                 className="mt-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
-                title={alert.state === "unread" ? "Mark as read" : "Mark as unread"}
+                title={!alert.is_read ? "Mark as read" : "Mark as unread"}
               >
-                {alert.state === "unread" ? (
+                {!alert.is_read ? (
                   <Circle className="h-5 w-5 fill-blue-500/20 text-blue-500" />
                 ) : (
                   <CheckCircle2 className="h-5 w-5" />
@@ -99,20 +98,20 @@ export function AlertsPage() {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-4 mb-1">
-                  <h3 className={cn("font-medium truncate", alert.state === "unread" ? "text-foreground" : "text-muted-foreground")}>
-                    {alert.title}
+                  <h3 className={cn("font-medium truncate", !alert.is_read ? "text-foreground" : "text-muted-foreground")}>
+                    {alert.notification?.title || "Alert"}
                   </h3>
                   <span className="text-xs text-muted-foreground shrink-0">
                     {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
                   </span>
                 </div>
-                <p className={cn("text-sm break-words", alert.state === "unread" ? "text-foreground/90" : "text-muted-foreground")}>
-                  {alert.message}
+                <p className={cn("text-sm break-words", !alert.is_read ? "text-foreground/90" : "text-muted-foreground")}>
+                  {alert.notification?.message || "No content"}
                 </p>
-                {alert.severity && (
+                {alert.notification?.severity && (
                   <div className="mt-3">
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground uppercase">
-                      {alert.severity}
+                      {alert.notification.severity}
                     </span>
                   </div>
                 )}

@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const { data: alerts } = useSWR(user ? "/alerts" : null, fetchAlerts, { refreshInterval: 10000 });
-  const unreadCount = alerts?.filter((a) => a.state === "unread").length || 0;
+  const unreadCount = alerts?.filter((a) => !a.is_read).length || 0;
 
   return (
     <div className="flex min-h-screen">

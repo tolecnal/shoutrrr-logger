@@ -132,5 +132,15 @@ class AlertsRepository:
 
         return matched[:10]
 
+    async def delete_user_alerts(
+        self, session: AsyncSession, user_id: uuid.UUID, alert_ids: list[uuid.UUID]
+    ) -> None:
+        stmt = delete(UserAlert).where(UserAlert.user_id == user_id, UserAlert.id.in_(alert_ids))
+        await session.execute(stmt)
+
+    async def delete_all_user_alerts(self, session: AsyncSession, user_id: uuid.UUID) -> None:
+        stmt = delete(UserAlert).where(UserAlert.user_id == user_id)
+        await session.execute(stmt)
+
 
 alerts_repository = AlertsRepository()

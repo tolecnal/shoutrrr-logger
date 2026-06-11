@@ -79,14 +79,14 @@ export interface VersionInfo {
 // ---------------------------------------------------------------------------
 export interface SettingOut {
   key: string;
-  value: number;
+  value: any;
   label: string;
   description: string;
-  default: number;
+  default: any;
   min_value: number;
   max_value: number;
   unit: string;
-  value_type: "int" | "bool";
+  value_type: "int" | "bool" | "string";
 }
 
 // Convenience typed view of all known settings
@@ -203,20 +203,21 @@ export interface AlertOut {
   id: string;
   user_id: string;
   notification_id: string;
-  title: string;
-  message: string;
-  state: "unread" | "read";
+  rule_id: string | null;
+  is_read: boolean;
   created_at: string;
-  severity?: string;
-  source?: string;
+  notification?: import("./types").NotificationOut;
 }
 
 export interface AlertRuleOut {
   id: string;
   user_id: string;
   name: string;
-  enabled: boolean;
-  match_tags: string[];
-  match_severities: string[];
+  match_type: "exact" | "contains" | "regex";
+  match_pattern: string;
+  match_target: "title" | "message" | "all";
+  notification_scope: "global_only" | "personal_only" | "all";
+  send_email: boolean;
   created_at: string;
+  updated_at: string;
 }

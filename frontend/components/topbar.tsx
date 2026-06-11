@@ -7,7 +7,7 @@ import { fetchAlerts } from "@/lib/api";
 
 export function Topbar() {
   const { data: alerts } = useSWR("/alerts", fetchAlerts, { refreshInterval: 10000 });
-  const unreadCount = alerts?.filter(a => a.state === "unread").length || 0;
+  const unreadCount = alerts?.filter(a => !a.is_read).length || 0;
 
   return (
     <div className="hidden md:flex h-14 border-b border-border items-center justify-end px-6 sticky top-0 bg-background/95 backdrop-blur z-10">

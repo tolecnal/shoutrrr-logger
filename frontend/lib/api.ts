@@ -162,7 +162,7 @@ export const fetchSettings = () =>
   apiFetch<SettingOut[]>("/settings");
 
 export function settingsToMap(list: SettingOut[]): AppSettings {
-  const map: Record<string, number> = {};
+  const map: Record<string, any> = {};
   for (const s of list) map[s.key] = s.value;
   return {
     retention_days: map.retention_days ?? 0,
@@ -178,7 +178,7 @@ export function settingsToMap(list: SettingOut[]): AppSettings {
 export const fetchAdminSettings = () =>
   apiFetch<SettingOut[]>("/admin/settings");
 
-export const updateSettings = (values: Record<string, number>) =>
+export const updateSettings = (values: Record<string, any>) =>
   apiFetch<SettingOut[]>("/admin/settings", {
     method: "PATCH",
     body: JSON.stringify({ values }),
@@ -261,84 +261,41 @@ export function auditLogsKey(cursor: string | null, pageSize = 20, action?: stri
 
 export const fetchAuditLogs = (url: string) => apiFetch<CursorPage<AuditLogOut>>(url);
 
-// ---- Alerts (Mocked) ----
-let MOCK_ALERTS: import("./types").AlertOut[] = [
-  { id: "1", user_id: "user1", notification_id: "notif1", title: "High CPU Usage", message: "Server 01 CPU > 90%", state: "unread", created_at: new Date().toISOString(), severity: "critical" },
-  { id: "2", user_id: "user1", notification_id: "notif2", title: "Memory Warning", message: "Server 02 Memory > 80%", state: "read", created_at: new Date(Date.now() - 3600000).toISOString(), severity: "warning" },
-];
+// ---- Alerts ----
+export function alertsKey(is_read?: boolean, limit = 50, offset = 0) {
+  let url = `/alerts?limit=${limit}&offset=${offset}`;
+  if (is_read !== undefined) url += `&is_read=${is_read}`;
+  return url;
+}
 
-let MOCK_ALERT_RULES: import("./types").AlertRuleOut[] = [
-  { id: "1", user_id: "user1", name: "High CPU Alerts", enabled: true, match_tags: ["cpu"], match_severities: ["critical"], created_at: new Date().toISOString() },
-];
+export const fetchAlerts = (url: string = "/alerts?limit=50") => 
+  apiFetch<import("./types").AlertOut[]>(url);
 
-export const fetchAlerts = async (): Promise<import("./types").AlertOut[]> => {
-  return new Promise(resolve => setTimeout(() => resolve([...MOCK_ALERTS]), 300));
+export const updateAlertState = (alert_ids: string[], is_read: boolean, all = false) => {
+  let url = `/alerts/read?all=${all}`;
+  alert_ids.forEach(id => url += `&alert_ids=${id}`);
+  return apiFetch<void>(url, { method: "PATCH" });
 };
 
-export const updateAlertState = async (id: string, state: "read" | "unread"): Promise<import("./types").AlertOut> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const alert = MOCK_ALERTS.find(a => a.id === id);
-      if (alert) {
-        alert.state = state;
-        resolve({ ...alert });
-      } else {
-        reject(new Error("Not found"));
-      }
-    }, 300);
-  });
+export const deleteAlert = (id: string) =>
+  apiFetch<void>(`/alerts?alert_ids=${id}`, { method: "DELETE" });
+
+export const deleteAlerts = (alert_ids: string[], all = false) => {
+  let url = `/alerts?all=${all}`;
+  alert_ids.forEach(id => url += `&alert_ids=${id}`);
+  return apiFetch<void>(url, { method: "DELETE" });
 };
 
-export const deleteAlert = async (id: string): Promise<void> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      MOCK_ALERTS = MOCK_ALERTS.filter(a => a.id !== id);
-      resolve();
-    }, 300);
-  });
-};
+export const fetchAlertRules = () => apiFetch<import("./types").AlertRuleOut[]>("/alerts/rules");
 
-export const fetchAlertRules = async (): Promise<import("./types").AlertRuleOut[]> => {
-  return new Promise(resolve => setTimeout(() => resolve([...MOCK_ALERT_RULES]), 300));
-};
+export const createAlertRule = (body: Partial<import("./types").AlertRuleOut>) =>
+  apiFetch<import("./types").AlertRuleOut>("/alerts/rules", { method: "POST", body: JSON.stringify(body) });
 
-export const createAlertRule = async (body: Partial<import("./types").AlertRuleOut>): Promise<import("./types").AlertRuleOut> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const newRule: import("./types").AlertRuleOut = {
-        id: Math.random().toString(36).substring(7),
-        user_id: "user1",
-        name: body.name || "New Rule",
-        enabled: body.enabled ?? true,
-        match_tags: body.match_tags || [],
-        match_severities: body.match_severities || [],
-        created_at: new Date().toISOString(),
-      };
-      MOCK_ALERT_RULES.push(newRule);
-      resolve({ ...newRule });
-    }, 300);
-  });
-};
+export const updateAlertRule = (id: string, body: Partial<import("./types").AlertRuleOut>) =>
+  apiFetch<import("./types").AlertRuleOut>(`/alerts/rules/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 
-export const updateAlertRule = async (id: string, body: Partial<import("./types").AlertRuleOut>): Promise<import("./types").AlertRuleOut> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      const rule = MOCK_ALERT_RULES.find(r => r.id === id);
-      if (rule) {
-        Object.assign(rule, body);
-        resolve({ ...rule });
-      } else {
-        reject(new Error("Not found"));
-      }
-    }, 300);
-  });
-};
+export const deleteAlertRule = (id: string) =>
+  apiFetch<void>(`/alerts/rules/${id}`, { method: "DELETE" });
 
-export const deleteAlertRule = async (id: string): Promise<void> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      MOCK_ALERT_RULES = MOCK_ALERT_RULES.filter(r => r.id !== id);
-      resolve();
-    }, 300);
-  });
-};
+export const testAlertRule = (body: Partial<import("./types").AlertRuleOut>) =>
+  apiFetch<import("./types").NotificationOut[]>("/alerts/test", { method: "POST", body: JSON.stringify(body) });
