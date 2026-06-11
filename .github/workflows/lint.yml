@@ -18,11 +18,10 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Install dependencies and ruff via venv
+      - name: Install ruff via venv
         run: |
           python -m venv .venv
           .venv/bin/pip install ruff
-          .venv/bin/pip install -e ".[test]"
 
       - name: Lint
         run: .venv/bin/ruff check backend/
