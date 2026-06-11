@@ -26,6 +26,43 @@ async def _enable_email_alerts(db):
     await db.flush()
 
 
+class TestAlertRuleNameValidation:
+    """AlertRule.name flows into the alert email Subject header, so it must
+    not allow embedded CR/LF (header injection)."""
+
+    async def test_create_rule_rejects_crlf_in_name(self, client, viewer_session_headers):
+        resp = await client.post(
+            "/api/v1/alerts/rules",
+            headers=viewer_session_headers,
+            json={"name": "Evil\r\nBcc: attacker@example.com", "match_pattern": "x"},
+        )
+        assert resp.status_code == 422
+
+    async def test_create_rule_accepts_normal_name(self, client, viewer_session_headers):
+        resp = await client.post(
+            "/api/v1/alerts/rules",
+            headers=viewer_session_headers,
+            json={"name": "My Rule", "match_pattern": "x"},
+        )
+        assert resp.status_code == 201
+
+    async def test_update_rule_rejects_crlf_in_name(self, client, viewer_session_headers):
+        create = await client.post(
+            "/api/v1/alerts/rules",
+            headers=viewer_session_headers,
+            json={"name": "My Rule", "match_pattern": "x"},
+        )
+        assert create.status_code == 201
+        rule_id = create.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/alerts/rules/{rule_id}",
+            headers=viewer_session_headers,
+            json={"name": "Evil\r\nBcc: attacker@example.com"},
+        )
+        assert resp.status_code == 422
+
+
 class TestTestEmailAccessControl:
     """POST /alerts/test-email must not leak another user's private
     notification content into the test email."""
@@ -74,6 +111,22 @@ class TestTestEmailAccessControl:
         assert (captured.get("html_body") or "") == "" or (
             "Admin secret" not in captured["html_body"]
         )
+
+    async def test_template_attribute_access_falls_back_to_default_body(
+        self, client, admin_session_headers
+    ):
+        """A `.format()`-style attribute-access payload in an admin-supplied
+        template must not be evaluated; preview-template should fall back to
+        the safe default body instead of leaking object internals."""
+        resp = await client.post(
+            "/api/v1/alerts/preview-template",
+            headers=admin_session_headers,
+            json={"template": "{title.__class__.__init__.__globals__}"},
+        )
+        assert resp.status_code == 200
+        html = resp.json()["html"]
+        assert "__globals__" not in html
+        assert "__class__" not in html
 
     async def test_owner_can_use_own_notification_in_test_email(
         self, client, viewer_session_headers, db, viewer_user, monkeypatch

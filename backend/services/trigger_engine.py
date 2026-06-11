@@ -11,6 +11,7 @@ from sqlalchemy import select
 import database
 from models import AccessToken, AlertRule, Notification, User, UserAlert
 from services.settings import settings_service
+from utils.templates import safe_format
 
 logger = logging.getLogger(__name__)
 
@@ -117,12 +118,16 @@ async def run_trigger_engine(
 
                 if smtp_host:
                     for user in matched_users:
-                        rule_names = ", ".join(users_to_email[user.id])
+                        rule_names = ", ".join(
+                            name.replace("\r", "").replace("\n", "")
+                            for name in users_to_email[user.id]
+                        )
                         subject = f"[Alert] Notification matched rules: {rule_names}"
 
                         try:
                             # Safely format the template
-                            body = template_str.format(
+                            body = safe_format(
+                                template_str,
                                 username=user.username,
                                 rule_names=rule_names,
                                 title=title_text or "No title",

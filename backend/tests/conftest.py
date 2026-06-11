@@ -10,6 +10,7 @@ import os
 from collections.abc import AsyncGenerator
 
 os.environ["ENVIRONMENT"] = "test"
+os.environ["SSRF_VALIDATION_DISABLED"] = "true"
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

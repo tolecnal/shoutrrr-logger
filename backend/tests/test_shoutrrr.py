@@ -130,6 +130,76 @@ class TestShoutrrrReceive:
         assert data["custom_fields"]["env"] == "staging"
 
 
+class TestShoutrrrValidation:
+    """severity/level and tags from untrusted payloads must be validated
+    before being passed to store_incoming, instead of causing an unhandled
+    DB error (severity is a String(32) column)."""
+
+    async def test_oversized_severity_query_param_returns_400(self, client, access_token):
+        raw, _ = access_token
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "hello"}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+            params={"$severity": "x" * 33},
+        )
+        assert resp.status_code == 400
+
+    async def test_oversized_severity_json_body_returns_400(self, client, access_token):
+        raw, _ = access_token
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "hello", "severity": "x" * 33}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+        assert resp.status_code == 400
+
+    async def test_severity_at_max_length_accepted(self, client, access_token):
+        raw, _ = access_token
+        severity = "x" * 32
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "hello", "severity": severity}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+        assert resp.status_code == 202
+        assert resp.json()["severity"] == severity
+
+    async def test_oversized_tag_returns_400(self, client, access_token):
+        raw, _ = access_token
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "hello", "tags": "x" * 65}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+        assert resp.status_code == 400
+
+    async def test_tags_as_json_array_accepted(self, client, access_token):
+        raw, _ = access_token
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=json.dumps({"message": "hello", "tags": ["prod", "db"]}),
+            headers={
+                "Authorization": f"Bearer {raw}",
+                "Content-Type": "application/json",
+            },
+        )
+        assert resp.status_code == 202
+        assert resp.json()["tags"] == ["prod", "db"]
+
+
 class TestShoutrrrRateLimiting:
     @pytest_asyncio.fixture(autouse=True)
     async def _disable_plugin_dispatch(self, monkeypatch):

@@ -31,6 +31,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Alert email access control**: `POST /api/v1/alerts/test-email` and `POST /api/v1/alerts/preview-template` no longer allow an arbitrary `notification_id` to pull another user's private-token notification content into a templated email.
 - **Routing rules access control**: non-admin users can no longer read, update, or delete global routing rules by ID via `/api/v1/routing-rules/{id}` (they remain visible read-only via the rules list, as before).
 - **Rate limiting**: the per-token ingestion rate limit (`rate_limit_per_minute`) now counts deduplicated (repeated-fingerprint) notifications via `last_received_at`, closing a bypass where identical notifications sent faster than the dedup window would stop counting toward the limit once their original `received_at` aged out of the window.
+- **SSRF validation bypass**: outbound webhook SSRF checks (Slack/Splunk plugins) are now disabled only via the dedicated `SSRF_VALIDATION_DISABLED` setting (test suites only), and log a warning when active. Previously this was tied to `ENVIRONMENT=test`, which also silently skipped production secret-strength checks if left set in a real deployment.
+- **Alert email templates**: `email_alert_template` and the admin "preview template" endpoint now use a restricted formatter that only allows simple `{name}` substitutions, rejecting attribute/index access (e.g. `{title.__class__}`) that `str.format()` would otherwise evaluate.
+- **Notification ingestion**: `severity`/`level` and `tags` from `/shoutrrr` payloads are now length-validated (`severity` ≤ 32 chars, each tag ≤ 64 chars), returning `400` instead of an unhandled database error for oversized values.
+- **Alert rule names**: `AlertRule.name` can no longer contain CR/LF characters (rejected with `422`), and is sanitized again before being used in the alert email `Subject` header.
+- Routing rule evaluation errors for one plugin's user-configured rules (e.g. malformed JSON) no longer abort dispatch for the remaining plugins.
 
 ### Changed
 

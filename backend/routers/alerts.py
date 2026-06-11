@@ -22,6 +22,7 @@ from schemas import (
 from services.alerts import alerts_service
 from services.settings import settings_service
 from services.trigger_engine import send_email_async
+from utils.templates import safe_format
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -105,7 +106,8 @@ async def test_email_alert(
     if not smtp_host or not smtp_port or not smtp_from:
         raise HTTPException(status_code=400, detail="SMTP is not properly configured")
 
-    subject = f"[Test Alert] {payload.name}"
+    rule_name = payload.name.replace("\r", "").replace("\n", "")
+    subject = f"[Test Alert] {rule_name}"
 
     html_body = None
     if payload.notification_id:
@@ -125,7 +127,8 @@ async def test_email_alert(
             app_base_url = settings.app_base_url
 
             try:
-                body = template_str.format(
+                body = safe_format(
+                    template_str,
                     username=current_user.username,
                     rule_names=payload.name,
                     title=n.title or "No title",
@@ -194,7 +197,8 @@ async def preview_template(
             mock_message = n.message or mock_message
 
     try:
-        body = payload.template.format(
+        body = safe_format(
+            payload.template,
             username=current_user.username,
             rule_names=mock_rule_names,
             title=mock_title,

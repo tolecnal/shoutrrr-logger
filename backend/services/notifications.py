@@ -266,12 +266,22 @@ class NotificationService:
                 from schemas import RoutingRuleCreate
                 from services.routing_rules import routing_rule_service
 
-                # Instantiate rules dynamically from the JSON objects
-                rule_objs = [RoutingRuleCreate.model_validate(r) for r in row.rules]
+                try:
+                    # Instantiate rules dynamically from the JSON objects
+                    rule_objs = [RoutingRuleCreate.model_validate(r) for r in row.rules]
 
-                matched_any = any(
-                    routing_rule_service.rule_matches(rule, notification_dict) for rule in rule_objs
-                )
+                    matched_any = any(
+                        routing_rule_service.rule_matches(rule, notification_dict)
+                        for rule in rule_objs
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "[plugin:%s] failed to evaluate routing rules: %s",
+                        plugin_id,
+                        exc,
+                        exc_info=True,
+                    )
+                    continue
                 if not matched_any:
                     continue
 

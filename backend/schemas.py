@@ -366,7 +366,8 @@ class OIDCCallbackResponse(BaseModel):
 # Alerts
 # ---------------------------------------------------------------------------
 class AlertRuleBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
+    # No CR/LF: name flows into the alert email's Subject header.
+    name: str = Field(..., min_length=1, max_length=255, pattern=r"^[^\r\n]+$")
     match_type: str = Field(default="contains", pattern="^(exact|contains|regex)$")
     match_pattern: str = Field(default="", min_length=0)
     match_target: str = Field(default="all", pattern="^(title|message|all)$")
@@ -379,7 +380,7 @@ class AlertRuleCreate(AlertRuleBase):
 
 
 class AlertRuleUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=255, pattern=r"^[^\r\n]+$")
     match_type: str | None = Field(None, pattern="^(exact|contains|regex)$")
     match_pattern: str | None = None
     match_target: str | None = Field(None, pattern="^(title|message|all)$")

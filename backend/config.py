@@ -44,6 +44,13 @@ class Settings(BaseSettings):
 
     environment: str = "production"
 
+    # Disables outbound SSRF validation (utils.ssrf.validate_url_for_ssrf).
+    # Must NEVER be set in production - intended only for test suites that
+    # exercise plugin dispatch against local/loopback addresses. Distinct
+    # from `environment` so that leaving ENVIRONMENT=test set in a real
+    # deployment does not also disable SSRF protection.
+    ssrf_validation_disabled: bool = False
+
     @model_validator(mode="after")
     def validate_secrets(self) -> "Settings":
         if self.environment.lower() == "production":

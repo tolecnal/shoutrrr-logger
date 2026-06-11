@@ -108,9 +108,26 @@ async def receive_notification(
     )
 
     # Extract advanced fields from extra
-    severity = extra.pop("severity", None) or extra.pop("level", "info")
+    severity = str(extra.pop("severity", None) or extra.pop("level", "info"))
+    if len(severity) > 32:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "severity/level must be 32 characters or fewer"},
+        )
+
     tags_raw = extra.pop("tags", "")
-    tags = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
+    if isinstance(tags_raw, list):
+        tags = [str(t).strip() for t in tags_raw if str(t).strip()]
+    elif tags_raw:
+        tags = [t.strip() for t in str(tags_raw).split(",") if t.strip()]
+    else:
+        tags = []
+    if any(len(t) > 64 for t in tags):
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "each tag must be 64 characters or fewer"},
+        )
+
     fingerprint_group = extra.pop("group", None)
 
     notification = await notification_service.store_incoming(

@@ -1,7 +1,11 @@
 import ipaddress
-import os
+import logging
 import socket
 from urllib.parse import urlparse
+
+from config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def validate_url_for_ssrf(url: str) -> None:
@@ -9,7 +13,12 @@ def validate_url_for_ssrf(url: str) -> None:
     Validates a URL to prevent Server-Side Request Forgery (SSRF).
     Raises ValueError if the URL points to a local, private, or reserved IP address.
     """
-    if os.environ.get("ENVIRONMENT") == "test":
+    if settings.ssrf_validation_disabled:
+        logger.warning(
+            "SSRF validation is DISABLED (SSRF_VALIDATION_DISABLED=true) - "
+            "skipping outbound URL check for %s",
+            url,
+        )
         return
 
     parsed = urlparse(url)
