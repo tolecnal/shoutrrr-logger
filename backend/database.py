@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from config import settings
@@ -27,22 +28,20 @@ async def get_db() -> AsyncSession:  # type: ignore[return]
             yield session
             try:
                 await session.commit()
-                import logging
-
-                logging.getLogger("database").info("Session committed successfully")
             except Exception as commit_exc:
-                import logging
-
-                logging.getLogger("database").error(
-                    f"Failed to commit session: {commit_exc}", exc_info=True
-                )
+                logger.error(f"Failed to commit session: {commit_exc}", exc_info=True)
                 raise
+        except HTTPException as e:
+            # Roll back any uncommitted work either way, but only log 5xx
+            # HTTPExceptions as errors. 4xx (401/403/404/422/...) are normal
+            # client-facing control flow raised by route handlers or auth
+            # dependencies, not failures worth an error-level traceback.
+            await session.rollback()
+            if e.status_code >= 500:
+                logger.error(f"Rolling back session due to error: {e}", exc_info=True)
+            raise
         except Exception as e:
-            import logging
-
-            logging.getLogger("database").error(
-                f"Rolling back session due to error: {e}", exc_info=True
-            )
+            logger.error(f"Rolling back session due to error: {e}", exc_info=True)
             await session.rollback()
             raise
 

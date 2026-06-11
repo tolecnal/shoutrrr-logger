@@ -16,6 +16,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Monitoring health counters**: `/api/v1/monitoring/health` always reported `alerts_unread` and `alerts_email_pending` as `0` due to a Python `not <Column>` expression being evaluated before query construction. Both counters now reflect actual data.
 - **Email alert digests**: the background email digest loop never sent any emails, for the same `not <Column>` reason — it could never find unsent alerts. Email digests now send correctly.
+- **Log noise**: every `HTTPException` (including normal 401/403/404/422 responses) was logged at `ERROR` level with a full traceback by the `get_db` dependency. Only unexpected errors and 5xx responses are now logged as errors.
 
 ### Changed
 
