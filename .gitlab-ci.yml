@@ -85,6 +85,33 @@ test:backend:
     - when: always
 
 # ---------------------------------------------------------------------------
+# Test — Alembic (migrations)
+# ---------------------------------------------------------------------------
+test:alembic:
+  stage: test
+  image: python:3.14-slim
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+  variables:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: shoutrrr_logger
+    DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/shoutrrr_logger
+    ENVIRONMENT: test
+  before_script:
+    - cd backend
+    - python -m venv .venv
+    - .venv/bin/pip install -e ".[test]" --quiet
+  script:
+    - .venv/bin/alembic upgrade head
+    - .venv/bin/alembic check
+    - .venv/bin/alembic downgrade base
+    - .venv/bin/alembic upgrade head
+  rules:
+    - when: always
+
+# ---------------------------------------------------------------------------
 # Test — Frontend (vitest)
 # ---------------------------------------------------------------------------
 test:frontend:

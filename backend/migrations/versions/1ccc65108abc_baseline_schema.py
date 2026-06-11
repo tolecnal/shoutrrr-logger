@@ -311,4 +311,7 @@ def downgrade() -> None:
     op.drop_index("ix_api_metric_logs_path", table_name="api_metric_logs")
     op.drop_index("ix_api_metric_logs_created_at", table_name="api_metric_logs")
     op.drop_table("api_metric_logs")
+
+    # Drop custom enum types that are created automatically by SA during upgrade
+    op.execute("DROP TYPE userrole")
     # ### end Alembic commands ###
