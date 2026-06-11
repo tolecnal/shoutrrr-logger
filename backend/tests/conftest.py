@@ -90,6 +90,7 @@ async def app(db: AsyncSession, engine, monkeypatch):
     # Import here to avoid triggering lifespan (init_db) at collection time
     import database  # noqa: PLC0415
     from main import app as _app  # noqa: PLC0415
+    from middleware.performance import PerformanceMiddleware  # noqa: PLC0415
     from plugins import registry  # noqa: PLC0415
 
     registry.discover()  # ensure plugins are loaded
@@ -103,6 +104,16 @@ async def app(db: AsyncSession, engine, monkeypatch):
 
     test_session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     monkeypatch.setattr(database, "async_session_factory", test_session_factory)
+
+    # PerformanceMiddleware fires a fire-and-forget background task that opens
+    # its own session via database.async_session_factory and commits on it.
+    # Because the in-memory SQLite engine hands out a single shared
+    # connection, that commit/close can interleave with the request-scoped
+    # `db` session's autoflush and roll back its not-yet-committed changes
+    # (e.g. a pending DELETE), causing rare, intermittent test failures.
+    # Disable it for the test app.
+    _app.user_middleware = [m for m in _app.user_middleware if m.cls is not PerformanceMiddleware]
+    _app.middleware_stack = _app.build_middleware_stack()
 
     async def _override_db():
         yield db
