@@ -18,12 +18,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Alert System**: Users can now define personal Alert Rules to highlight specific notifications and optionally receive email alerts via SMTP. Includes testing tools, a draft editor, and a template engine for customizing alert emails.
 - **Alerts Navigation**: Added an "Alerts" item to the main sidebar with an unread badge for quick access to triggered visual alerts.
 - **SSRF Mitigation**: Implemented robust Server-Side Request Forgery (SSRF) validation for outbound plugin requests. Webhook URLs (like Slack and Splunk) are now resolved via `socket.getaddrinfo` and validated against a strict denylist to block requests to private, loopback, or reserved IP address spaces.
-
-### Added
-
 - **Admin toggle for private access tokens**: new `private_tokens_enabled` setting (default: enabled), configurable from **Admin → Settings**. When disabled, users can no longer create new private tokens from **Preferences → My Tokens**, and existing private tokens are rejected (`403`) for notification ingestion. Global tokens are unaffected.
-- **"Test this token" dialog**: the Admin → Access Tokens page and Preferences → My Tokens now have a "Test" action that opens a dialog with copy-paste examples (curl, PowerShell, Python, PHP, wget, and the shoutrrr generic URL scheme) for sending a notification with that token.
+- **"Test this token" dialog**: the Admin → Access Tokens page and Preferences → My Tokens now have a "Test" action that opens a dialog with syntax-highlighted, copy-paste examples (curl, PowerShell, Python, PHP, wget, and the shoutrrr generic URL scheme) for sending a notification with that token.
 - **README**: added PowerShell, Python (`requests`), PHP, and wget examples to the "Sending notifications" section, alongside the existing curl example.
+- **Alerts page**: clicking an alert now opens its details in a modal dialog (close with `Esc` or the close button) instead of an inline panel. Added "Mark as read" / "Mark as unread" (shortcut `R`) and "Next unread" (shortcut `N`) buttons to step through unread alerts, closing the dialog once none remain.
 
 ### Security
 
@@ -39,6 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Alert email HTML sanitization**: HTML produced by `markdown.markdown()` for alert/test/preview emails is now sanitized (script/iframe/event-handler attributes and `javascript:` links stripped) before being sent, preventing stored HTML injection via untrusted notification `title`/`message` content.
 - **SSRF DNS-rebinding/TOCTOU fix**: outbound Slack/Splunk plugin requests now resolve and re-validate the destination hostname against the SSRF denylist at connection time and pin the connection to that resolved IP, closing a gap where `validate_url_for_ssrf`'s lookup and the actual outbound request could resolve to different addresses (e.g. via DNS rebinding).
 - **OIDC login**: the access token's role claims are now verified against the identity provider's JWKS (signature, issuer, expiration) instead of being decoded without signature verification.
+- **Audit log redaction**: settings-change entries (`{"old": ..., "new": ...}`) now have sensitive values redacted in *both* the old and new value, including when nested inside change-tracking objects. Previously only flat `{key: "value"}` shapes were redacted, so updating `smtp_password` logged its plaintext value in the audit log.
+- **Settings API secret masking**: `GET /settings` and `GET /admin/settings` no longer return `smtp_password` in plaintext to any viewer or admin. The value is masked with a placeholder; submitting the placeholder back leaves the stored secret unchanged (an empty string still clears it), and "Test SMTP Settings" substitutes the real stored password when the placeholder is submitted.
 
 ### Fixed
 

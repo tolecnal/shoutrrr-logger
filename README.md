@@ -23,6 +23,7 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
 - [Watchtower integration](#watchtower-integration)
 - [User roles](#user-roles)
 - [Preferences](#preferences)
+- [Alerts](#alerts)
 - [Access tokens](#access-tokens)
 - [Admin settings](#admin-settings)
 - [Audit log](#audit-log)
@@ -546,6 +547,19 @@ Every signed-in user can open **Preferences** (gear icon in the top bar) to cust
 
 ---
 
+## Alerts
+
+The **Alerts** page (sidebar, with an unread-count badge) lists notifications that matched one of your alert rules. Clicking an alert opens its full details in a modal dialog.
+
+From the dialog you can:
+
+- **Mark as read / Mark as unread** — toggle the alert's read state (shortcut: `R`).
+- **Next unread** — jump straight to the next unread alert in the list (shortcut: `N`). If there are no more unread alerts, the dialog closes.
+
+Keyboard shortcuts are active whenever the dialog is open and no modifier key (Ctrl/Cmd/Alt) is held.
+
+---
+
 ## Access tokens
 
 Access tokens are opaque bearer tokens used to authenticate ingest requests to `POST /api/shoutrrr`. They are stored as HMAC-SHA256 hashes — the plaintext is shown only once at creation time.
@@ -562,7 +576,7 @@ Admins can disable private access tokens entirely via the **Allow private access
 
 ### Testing a token
 
-Both **Admin → Access Tokens** and **Preferences → My Tokens** have a "Test" button that opens a dialog with ready-to-use copy-paste examples (curl, PowerShell, Python, wget, and the shoutrrr generic URL scheme) for sending a test notification with that token.
+Both **Admin → Access Tokens** and **Preferences → My Tokens** have a "Test" button that opens a dialog with ready-to-use, syntax-highlighted, copy-paste examples (curl, PowerShell, Python, PHP, wget, and the shoutrrr generic URL scheme) for sending a test notification with that token.
 
 ### Filtering by scope
 
@@ -596,7 +610,7 @@ Each token can optionally be given an expiry date — expired tokens are rejecte
 | API metrics retention | `30` days | Automatically delete `/performance` latency records older than this many days. `0` keeps them forever. |
 | Audit log retention | `365` days | Automatically delete audit log entries older than this many days. `0` keeps them forever. |
 | Email alerts enabled | disabled | Master toggle for email alerts. Enables the SMTP settings below. |
-| SMTP Settings | _(none)_ | Host, Port, Username, Password, and From Address. Used to dispatch email alerts. |
+| SMTP Settings | _(none)_ | Host, Port, Username, Password, and From Address. Used to dispatch email alerts. Once a password is saved, the API and UI never show its plaintext value again — the field displays a placeholder, which is left untouched unless you type a new password (or clear the field to remove it). |
 
 Retention sweeps for notifications, API metrics, and audit logs run hourly. In multi-worker deployments, only one Gunicorn worker performs the sweep — workers coordinate via a PostgreSQL session-level advisory lock, so the same rows are never purged twice.
 
@@ -606,7 +620,7 @@ Retention sweeps for notifications, API metrics, and audit logs run hourly. In m
 
 **Admin → Audit Log** records every admin action: creating, updating, or deleting users, access tokens, and plugin configuration, plus changes to the settings above.
 
-Each entry captures the acting user, an action code (`user.create`, `user.update`, `user.delete`, `token.create`, `token.update`, `token.delete`, `settings.update`, `plugin.update`), the affected resource, a redacted snapshot of what changed, the source IP, and a timestamp. Fields that look like secrets (tokens, passwords, keys, HEC URLs, etc.) are masked as `***REDACTED***` before being stored, so raw access tokens and plugin credentials never appear in the audit log.
+Each entry captures the acting user, an action code (`user.create`, `user.update`, `user.delete`, `token.create`, `token.update`, `token.delete`, `settings.update`, `plugin.update`), the affected resource, a redacted snapshot of what changed, the source IP, and a timestamp. Fields that look like secrets (tokens, passwords, keys, HEC URLs, etc.) are masked as `***REDACTED***` before being stored, so raw access tokens and plugin credentials never appear in the audit log — including both the old and new values for `settings.update` entries.
 
 The admin UI supports filtering by action and time range. The same data is available via `GET /api/v1/admin/audit-logs`. Entries older than the **Audit log retention** setting above are purged automatically.
 
