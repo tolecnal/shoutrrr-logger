@@ -37,7 +37,7 @@ async def process_email_digests() -> None:
                 selectinload(UserAlert.user),
             )
             .where(
-                not UserAlert.email_sent,
+                ~UserAlert.email_sent,
                 AlertRule.send_email,
                 User.is_active,
             )

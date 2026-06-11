@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 
+from models import AlertRule, UserAlert
+
 
 @pytest.mark.asyncio
 async def test_monitoring_health_unauthorized(client: AsyncClient):
@@ -70,3 +72,43 @@ async def test_monitoring_health_inactive_token(client: AsyncClient, admin_sessi
         "/api/v1/monitoring/health", headers={"Authorization": f"Bearer {raw_token}"}
     )
     assert resp2.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_monitoring_health_reports_unread_and_pending_alert_counts(
+    client: AsyncClient, admin_session_headers, db, viewer_user, sample_notification
+):
+    """Regression test for a `not Column` bug that made `alerts_unread` and
+    `alerts_email_pending` always report 0, regardless of actual data."""
+    rule = AlertRule(
+        user_id=viewer_user.id,
+        name="My Rule",
+        match_pattern="x",
+        send_email=True,
+    )
+    db.add(rule)
+    await db.flush()
+
+    db.add(
+        UserAlert(
+            user_id=viewer_user.id,
+            notification_id=sample_notification.id,
+            rule_id=rule.id,
+        )
+    )
+    await db.commit()
+
+    resp = await client.post(
+        "/api/v1/admin/monitoring-tokens",
+        json={"name": "Health Monitor 4"},
+        headers=admin_session_headers,
+    )
+    raw_token = resp.json()["raw_token"]
+
+    resp2 = await client.get(
+        "/api/v1/monitoring/health", headers={"Authorization": f"Bearer {raw_token}"}
+    )
+    assert resp2.status_code == 200
+    data = resp2.json()
+    assert data["alerts_unread"] == 1
+    assert data["alerts_email_pending"] == 1

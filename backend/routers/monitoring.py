@@ -70,15 +70,13 @@ async def monitoring_health(
         total_notifications = await db.scalar(select(func.count(Notification.id)))
         total_users = await db.scalar(select(func.count(User.id)))
         active_users = await db.scalar(select(func.count(User.id)).where(User.is_active))
-        unread_alerts = await db.scalar(
-            select(func.count(UserAlert.id)).where(not UserAlert.is_read)
-        )
+        unread_alerts = await db.scalar(select(func.count(UserAlert.id)).where(~UserAlert.is_read))
 
         email_alerts_pending = await db.scalar(
             select(func.count(UserAlert.id))
             .join(AlertRule, UserAlert.rule_id == AlertRule.id)
             .where(
-                not UserAlert.email_sent,
+                ~UserAlert.email_sent,
                 AlertRule.send_email,
             )
         )
