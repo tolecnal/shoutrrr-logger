@@ -118,7 +118,9 @@ async def test_email_alert(
                 "email_alert_template",
                 "Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
             )
-            app_base_url = settings_dict.get("app_base_url", "http://localhost:4000")
+            from config import settings
+
+            app_base_url = settings.app_base_url
 
             try:
                 body = template_str.format(

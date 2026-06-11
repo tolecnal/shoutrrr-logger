@@ -107,9 +107,9 @@ async def run_trigger_engine(
                     "email_alert_template",
                     default="Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
                 )
-                app_base_url = await settings_service.get_string(
-                    db, "app_base_url", default="http://localhost:4000"
-                )
+                from config import settings
+
+                app_base_url = settings.app_base_url
 
                 if smtp_host:
                     for user in matched_users:
