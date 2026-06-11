@@ -128,6 +128,10 @@ async def receive_notification(
     out = NotificationOut.model_validate(notification)
     notification_dict = out.model_dump(mode="json")
     notification_dict["token_id"] = str(token.id)
+
+    # Commit before enqueuing background tasks to avoid race conditions
+    await db.commit()
+
     background_tasks.add_task(
         notification_service.dispatch_plugins,
         notification_dict,

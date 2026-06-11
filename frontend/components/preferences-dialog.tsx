@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -195,6 +201,198 @@ function RuleRow({
         </div>
       )}
     </div>
+  );
+}
+
+function AlertRuleRow({
+  rule,
+  onUpdate,
+  onDelete,
+  onTestRule,
+  onTestEmail,
+  isTestingRule,
+  isTestingEmail,
+  testResult
+}: {
+  rule: import("@/lib/types").AlertRuleOut;
+  onUpdate: (patch: Partial<import("@/lib/types").AlertRuleOut>) => Promise<void>;
+  onDelete: () => void;
+  onTestRule: (rule: import("@/lib/types").AlertRuleOut) => void;
+  onTestEmail: (rule: import("@/lib/types").AlertRuleOut, notificationId?: string) => void;
+  isTestingRule: boolean;
+  isTestingEmail: boolean;
+  testResult: { matches: import("@/lib/types").NotificationOut[]; total: number } | null | undefined;
+}) {
+  const [draft, setDraft] = useState(rule);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => setDraft(rule), [rule]);
+
+  const hasChanges = JSON.stringify(draft) !== JSON.stringify(rule);
+
+  return (
+    <AccordionItem value={rule.id} className="rounded-md border border-border bg-card px-3">
+      <div className="flex items-center justify-between">
+        <AccordionTrigger className="hover:no-underline py-3 flex-1 justify-start gap-2 text-sm font-medium">
+          {draft.name || "Unnamed Rule"}
+        </AccordionTrigger>
+        <div className="flex items-center gap-2 shrink-0">
+          {hasChanges && (
+            <Button size="sm" className="h-7 px-2" onClick={async (e) => {
+              e.stopPropagation();
+              setSaving(true);
+              try {
+                await onUpdate(draft);
+              } finally {
+                setSaving(false);
+              }
+            }}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <AccordionContent>
+        <div className="space-y-3 pl-2 pb-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground w-16">Name</Label>
+            <Input 
+              value={draft.name} 
+              onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
+              className="h-7 text-xs flex-1"
+              placeholder="Rule Name"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Match Type</Label>
+              <select 
+                className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                value={draft.match_type}
+                onChange={(e) => setDraft(prev => ({ ...prev, match_type: e.target.value as any }))}
+              >
+                <option value="contains">Contains</option>
+                <option value="exact">Exact Match</option>
+                <option value="regex">RegEx</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Match Target</Label>
+              <select 
+                className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                value={draft.match_target}
+                onChange={(e) => setDraft(prev => ({ ...prev, match_target: e.target.value as any }))}
+              >
+                <option value="all">Anywhere</option>
+                <option value="title">Title Only</option>
+                <option value="message">Message Only</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Pattern</Label>
+            <Input 
+              placeholder="String or regex to match..." 
+              value={draft.match_pattern}
+              onChange={(e) => setDraft(prev => ({ ...prev, match_pattern: e.target.value }))}
+              className="h-8 text-xs bg-input"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Scope</Label>
+              <select 
+                className="h-8 text-xs bg-input rounded-md border border-border px-2"
+                value={draft.notification_scope}
+                onChange={(e) => setDraft(prev => ({ ...prev, notification_scope: e.target.value as any }))}
+              >
+                <option value="all">All Notifications</option>
+                <option value="global_only">Global Only</option>
+                <option value="personal_only">Personal Only</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <Switch
+                checked={draft.send_email}
+                onCheckedChange={(v) => setDraft(prev => ({ ...prev, send_email: v }))}
+                id={`email-${draft.id}`}
+              />
+              <Label htmlFor={`email-${draft.id}`} className="text-xs text-muted-foreground">Send Email Alert</Label>
+            </div>
+          </div>
+          <div className="pt-2 border-t mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 hover:text-foreground"
+                  onClick={() => onTestRule(draft)}
+                  disabled={isTestingRule || !draft.match_pattern}
+                >
+                  <FlaskConical className="h-3 w-3" />
+                  {isTestingRule ? "Testing..." : "Test Rule Match"}
+                </Button>
+                {draft.send_email && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1 hover:text-foreground"
+                    onClick={() => onTestEmail(draft)}
+                    disabled={isTestingEmail || !draft.match_pattern}
+                  >
+                    <FlaskConical className="h-3 w-3" />
+                    {isTestingEmail ? "Sending..." : "Test Email Alert"}
+                  </Button>
+                )}
+              </div>
+              {testResult !== undefined && testResult !== null && (
+                <span className="text-xs text-muted-foreground">
+                  {testResult.total === 0 ? "No matches found" : `Found ${testResult.total} match(es)`}
+                </span>
+              )}
+            </div>
+            {testResult && testResult.total > 0 && (
+              <div className="mt-2 space-y-2">
+                {testResult.matches.slice(0, 3).map(n => (
+                  <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{n.title || "No title"}</div>
+                      <div className="text-muted-foreground truncate">{n.message}</div>
+                    </div>
+                    {draft.send_email && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                        onClick={() => onTestEmail(draft, n.id)}
+                        title="Send test email with this notification"
+                        disabled={isTestingEmail}
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {testResult.total > 3 && (
+                  <p className="text-xs text-muted-foreground italic pl-1">
+                    ...and {testResult.total - 3} more.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
@@ -471,150 +669,27 @@ export function PreferencesDialog() {
               </p>
             )}
 
-            {alertRules?.map(rule => (
-              <div key={rule.id} className="rounded-md border border-border bg-card p-3 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input 
-                      value={rule.name} 
-                      onChange={(e) => handleUpdateAlertRule(rule.id, { name: e.target.value })}
-                      className="h-7 text-sm font-medium border-transparent hover:border-input focus:border-input bg-transparent focus:bg-background flex-1"
-                      placeholder="Rule Name"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                    onClick={() => handleDeleteAlertRule(rule.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                
-                <div className="space-y-3 pl-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs text-muted-foreground">Match Type</Label>
-                      <select 
-                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
-                        value={rule.match_type}
-                        onChange={(e) => handleUpdateAlertRule(rule.id, { match_type: e.target.value as any })}
-                      >
-                        <option value="contains">Contains</option>
-                        <option value="exact">Exact Match</option>
-                        <option value="regex">RegEx</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs text-muted-foreground">Match Target</Label>
-                      <select 
-                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
-                        value={rule.match_target}
-                        onChange={(e) => handleUpdateAlertRule(rule.id, { match_target: e.target.value as any })}
-                      >
-                        <option value="all">Anywhere</option>
-                        <option value="title">Title Only</option>
-                        <option value="message">Message Only</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs text-muted-foreground">Pattern</Label>
-                    <Input 
-                      placeholder="String or regex to match..." 
-                      value={rule.match_pattern}
-                      onChange={(e) => handleUpdateAlertRule(rule.id, { match_pattern: e.target.value })}
-                      className="h-8 text-xs bg-input"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-xs text-muted-foreground">Scope</Label>
-                      <select 
-                        className="h-8 text-xs bg-input rounded-md border border-border px-2"
-                        value={rule.notification_scope}
-                        onChange={(e) => handleUpdateAlertRule(rule.id, { notification_scope: e.target.value as any })}
-                      >
-                        <option value="all">All Notifications</option>
-                        <option value="global_only">Global Only</option>
-                        <option value="personal_only">Personal Only</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2 mt-4">
-                      <Switch
-                        checked={rule.send_email}
-                        onCheckedChange={(v) => handleUpdateAlertRule(rule.id, { send_email: v })}
-                        id={`email-${rule.id}`}
-                      />
-                      <Label htmlFor={`email-${rule.id}`} className="text-xs text-muted-foreground">Send Email Alert</Label>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t mt-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs gap-1 hover:text-foreground"
-                          onClick={() => handleTestAlertRule(rule)}
-                          disabled={testingRule[rule.id] || !rule.match_pattern}
-                        >
-                          <FlaskConical className="h-3 w-3" />
-                          {testingRule[rule.id] ? "Testing..." : "Test Rule Match"}
-                        </Button>
-                        {rule.send_email && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs gap-1 hover:text-foreground"
-                            onClick={() => handleTestEmailAlert(rule)}
-                            disabled={testingEmail[rule.id] || !rule.match_pattern}
-                          >
-                            <FlaskConical className="h-3 w-3" />
-                            {testingEmail[rule.id] ? "Sending..." : "Test Email Alert"}
-                          </Button>
-                        )}
-                      </div>
-                      {testResults[rule.id] !== undefined && testResults[rule.id] !== null && (
-                        <span className="text-xs text-muted-foreground">
-                          {testResults[rule.id]!.total === 0 ? "No matches found" : `Found ${testResults[rule.id]!.total} match(es)`}
-                        </span>
-                      )}
-                    </div>
-                    {testResults[rule.id] && testResults[rule.id]!.total > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {testResults[rule.id]!.matches.slice(0, 3).map(n => (
-                          <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium truncate">{n.title || "No title"}</div>
-                              <div className="text-muted-foreground truncate">{n.message}</div>
-                            </div>
-                            {rule.send_email && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground shrink-0"
-                                onClick={() => handleTestEmailAlert(rule, n.id)}
-                                title="Send test email with this notification"
-                                disabled={testingEmail[rule.id]}
-                              >
-                                <Mail className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                        {testResults[rule.id]!.total > 3 && (
-                          <p className="text-xs text-muted-foreground italic pl-1">
-                            ...and {testResults[rule.id]!.total - 3} more.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+            {alertRules && alertRules.length > 0 && (
+              <Accordion 
+                type="multiple" 
+                defaultValue={alertRules.length <= 2 ? alertRules.map(r => r.id) : []}
+                className="space-y-3"
+              >
+                {alertRules.map(rule => (
+                  <AlertRuleRow
+                    key={rule.id}
+                    rule={rule}
+                    onUpdate={async (patch) => handleUpdateAlertRule(rule.id, patch)}
+                    onDelete={() => handleDeleteAlertRule(rule.id)}
+                    onTestRule={handleTestAlertRule}
+                    onTestEmail={handleTestEmailAlert}
+                    isTestingRule={testingRule[rule.id] || false}
+                    isTestingEmail={testingEmail[rule.id] || false}
+                    testResult={testResults[rule.id]}
+                  />
+                ))}
+              </Accordion>
+            )}
           </TabsContent>
 
           {/* ---- My Tokens tab ---- */}

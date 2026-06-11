@@ -177,7 +177,14 @@ async def preview_template(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    html_body = None
+    from config import settings
+
+    app_base_url = settings.app_base_url
+
+    mock_title = "Critical System Failure"
+    mock_message = "The database cluster has lost quorum and is currently read-only. Please investigate immediately."
+    mock_rule_names = "Database Alerts"
+
     if payload.notification_id:
         from sqlalchemy import select
 
@@ -187,24 +194,21 @@ async def preview_template(
             await db.execute(select(Notification).where(Notification.id == payload.notification_id))
         ).scalar_one_or_none()
         if n:
-            from config import settings
+            mock_title = n.title or mock_title
+            mock_message = n.message or mock_message
 
-            app_base_url = settings.app_base_url
-            try:
-                body = payload.template.format(
-                    username=current_user.username,
-                    rule_names="My Rules",
-                    title=n.title or "No title",
-                    message=n.message,
-                    base_url=app_base_url,
-                )
-            except Exception:
-                body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules (My Rules):\n\nTitle: {n.title or 'No title'}\nMessage: {n.message}\n\nView details in Shoutrrr Logger: {app_base_url}"
-            html_body = markdown.markdown(body)
-        else:
-            html_body = markdown.markdown(payload.template)
-    else:
-        html_body = markdown.markdown(payload.template)
+    try:
+        body = payload.template.format(
+            username=current_user.username,
+            rule_names=mock_rule_names,
+            title=mock_title,
+            message=mock_message,
+            base_url=app_base_url,
+        )
+    except Exception:
+        body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules ({mock_rule_names}):\n\nTitle: {mock_title}\nMessage: {mock_message}\n\nView details in Shoutrrr Logger: {app_base_url}"
+
+    html_body = markdown.markdown(body)
 
     return TemplatePreviewResponse(html=html_body)
 
