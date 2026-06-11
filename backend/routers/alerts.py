@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import get_current_user_from_session, require_admin
 from database import get_db
-from models import User
+from models import User, UserRole
+from repositories.notifications import notification_repository
 from schemas import (
     AlertRuleCreate,
     AlertRuleOut,
@@ -108,13 +109,12 @@ async def test_email_alert(
 
     html_body = None
     if payload.notification_id:
-        from sqlalchemy import select
-
-        from models import Notification
-
-        n = (
-            await db.execute(select(Notification).where(Notification.id == payload.notification_id))
-        ).scalar_one_or_none()
+        n = await notification_repository.get_visible_by_id(
+            db,
+            payload.notification_id,
+            user_id=current_user.id,
+            is_admin=(current_user.role == UserRole.admin),
+        )
         if n:
             template_str = settings_dict.get(
                 "email_alert_template",
@@ -186,13 +186,9 @@ async def preview_template(
     mock_rule_names = "Database Alerts"
 
     if payload.notification_id:
-        from sqlalchemy import select
-
-        from models import Notification
-
-        n = (
-            await db.execute(select(Notification).where(Notification.id == payload.notification_id))
-        ).scalar_one_or_none()
+        n = await notification_repository.get_visible_by_id(
+            db, payload.notification_id, user_id=current_user.id, is_admin=True
+        )
         if n:
             mock_title = n.title or mock_title
             mock_message = n.message or mock_message

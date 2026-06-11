@@ -62,9 +62,16 @@ class NotificationService:
         )
 
     async def get_notification(
-        self, session: AsyncSession, notification_id: uuid.UUID | str
+        self,
+        session: AsyncSession,
+        notification_id: uuid.UUID | str,
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
     ) -> Notification:
-        notification = await self._repo.get_by_id(session, notification_id)
+        notification = await self._repo.get_visible_by_id(
+            session, notification_id, user_id=user_id, is_admin=is_admin
+        )
         if notification is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
@@ -72,9 +79,17 @@ class NotificationService:
         return notification
 
     async def update_state(
-        self, session: AsyncSession, notification_id: uuid.UUID | str, state: str
+        self,
+        session: AsyncSession,
+        notification_id: uuid.UUID | str,
+        state: str,
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
     ) -> Notification:
-        notification = await self.get_notification(session, notification_id)
+        notification = await self.get_notification(
+            session, notification_id, user_id=user_id, is_admin=is_admin
+        )
         notification.state = state
         await session.flush()
         await session.refresh(notification)

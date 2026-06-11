@@ -23,12 +23,27 @@ class RoutingRuleService:
         rules = await self._repo.list_by_user(session, user_id)
         return [self._to_out(rule) for rule in rules]
 
+    def _check_access(self, rule: RoutingRule | None, user_id: uuid.UUID | None) -> RoutingRule:
+        """Raise 404 unless ``rule`` exists and is owned by the caller.
+
+        ``user_id is None`` denotes an admin caller, who may access global
+        rules (``rule.user_id is None``). Non-admins (``user_id`` set) may
+        only access their own rules — global rules are not accessible by ID
+        to non-admins, even though they appear in the visibility list.
+        """
+        if (
+            not rule
+            or (rule.user_id is None and user_id is not None)
+            or (rule.user_id is not None and rule.user_id != user_id)
+        ):
+            raise HTTPException(status_code=404, detail="Rule not found")
+        return rule
+
     async def get_rule(
         self, session: AsyncSession, rule_id: uuid.UUID, user_id: uuid.UUID | None
     ) -> RoutingRuleOut:
         rule = await self._repo.get_by_id(session, rule_id)
-        if not rule or (rule.user_id is not None and rule.user_id != user_id):
-            raise HTTPException(status_code=404, detail="Rule not found")
+        rule = self._check_access(rule, user_id)
         return self._to_out(rule)
 
     async def create_rule(
@@ -53,8 +68,7 @@ class RoutingRuleService:
         user_id: uuid.UUID | None,
     ) -> RoutingRuleOut:
         rule = await self._repo.get_by_id(session, rule_id)
-        if not rule or (rule.user_id is not None and rule.user_id != user_id):
-            raise HTTPException(status_code=404, detail="Rule not found")
+        rule = self._check_access(rule, user_id)
 
         if body.name is not None:
             rule.name = body.name
@@ -74,8 +88,7 @@ class RoutingRuleService:
         self, session: AsyncSession, rule_id: uuid.UUID, user_id: uuid.UUID | None
     ) -> None:
         rule = await self._repo.get_by_id(session, rule_id)
-        if not rule or (rule.user_id is not None and rule.user_id != user_id):
-            raise HTTPException(status_code=404, detail="Rule not found")
+        rule = self._check_access(rule, user_id)
         await self._repo.delete(session, rule)
 
     async def test_rule(

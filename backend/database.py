@@ -88,6 +88,15 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                         "ON notifications (token_id, received_at)"
                     )
                 )
+                # Composite index for the rate-limit sliding-window COUNT query,
+                # which filters on last_received_at so deduplicated (repeated)
+                # notifications keep counting toward the limit.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE INDEX IF NOT EXISTS ix_notifications_token_last_received "
+                        "ON notifications (token_id, last_received_at)"
+                    )
+                )
                 # users.sub previously had both a UniqueConstraint (uq_users_sub) and a
                 # unique index (ix_users_sub) — drop the redundant constraint, keeping
                 # the single unique index.

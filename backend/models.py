@@ -118,6 +118,7 @@ class Notification(Base):
     __table_args__ = (
         Index("ix_notifications_received_at", "received_at"),
         Index("ix_notifications_token_received", "token_id", "received_at"),
+        Index("ix_notifications_token_last_received", "token_id", "last_received_at"),
         Index(
             "ix_notifications_message_gin",
             "message",

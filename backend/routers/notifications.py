@@ -130,11 +130,16 @@ async def list_notifications(
 )
 async def get_notification(
     notification_id: str,
-    _user: User = Depends(require_viewer),
+    user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationOut:
     return NotificationOut.model_validate(
-        await notification_service.get_notification(db, notification_id)
+        await notification_service.get_notification(
+            db,
+            notification_id,
+            user_id=user.id,
+            is_admin=(user.role == UserRole.admin),
+        )
     )
 
 
@@ -146,7 +151,7 @@ async def get_notification(
 async def update_notification_state(
     notification_id: str,
     update: NotificationStateUpdate,
-    _user: User = Depends(require_viewer),
+    user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationOut:
     from services.settings import settings_service
@@ -162,5 +167,11 @@ async def update_notification_state(
         )
 
     return NotificationOut.model_validate(
-        await notification_service.update_state(db, notification_id, update.state)
+        await notification_service.update_state(
+            db,
+            notification_id,
+            update.state,
+            user_id=user.id,
+            is_admin=(user.role == UserRole.admin),
+        )
     )

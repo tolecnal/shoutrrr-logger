@@ -25,6 +25,38 @@ class NotificationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_visible_by_id(
+        self,
+        session: AsyncSession,
+        notification_id: uuid.UUID | str,
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
+    ) -> Notification | None:
+        """Return the notification if it exists and is visible to the caller.
+
+        Admins see everything. Non-admins see notifications from global
+        tokens, orphaned notifications (token deleted), and notifications
+        from their own private tokens.
+        """
+        if isinstance(notification_id, str):
+            try:
+                notification_id = uuid.UUID(notification_id)
+            except ValueError:
+                return None
+
+        stmt = select(Notification).where(Notification.id == notification_id)
+        if not is_admin:
+            stmt = stmt.outerjoin(AccessToken, Notification.token_id == AccessToken.id).where(
+                or_(
+                    Notification.token_id.is_(None),
+                    AccessToken.is_global == True,  # noqa: E712
+                    AccessToken.user_id == user_id,
+                )
+            )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def search_paginated(
         self,
         session: AsyncSession,
@@ -183,12 +215,19 @@ class NotificationRepository:
         """Count notifications submitted via ``token_id`` at/after ``since``.
 
         Used by the rate limiter's sliding window; relies on the composite
-        ``ix_notifications_token_received`` index for efficiency.
+        ``ix_notifications_token_last_received`` index for efficiency.
+
+        Filters on ``last_received_at`` rather than ``received_at`` so that
+        repeated deliveries of a deduplicated (fingerprint-matched)
+        notification — which bump ``occurrences``/``last_received_at`` on the
+        original row instead of inserting a new one — keep counting toward
+        the limit even after the original ``received_at`` ages out of the
+        window.
         """
         result = await session.execute(
             select(func.coalesce(func.sum(Notification.occurrences), 0)).where(
                 Notification.token_id == token_id,
-                Notification.received_at >= since,
+                Notification.last_received_at >= since,
             )
         )
         return result.scalar_one()

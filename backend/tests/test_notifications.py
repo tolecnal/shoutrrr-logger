@@ -5,7 +5,7 @@ Integration tests for GET /api/v1/notifications — pagination, search, and scop
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import generate_raw_token, hash_token
-from models import AccessToken, Notification
+from models import AccessToken, AppSetting, Notification
 
 
 async def _seed(
@@ -310,3 +310,93 @@ class TestNotificationScope:
             headers=viewer_session_headers,
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Access control: a viewer must not be able to read or modify another user's
+# private-token notifications by guessing/obtaining their UUID.
+# ---------------------------------------------------------------------------
+
+
+class TestNotificationAccessControl:
+    async def test_viewer_cannot_get_other_users_private_notification(
+        self, client, viewer_session_headers, db, admin_user
+    ):
+        priv = await _private_token(db, admin_user)
+        n = Notification(token_id=priv.id, message="admin-only-secret")
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.get(
+            f"/api/v1/notifications/{n.id}",
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_admin_can_get_other_users_private_notification(
+        self, client, admin_session_headers, db, viewer_user
+    ):
+        priv = await _private_token(db, viewer_user)
+        n = Notification(token_id=priv.id, message="viewer-only-secret")
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.get(
+            f"/api/v1/notifications/{n.id}",
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "viewer-only-secret"
+
+    async def test_owner_can_get_own_private_notification(
+        self, client, viewer_session_headers, db, viewer_user
+    ):
+        priv = await _private_token(db, viewer_user)
+        n = Notification(token_id=priv.id, message="my-own-secret")
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.get(
+            f"/api/v1/notifications/{n.id}",
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["message"] == "my-own-secret"
+
+    async def test_viewer_cannot_update_state_of_other_users_private_notification(
+        self, client, viewer_session_headers, db, admin_user
+    ):
+        db.add(AppSetting(key="alert_states_enabled", value=1))
+        priv = await _private_token(db, admin_user)
+        n = Notification(token_id=priv.id, message="admin-only-secret")
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.patch(
+            f"/api/v1/notifications/{n.id}/state",
+            json={"state": "acknowledged"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_owner_can_update_state_of_own_notification(
+        self, client, viewer_session_headers, db, viewer_user
+    ):
+        db.add(AppSetting(key="alert_states_enabled", value=1))
+        priv = await _private_token(db, viewer_user)
+        n = Notification(token_id=priv.id, message="my-own-secret")
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.patch(
+            f"/api/v1/notifications/{n.id}/state",
+            json={"state": "acknowledged"},
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["state"] == "acknowledged"

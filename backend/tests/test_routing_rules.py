@@ -70,6 +70,108 @@ def test_rule_matches_custom_fields():
     )
 
 
+class TestGlobalRuleAccessControl:
+    """A non-admin viewer must not be able to read/modify/delete global
+    (admin-owned, user_id=NULL) routing rules by ID, even though they appear
+    in the visibility list returned by GET /routing-rules."""
+
+    @pytest.fixture
+    async def global_rule_id(self, client: AsyncClient, admin_session_headers: dict) -> str:
+        payload = {
+            "name": "Global Rule",
+            "severities": [],
+            "tags": [],
+            "tokens": [],
+            "custom_fields": {},
+        }
+        resp = await client.post(
+            "/api/v1/routing-rules", headers=admin_session_headers, json=payload
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["user_id"] is None
+        return data["id"]
+
+    async def test_viewer_cannot_get_global_rule_by_id(
+        self, client: AsyncClient, viewer_session_headers: dict, global_rule_id: str
+    ):
+        resp = await client.get(
+            f"/api/v1/routing-rules/{global_rule_id}", headers=viewer_session_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_viewer_cannot_update_global_rule(
+        self, client: AsyncClient, viewer_session_headers: dict, global_rule_id: str
+    ):
+        resp = await client.patch(
+            f"/api/v1/routing-rules/{global_rule_id}",
+            headers=viewer_session_headers,
+            json={"name": "Hijacked"},
+        )
+        assert resp.status_code == 404
+
+    async def test_viewer_cannot_delete_global_rule(
+        self, client: AsyncClient, viewer_session_headers: dict, global_rule_id: str
+    ):
+        resp = await client.delete(
+            f"/api/v1/routing-rules/{global_rule_id}", headers=viewer_session_headers
+        )
+        assert resp.status_code == 404
+
+    async def test_admin_can_get_update_delete_global_rule(
+        self, client: AsyncClient, admin_session_headers: dict, global_rule_id: str
+    ):
+        resp = await client.get(
+            f"/api/v1/routing-rules/{global_rule_id}", headers=admin_session_headers
+        )
+        assert resp.status_code == 200
+
+        resp = await client.patch(
+            f"/api/v1/routing-rules/{global_rule_id}",
+            headers=admin_session_headers,
+            json={"name": "Renamed"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Renamed"
+
+        resp = await client.delete(
+            f"/api/v1/routing-rules/{global_rule_id}", headers=admin_session_headers
+        )
+        assert resp.status_code == 204
+
+    async def test_viewer_can_manage_own_rule(
+        self, client: AsyncClient, viewer_session_headers: dict
+    ):
+        payload = {
+            "name": "My Rule",
+            "severities": [],
+            "tags": [],
+            "tokens": [],
+            "custom_fields": {},
+        }
+        resp = await client.post(
+            "/api/v1/routing-rules", headers=viewer_session_headers, json=payload
+        )
+        assert resp.status_code == 201
+        rule_id = resp.json()["id"]
+
+        resp = await client.get(f"/api/v1/routing-rules/{rule_id}", headers=viewer_session_headers)
+        assert resp.status_code == 200
+
+        resp = await client.patch(
+            f"/api/v1/routing-rules/{rule_id}",
+            headers=viewer_session_headers,
+            json={"name": "My Rule Renamed"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "My Rule Renamed"
+
+        resp = await client.delete(
+            f"/api/v1/routing-rules/{rule_id}", headers=viewer_session_headers
+        )
+        assert resp.status_code == 204
+
+
 @pytest.mark.asyncio
 async def test_api_test_rule(client: AsyncClient, admin_session_headers: dict):
     # Testing the /test endpoint requires admin privileges
