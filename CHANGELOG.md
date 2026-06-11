@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Database migrations**: Added Alembic configuration (`backend/alembic.ini`, `backend/migrations/`) with a baseline migration matching the current schema. Existing databases are stamped at this baseline automatically on startup; future schema changes ship as Alembic migrations.
+
 ### Fixed
 
 - **Monitoring health counters**: `/api/v1/monitoring/health` always reported `alerts_unread` and `alerts_email_pending` as `0` due to a Python `not <Column>` expression being evaluated before query construction. Both counters now reflect actual data.

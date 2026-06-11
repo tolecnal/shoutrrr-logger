@@ -47,6 +47,14 @@ async def get_db() -> AsyncSession:  # type: ignore[return]
             raise
 
 
+# Revision ID of migrations/versions/1ccc65108abc_baseline_schema.py, which
+# captures the schema produced by create_all() + the legacy ALTER statements
+# below as of when Alembic was introduced. Used to stamp pre-Alembic
+# databases so `alembic upgrade head` only applies migrations added after
+# this point.
+_ALEMBIC_BASELINE_REVISION = "1ccc65108abc"
+
+
 async def init_db(retries: int = 10, delay: float = 3.0) -> None:
     """
     Create all tables if they do not exist.
@@ -64,6 +72,14 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
             async with engine.begin() as conn:
                 await conn.execute(sqlalchemy.text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
                 await conn.run_sync(Base.metadata.create_all)
+                # NOTE: the ad-hoc "ALTER TABLE IF EXISTS" / "CREATE INDEX IF NOT
+                # EXISTS" statements below are legacy, pre-Alembic migrations,
+                # kept so older deployments that haven't run `alembic upgrade
+                # head` yet still get a schema matching models.py. This block is
+                # frozen — do NOT add new entries here. New schema changes go in
+                # `backend/migrations/versions/` (see README "Database
+                # migrations") and are applied via `alembic upgrade head`.
+                #
                 # Idempotent column migrations for databases created before this column existed.
                 # Existing tokens default to is_global=TRUE (backward-compatible: all old tokens
                 # were shared/system tokens, so they behave like global tokens for all users).
@@ -139,6 +155,27 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                         "ALTER TABLE IF EXISTS user_alerts "
                         "ADD COLUMN IF NOT EXISTS email_sent BOOLEAN NOT NULL DEFAULT FALSE"
                     )
+                )
+
+                # Bring this database under Alembic's management. The schema
+                # produced above already matches the baseline migration, so a
+                # database seeing Alembic for the first time is stamped at
+                # baseline (not "head") — this lets `alembic upgrade head`
+                # correctly apply any migrations added after the baseline.
+                await conn.execute(
+                    sqlalchemy.text(
+                        "CREATE TABLE IF NOT EXISTS alembic_version ("
+                        "version_num VARCHAR(32) NOT NULL, "
+                        "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)"
+                        ")"
+                    )
+                )
+                await conn.execute(
+                    sqlalchemy.text(
+                        "INSERT INTO alembic_version (version_num) "
+                        "SELECT :rev WHERE NOT EXISTS (SELECT 1 FROM alembic_version)"
+                    ),
+                    {"rev": _ALEMBIC_BASELINE_REVISION},
                 )
             logger.info("Database initialised successfully.")
             return
