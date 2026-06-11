@@ -189,6 +189,26 @@ class AccessTokenCreated(AccessTokenOut):
     raw_token: str = ""
 
 
+class MonitoringTokenCreate(BaseModel):
+    name: str = Field(..., max_length=255)
+
+
+class MonitoringTokenOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+    last_used_at: datetime | None = None
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class MonitoringTokenCreated(MonitoringTokenOut):
+    """Includes the raw token – only returned once at creation time."""
+
+    raw_token: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Routing Rules
 # ---------------------------------------------------------------------------

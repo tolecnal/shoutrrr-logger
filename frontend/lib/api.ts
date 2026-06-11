@@ -180,6 +180,25 @@ export const updateToken = (
 export const deleteToken = (id: string) =>
   apiFetch<void>(`/admin/tokens/${id}`, { method: "DELETE" });
 
+// ---- Monitoring Tokens ----
+export const fetchMonitoringTokens = () => apiFetch<any[]>("/admin/monitoring-tokens");
+
+export const createMonitoringToken = (body: { name: string }) =>
+  apiFetch<any>("/admin/monitoring-tokens", { method: "POST", body: JSON.stringify(body) });
+
+export const updateMonitoringToken = (
+  id: string,
+  params: { name?: string; is_active?: boolean }
+) => {
+  const sp = new URLSearchParams();
+  if (params.name !== undefined) sp.set("name", params.name);
+  if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
+  return apiFetch<any>(`/admin/monitoring-tokens/${id}?${sp}`, { method: "PATCH" });
+};
+
+export const deleteMonitoringToken = (id: string) =>
+  apiFetch<void>(`/admin/monitoring-tokens/${id}`, { method: "DELETE" });
+
 // ---- Settings ----
 export const fetchSettings = () =>
   apiFetch<SettingOut[]>("/settings");

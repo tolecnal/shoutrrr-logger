@@ -7,6 +7,8 @@ import { TokensTab } from "@/components/admin-tokens-tab";
 import { PluginsTab } from "@/components/admin-plugins-tab";
 import { SettingsTab } from "@/components/admin-settings-tab";
 import { AuditLogTab } from "@/components/admin-audit-log-tab";
+import { MonitoringTokensTab } from "@/components/admin-monitoring-tokens-tab";
+import { Activity } from "lucide-react";
 
 export function AdminPanel() {
   return (
@@ -30,6 +32,10 @@ export function AdminPanel() {
               <KeyRound className="h-3.5 w-3.5" />
               Access Tokens
             </TabsTrigger>
+            <TabsTrigger value="monitoring-tokens" className="flex items-center gap-1.5 text-xs">
+              <Activity className="h-3.5 w-3.5" />
+              Monitoring
+            </TabsTrigger>
             <TabsTrigger value="plugins" className="flex items-center gap-1.5 text-xs">
               <Puzzle className="h-3.5 w-3.5" />
               Plugins
@@ -50,6 +56,10 @@ export function AdminPanel() {
 
           <TabsContent value="tokens" className="mt-0">
             <TokensTab />
+          </TabsContent>
+
+          <TabsContent value="monitoring-tokens" className="mt-0">
+            <MonitoringTokensTab />
           </TabsContent>
 
           <TabsContent value="plugins" className="mt-0">

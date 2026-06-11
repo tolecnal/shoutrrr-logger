@@ -37,9 +37,9 @@ async def process_email_digests() -> None:
                 selectinload(UserAlert.user),
             )
             .where(
-                UserAlert.email_sent == False,
-                AlertRule.send_email == True,
-                User.is_active == True,
+                not UserAlert.email_sent,
+                AlertRule.send_email,
+                User.is_active,
             )
         )
         result = await db.execute(stmt)

@@ -32,10 +32,12 @@ from middleware.performance import PerformanceMiddleware
 from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import (
+    admin_monitoring_tokens,
     alerts,
     api_metrics,
     audit_logs,
     me,
+    monitoring,
     notifications,
     plugins,
     routing_rules,
@@ -272,6 +274,9 @@ app.include_router(settings_router.admin_router, prefix=_V1)
 app.include_router(me.router, prefix=_V1)
 app.include_router(api_metrics.router, prefix=_V1)
 app.include_router(alerts.router, prefix=_V1)
+
+app.include_router(monitoring.router, prefix=f"{_V1}/monitoring")
+app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitoring-tokens")
 
 
 # ---------------------------------------------------------------------------

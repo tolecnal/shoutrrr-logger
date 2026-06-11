@@ -89,6 +89,23 @@ class AccessToken(Base):
     )
 
 
+class MonitoringToken(Base):
+    """Tokens intended purely for external monitoring systems like Nagios or Icinga2."""
+
+    __tablename__ = "monitoring_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (Index("ix_monitoring_tokens_token_hash", "token_hash", unique=True),)
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 
