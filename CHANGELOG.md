@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-06-11
+
 ### Added
 
 - **Slack Plugin**: Added a new bundled Slack plugin that can post notifications directly to Slack via an Incoming Webhook URL.

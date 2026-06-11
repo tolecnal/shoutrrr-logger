@@ -3,7 +3,7 @@
 A self-hosted notification logging service for [shoutrrr](https://containrrr.dev/shoutrrr/). It exposes an HTTP endpoint that accepts notifications from shoutrrr, stores them in PostgreSQL 17, and provides a web UI for searching, browsing, filtering, and managing them.
 
 **Stack:** FastAPI (Python 3.14) · Next.js 16 · PostgreSQL 17 · OpenID Connect · Docker  
-**Version:** 0.5.0
+**Version:** 0.6.0
 
 ---
 
