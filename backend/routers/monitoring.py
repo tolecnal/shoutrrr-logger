@@ -32,7 +32,7 @@ async def verify_monitoring_token(request: Request, db: AsyncSession = Depends(g
 
     stmt = select(MonitoringToken).where(
         MonitoringToken.token_hash == token_hash,
-        MonitoringToken.is_active == True,
+        MonitoringToken.is_active,
     )
     result = await db.execute(stmt)
     token = result.scalar_one_or_none()
