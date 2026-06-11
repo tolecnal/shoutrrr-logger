@@ -134,6 +134,12 @@ async def init_db(retries: int = 10, delay: float = 3.0) -> None:
                         "ON notifications USING gin (sender_name gin_trgm_ops)"
                     )
                 )
+                await conn.execute(
+                    sqlalchemy.text(
+                        "ALTER TABLE IF EXISTS user_alerts "
+                        "ADD COLUMN IF NOT EXISTS email_sent BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                )
             logger.info("Database initialised successfully.")
             return
         except Exception as exc:

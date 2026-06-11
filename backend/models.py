@@ -314,6 +314,7 @@ class UserAlert(Base):
         UUID(as_uuid=True), ForeignKey("alert_rules.id", ondelete="SET NULL"), nullable=True
     )
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    email_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     notification: Mapped["Notification"] = relationship(lazy="noload")
 

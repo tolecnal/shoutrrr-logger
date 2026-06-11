@@ -5,14 +5,10 @@ import smtplib
 import uuid
 from email.message import EmailMessage
 
-import markdown
 from sqlalchemy import select
 
 import database
 from models import AccessToken, AlertRule, Notification, User, UserAlert
-from services.settings import settings_service
-from utils.sanitize import sanitize_html
-from utils.templates import safe_format
 
 logger = logging.getLogger(__name__)
 
@@ -94,67 +90,8 @@ async def run_trigger_engine(
             db.add_all(alerts_to_create)
             await db.commit()
 
-            email_enabled = await settings_service.get_int(db, "email_alerts_enabled")
-            if email_enabled:
-                users_query = await db.execute(
-                    select(User).where(User.id.in_(list(users_to_email.keys())))
-                )
-                matched_users = users_query.scalars().all()
-
-                smtp_host = await settings_service.get_string(db, "smtp_host")
-                smtp_port = await settings_service.get_int(db, "smtp_port", default=587)
-                smtp_user = await settings_service.get_string(db, "smtp_user")
-                smtp_password = await settings_service.get_string(db, "smtp_password")
-                smtp_from = await settings_service.get_string(
-                    db, "smtp_from", default="alerts@shoutrrr-logger.local"
-                )
-                template_str = await settings_service.get_string(
-                    db,
-                    "email_alert_template",
-                    default="Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
-                )
-                from config import settings
-
-                app_base_url = settings.app_base_url
-
-                if smtp_host:
-                    for user in matched_users:
-                        rule_names = ", ".join(
-                            name.replace("\r", "").replace("\n", "")
-                            for name in users_to_email[user.id]
-                        )
-                        subject = f"[Alert] Notification matched rules: {rule_names}"
-
-                        try:
-                            # Safely format the template
-                            body = safe_format(
-                                template_str,
-                                username=user.username,
-                                rule_names=rule_names,
-                                title=title_text or "No title",
-                                message=message_text,
-                                base_url=app_base_url,
-                            )
-                        except Exception as e:
-                            logger.error(f"Failed to format email template: {e}")
-                            # Fallback if the user has messed up the template variables
-                            body = f"Hello {user.username},\n\nThe following notification matched your alert rules ({rule_names}):\n\nTitle: {title_text or 'No title'}\nMessage: {message_text}\n\nView details in Shoutrrr Logger: {app_base_url}"
-
-                        html_body = sanitize_html(markdown.markdown(body))
-
-                        asyncio.create_task(
-                            send_email_async(
-                                host=smtp_host,
-                                port=smtp_port,
-                                user=smtp_user,
-                                password=smtp_password,
-                                from_addr=smtp_from,
-                                to_addr=user.email,
-                                subject=subject,
-                                body=body,
-                                html_body=html_body,
-                            )
-                        )
+            # Emails are now sent periodically via a background worker (email_digest.py)
+            pass
 
 
 async def send_email_async(

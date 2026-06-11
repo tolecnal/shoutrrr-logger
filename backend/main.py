@@ -148,6 +148,18 @@ async def _retention_loop() -> None:
             logger.exception("Retention loop encountered an error")
 
 
+async def _email_loop() -> None:
+    """Background task: periodically process and send pending alert email digests."""
+    from services.email_digest import process_email_digests  # noqa: PLC0415
+
+    while True:
+        await asyncio.sleep(60)  # Run every 60 seconds
+        try:
+            await process_email_digests()
+        except Exception:
+            logger.exception("Email loop encountered an error")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from database import engine  # noqa: PLC0415
@@ -159,11 +171,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     is_retention_leader, retention_lock_conn = await _acquire_retention_leadership(engine)
     retention_task: asyncio.Task | None = None
+    email_task: asyncio.Task | None = None
     if is_retention_leader:
         retention_task = asyncio.create_task(_retention_loop())
-        logger.info("Retention loop started on this worker (reads DB setting each hour)")
+        email_task = asyncio.create_task(_email_loop())
+        logger.info("Background loops (retention, email digest) started on this worker")
     else:
-        logger.info("Retention loop already owned by another worker; skipping on this worker")
+        logger.info("Background loops already owned by another worker; skipping on this worker")
 
     yield
 
@@ -171,6 +185,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         retention_task.cancel()
         with suppress(asyncio.CancelledError):
             await retention_task
+    if email_task is not None:
+        email_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await email_task
     if retention_lock_conn is not None:
         await retention_lock_conn.close()
 
