@@ -195,3 +195,28 @@ export interface AuditLogOut {
   ip_address: string | null;
   created_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+export interface AlertOut {
+  id: string;
+  user_id: string;
+  notification_id: string;
+  title: string;
+  message: string;
+  state: "unread" | "read";
+  created_at: string;
+  severity?: string;
+  source?: string;
+}
+
+export interface AlertRuleOut {
+  id: string;
+  user_id: string;
+  name: string;
+  enabled: boolean;
+  match_tags: string[];
+  match_severities: string[];
+  created_at: string;
+}
