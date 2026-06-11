@@ -1,6 +1,7 @@
 import uuid
 from typing import Annotated
 
+import markdown
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -102,11 +103,47 @@ async def test_email_alert(
         raise HTTPException(status_code=400, detail="SMTP is not properly configured")
 
     subject = f"[Test Alert] {payload.name}"
-    body = (
-        f"This is a test email for your alert rule: '{payload.name}'.\n"
-        f"Match Type: {payload.match_type}\n"
-        f"Pattern: {payload.match_pattern}\n"
-    )
+
+    html_body = None
+    if payload.notification_id:
+        from sqlalchemy import select
+
+        from models import Notification
+
+        n = (
+            await db.execute(select(Notification).where(Notification.id == payload.notification_id))
+        ).scalar_one_or_none()
+        if n:
+            template_str = settings_dict.get(
+                "email_alert_template",
+                "Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
+            )
+            app_base_url = settings_dict.get("app_base_url", "http://localhost:4000")
+
+            try:
+                body = template_str.format(
+                    username=current_user.username,
+                    rule_names=payload.name,
+                    title=n.title or "No title",
+                    message=n.message,
+                    base_url=app_base_url,
+                )
+            except Exception:
+                body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules ({payload.name}):\n\nTitle: {n.title or 'No title'}\nMessage: {n.message}\n\nView details in Shoutrrr Logger: {app_base_url}"
+
+            html_body = markdown.markdown(body)
+        else:
+            body = (
+                f"This is a generic test email for your alert rule: '{payload.name}'.\n"
+                f"Match Type: {payload.match_type}\n"
+                f"Pattern: {payload.match_pattern}\n"
+            )
+    else:
+        body = (
+            f"This is a test email for your alert rule: '{payload.name}'.\n"
+            f"Match Type: {payload.match_type}\n"
+            f"Pattern: {payload.match_pattern}\n"
+        )
 
     try:
         await send_email_async(
@@ -118,6 +155,7 @@ async def test_email_alert(
             to_addr=current_user.email,
             subject=subject,
             body=body,
+            html_body=html_body,
             raise_errors=True,
         )
     except Exception as e:

@@ -410,7 +410,7 @@ class UserAlertOut(BaseModel):
 
 
 class AlertTestRequest(AlertRuleBase):
-    pass
+    notification_id: uuid.UUID | None = None
 
 
 class AlertTestResult(BaseModel):

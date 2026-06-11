@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 export function SettingsTab() {
   const { data, isLoading, mutate } = useSWR<SettingOut[]>(
@@ -128,24 +129,31 @@ export function SettingsTab() {
             <span className="text-xs text-muted-foreground">{setting.unit}</span>
           )}
         </div>
-        <Input
-          id={`setting-${setting.key}`}
-          type={setting.value_type === "string" ? (setting.key === "smtp_password" ? "password" : "text") : "number"}
-          min={setting.min_value}
-          max={setting.max_value}
-          value={val}
-          onChange={(e) => {
-            if (setting.value_type === "string") {
-              setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }));
-            } else {
-              const n = parseInt(e.target.value, 10);
-              if (!Number.isNaN(n)) {
-                setDraft((prev) => ({ ...prev, [setting.key]: n }));
+        {setting.key === "email_alert_template" ? (
+          <Textarea
+            id={`setting-${setting.key}`}
+            value={val}
+            onChange={(e) => setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }))}
+            className={`min-h-[150px] font-mono text-sm ${changed ? "ring-2 ring-primary/50" : ""}`}
+            placeholder="Markdown template for alert emails..."
+          />
+        ) : (
+          <Input
+            id={`setting-${setting.key}`}
+            type={setting.value_type === "string" ? (setting.key === "smtp_password" ? "password" : "text") : "number"}
+            min={setting.min_value}
+            max={setting.max_value}
+            value={val}
+            onChange={(e) => {
+              if (setting.value_type === "string") {
+                setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }));
+              } else {
+                setDraft((prev) => ({ ...prev, [setting.key]: parseInt(e.target.value) || 0 }));
               }
-            }
-          }}
-          className={changed ? "border-primary/50 bg-primary/5" : ""}
-        />
+            }}
+            className={changed ? "ring-2 ring-primary/50" : ""}
+          />
+        )}
         <p className="text-xs text-muted-foreground">{setting.description}</p>
         {setting.min_value === 0 && setting.key === "retention_days" && (
           <p className="text-xs text-muted-foreground/70 italic">

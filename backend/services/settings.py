@@ -180,6 +180,13 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         value_type="string",
     ),
     SettingMeta(
+        key="email_alert_template",
+        label="Email Alert Template",
+        description="Markdown template for the email body. Available variables: {username}, {rule_names}, {title}, {message}, {base_url}.",
+        default="Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
+        value_type="string",
+    ),
+    SettingMeta(
         key="smtp_from",
         label="SMTP From Address",
         description="The email address to send alerts from.",

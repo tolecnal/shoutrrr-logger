@@ -4,6 +4,7 @@ import re
 import smtplib
 from email.message import EmailMessage
 
+import markdown
 from sqlalchemy import select
 
 from database import async_session_factory
@@ -101,15 +102,35 @@ async def run_trigger_engine(
                 smtp_from = await settings_service.get_string(
                     db, "smtp_from", default="alerts@shoutrrr-logger.local"
                 )
+                template_str = await settings_service.get_string(
+                    db,
+                    "email_alert_template",
+                    default="Hello {username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n**{title}**\n\n{message}\n\n[View details in Shoutrrr Logger]({base_url})",
+                )
+                app_base_url = await settings_service.get_string(
+                    db, "app_base_url", default="http://localhost:4000"
+                )
 
                 if smtp_host:
                     for user in matched_users:
                         rule_names = ", ".join(users_to_email[user.id])
                         subject = f"[Alert] Notification matched rules: {rule_names}"
-                        body = f"Hello {user.username},\n\nThe following notification matched your alert rules ({rule_names}):\n\n"
-                        if title_text:
-                            body += f"Title: {title_text}\n"
-                        body += f"Message: {message_text}\n\nView details in Shoutrrr Logger."
+
+                        try:
+                            # Safely format the template
+                            body = template_str.format(
+                                username=user.username,
+                                rule_names=rule_names,
+                                title=title_text or "No title",
+                                message=message_text,
+                                base_url=app_base_url,
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to format email template: {e}")
+                            # Fallback if the user has messed up the template variables
+                            body = f"Hello {user.username},\n\nThe following notification matched your alert rules ({rule_names}):\n\nTitle: {title_text or 'No title'}\nMessage: {message_text}\n\nView details in Shoutrrr Logger: {app_base_url}"
+
+                        html_body = markdown.markdown(body)
 
                         asyncio.create_task(
                             send_email_async(
@@ -121,6 +142,7 @@ async def run_trigger_engine(
                                 to_addr=user.email,
                                 subject=subject,
                                 body=body,
+                                html_body=html_body,
                             )
                         )
 
@@ -135,10 +157,13 @@ async def send_email_async(
     subject: str,
     body: str,
     raise_errors: bool = False,
+    html_body: str | None = None,
 ):
     def _send():
         msg = EmailMessage()
         msg.set_content(body)
+        if html_body:
+            msg.add_alternative(html_body, subtype="html")
         msg["Subject"] = subject
         msg["From"] = from_addr
         msg["To"] = to_addr
@@ -164,6 +189,8 @@ async def send_email_async(
         def _send_ssl():
             msg = EmailMessage()
             msg.set_content(body)
+            if html_body:
+                msg.add_alternative(html_body, subtype="html")
             msg["Subject"] = subject
             msg["From"] = from_addr
             msg["To"] = to_addr

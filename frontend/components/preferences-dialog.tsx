@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical, Mail } from "lucide-react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
@@ -307,10 +307,10 @@ export function PreferencesDialog() {
     }
   };
 
-  const handleTestEmailAlert = async (rule: import("@/lib/types").AlertRuleOut) => {
+  const handleTestEmailAlert = async (rule: import("@/lib/types").AlertRuleOut, notificationId?: string) => {
     setTestingEmail(prev => ({ ...prev, [rule.id]: true }));
     try {
-      await testAlertEmail(rule);
+      await testAlertEmail({ ...rule, notification_id: notificationId } as any);
       toast.success("Test email sent via SMTP successfully!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send test email");
@@ -556,7 +556,7 @@ export function PreferencesDialog() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs gap-1"
+                          className="h-7 text-xs gap-1 hover:text-foreground"
                           onClick={() => handleTestAlertRule(rule)}
                           disabled={testingRule[rule.id] || !rule.match_pattern}
                         >
@@ -567,7 +567,7 @@ export function PreferencesDialog() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-xs gap-1"
+                            className="h-7 text-xs gap-1 hover:text-foreground"
                             onClick={() => handleTestEmailAlert(rule)}
                             disabled={testingEmail[rule.id] || !rule.match_pattern}
                           >
@@ -585,9 +585,23 @@ export function PreferencesDialog() {
                     {testResults[rule.id] && testResults[rule.id]!.total > 0 && (
                       <div className="mt-2 space-y-2">
                         {testResults[rule.id]!.matches.slice(0, 3).map(n => (
-                          <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs">
-                            <div className="font-medium truncate">{n.title || "No title"}</div>
-                            <div className="text-muted-foreground truncate">{n.message}</div>
+                          <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium truncate">{n.title || "No title"}</div>
+                              <div className="text-muted-foreground truncate">{n.message}</div>
+                            </div>
+                            {rule.send_email && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                                onClick={() => handleTestEmailAlert(rule, n.id)}
+                                title="Send test email with this notification"
+                                disabled={testingEmail[rule.id]}
+                              >
+                                <Mail className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                         {testResults[rule.id]!.total > 3 && (
