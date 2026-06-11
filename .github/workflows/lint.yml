@@ -79,6 +79,53 @@ jobs:
       - name: Run tests
         run: .venv/bin/pytest tests/ -v --tb=short
 
+  alembic-migrations:
+    name: Alembic migrations (PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shoutrrr_logger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/shoutrrr_logger
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies via venv
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[test]"
+
+      - name: Apply migrations to a fresh database
+        run: .venv/bin/alembic upgrade head
+
+      - name: Check for model/migration drift
+        run: .venv/bin/alembic check
+
+      - name: Verify downgrade and re-upgrade
+        run: |
+          .venv/bin/alembic downgrade base
+          .venv/bin/alembic upgrade head
+
   test-frontend:
     name: Frontend tests (vitest)
     runs-on: ubuntu-latest

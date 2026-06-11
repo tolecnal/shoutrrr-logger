@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Database migrations**: Added Alembic configuration (`backend/alembic.ini`, `backend/migrations/`) with a baseline migration matching the current schema. Existing databases are stamped at this baseline automatically on startup; future schema changes ship as Alembic migrations.
+- **CI**: a new workflow job applies Alembic migrations to a fresh PostgreSQL database, runs `alembic check` to catch model/migration drift, and verifies `alembic downgrade base` / `upgrade head` round-trip cleanly.
 
 ### Fixed
 
