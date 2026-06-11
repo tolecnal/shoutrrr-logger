@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
 import {
   AreaChart,
@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { Activity, AlertTriangle, Clock, Gauge } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Gauge, Search } from "lucide-react";
 import { fetchApiPerformance } from "@/lib/api";
 import type { ApiPerformanceStats } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -127,12 +127,71 @@ function ChartTooltip({
 // ---------------------------------------------------------------------------
 export function ApiPerformancePanel() {
   const [windowHours, setWindowHours] = useState(24);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<"endpoint" | "requests" | "avg" | "p95" | "error">("requests");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const { data, isLoading, error } = useSWR<ApiPerformanceStats>(
     ["/admin/performance", windowHours],
     ([, h]) => fetchApiPerformance(h as number),
     { refreshInterval: 30_000 }
   );
+
+  const filteredAndSortedEndpoints = useMemo(() => {
+    if (!data) return [];
+    
+    let result = data.by_endpoint;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(ep => ep.path.toLowerCase().includes(q) || ep.method.toLowerCase().includes(q));
+    }
+
+    return [...result].sort((a, b) => {
+      let aVal: any, bVal: any;
+      switch (sortField) {
+        case "endpoint":
+          aVal = `${a.method} ${a.path}`;
+          bVal = `${b.method} ${b.path}`;
+          break;
+        case "requests":
+          aVal = a.request_count;
+          bVal = b.request_count;
+          break;
+        case "avg":
+          aVal = a.avg_ms;
+          bVal = b.avg_ms;
+          break;
+        case "p95":
+          aVal = a.p95_ms;
+          bVal = b.p95_ms;
+          break;
+        case "error":
+          aVal = a.error_rate;
+          bVal = b.error_rate;
+          break;
+      }
+      
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [data, searchQuery, sortField, sortDirection]);
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection(field === "endpoint" ? "asc" : "desc");
+    }
+  };
+
+  const renderSortIcon = (field: typeof sortField) => {
+    if (sortField !== field) return <span className="ml-1 text-[10px] opacity-0 group-hover:opacity-40">↕</span>;
+    return <span className="ml-1 text-[10px]">{sortDirection === "asc" ? "▲" : "▼"}</span>;
+  };
+
+
 
   const windowLabel = WINDOWS.find((w) => w.value === windowHours)?.label ?? `Last ${windowHours}h`;
 
@@ -170,7 +229,6 @@ export function ApiPerformancePanel() {
           label="Avg response time"
           value={data ? fmtMs(data.avg_ms) : undefined}
           icon={Clock}
-          accent={!!data && data.avg_ms > 0}
         />
         <StatCard
           label="P95 response time"
@@ -255,25 +313,54 @@ export function ApiPerformancePanel() {
       {/* Endpoint performance table */}
       {data && data.by_endpoint.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-sm font-medium text-foreground mb-4">
-            Endpoint breakdown
-            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-              ({windowLabel})
-            </span>
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <h2 className="text-sm font-medium text-foreground">
+              Endpoint breakdown
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                ({windowLabel})
+              </span>
+            </h2>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search endpoints..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 rounded-md border border-border bg-transparent pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
+              />
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left py-2 pr-4 font-medium w-full">Endpoint</th>
-                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap">Requests</th>
-                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap">Avg</th>
-                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap">P95</th>
-                  <th className="text-right py-2 pl-3 font-medium whitespace-nowrap">Error %</th>
+                <tr className="border-b border-border text-muted-foreground select-none">
+                  <th className="text-left py-2 pr-4 font-medium w-full cursor-pointer group" onClick={() => handleSort("endpoint")}>
+                    Endpoint {renderSortIcon("endpoint")}
+                  </th>
+                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("requests")}>
+                    Requests {renderSortIcon("requests")}
+                  </th>
+                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("avg")}>
+                    Avg {renderSortIcon("avg")}
+                  </th>
+                  <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("p95")}>
+                    P95 {renderSortIcon("p95")}
+                  </th>
+                  <th className="text-right py-2 pl-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("error")}>
+                    Error % {renderSortIcon("error")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {data.by_endpoint.map((ep, i) => (
+                {filteredAndSortedEndpoints.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                      No endpoints match your search.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAndSortedEndpoints.map((ep, i) => (
                   <tr
                     key={i}
                     className="border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
@@ -311,7 +398,7 @@ export function ApiPerformancePanel() {
                         : "0%"}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
