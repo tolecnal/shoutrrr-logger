@@ -262,3 +262,63 @@ class AuditLog(Base):
         Index("ix_audit_logs_action", "action"),
         Index("ix_audit_logs_actor_user_id", "actor_user_id"),
     )
+
+
+class AlertRule(Base):
+    """User-defined rules that trigger alerts when a matching notification arrives."""
+
+    __tablename__ = "alert_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # "exact", "contains", "regex"
+    match_type: Mapped[str] = mapped_column(String(32), nullable=False, default="contains")
+    # The string or regex to match
+    match_pattern: Mapped[str] = mapped_column(Text, nullable=False)
+    # "title", "message", "all"
+    match_target: Mapped[str] = mapped_column(String(32), nullable=False, default="all")
+    # "global_only", "personal_only", "all"
+    notification_scope: Mapped[str] = mapped_column(String(32), nullable=False, default="all")
+
+    send_email: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class UserAlert(Base):
+    """An alert triggered for a specific user based on an AlertRule match."""
+
+    __tablename__ = "user_alerts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    notification_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("notifications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    rule_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("alert_rules.id", ondelete="SET NULL"), nullable=True
+    )
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_user_alerts_created_at", "created_at"),
+        Index("ix_user_alerts_user_id_is_read", "user_id", "is_read"),
+    )

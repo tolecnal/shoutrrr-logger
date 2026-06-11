@@ -18,13 +18,13 @@ export function SettingsTab() {
     fetchAdminSettings
   );
 
-  const [draft, setDraft] = useState<Record<string, number>>({});
+  const [draft, setDraft] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
   // Sync draft whenever server data arrives (first load or after save)
   useEffect(() => {
     if (data) {
-      const next: Record<string, number> = {};
+      const next: Record<string, any> = {};
       for (const s of data) next[s.key] = s.value;
       setDraft(next);
     }
@@ -111,14 +111,18 @@ export function SettingsTab() {
         </div>
         <Input
           id={`setting-${setting.key}`}
-          type="number"
+          type={setting.value_type === "string" ? (setting.key === "smtp_password" ? "password" : "text") : "number"}
           min={setting.min_value}
           max={setting.max_value}
           value={val}
           onChange={(e) => {
-            const n = parseInt(e.target.value, 10);
-            if (!Number.isNaN(n)) {
-              setDraft((prev) => ({ ...prev, [setting.key]: n }));
+            if (setting.value_type === "string") {
+              setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }));
+            } else {
+              const n = parseInt(e.target.value, 10);
+              if (!Number.isNaN(n)) {
+                setDraft((prev) => ({ ...prev, [setting.key]: n }));
+              }
             }
           }}
           className={changed ? "border-primary/50 bg-primary/5" : ""}
@@ -147,10 +151,11 @@ export function SettingsTab() {
   return (
     <div className="max-w-2xl space-y-6">
       <Tabs defaultValue="ui" className="w-full">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="ui">UI</TabsTrigger>
           <TabsTrigger value="retention">Retention</TabsTrigger>
           <TabsTrigger value="access">Access</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts & SMTP</TabsTrigger>
         </TabsList>
         <TabsContent value="ui" className="space-y-4">
           {renderSetting("page_size")}
@@ -161,9 +166,24 @@ export function SettingsTab() {
           {renderSetting("stats_window_days")}
           {renderSetting("api_metrics_retention_days")}
           {renderSetting("audit_log_retention_days")}
+          {renderSetting("user_alert_retention_days")}
         </TabsContent>
         <TabsContent value="access" className="space-y-4">
           {renderSetting("private_tokens_enabled")}
+          {renderSetting("max_private_tokens")}
+          {renderSetting("rate_limit_per_minute")}
+        </TabsContent>
+        <TabsContent value="alerts" className="space-y-4">
+          {renderSetting("email_alerts_enabled")}
+          <div className="pt-2 pb-2">
+            <h4 className="text-sm font-semibold text-foreground border-b pb-1">SMTP Configuration</h4>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">Configure the SMTP server for dispatching email alerts.</p>
+          </div>
+          {renderSetting("smtp_host")}
+          {renderSetting("smtp_port")}
+          {renderSetting("smtp_user")}
+          {renderSetting("smtp_password")}
+          {renderSetting("smtp_from")}
         </TabsContent>
       </Tabs>
 
