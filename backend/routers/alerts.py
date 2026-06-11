@@ -5,8 +5,7 @@ import markdown
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import get_current_user_from_session, require_role
-from config import settings
+from auth import get_current_user_from_session, require_admin
 from database import get_db
 from models import User
 from schemas import (
@@ -175,7 +174,7 @@ async def test_email_alert(
 @router.post("/preview-template", response_model=TemplatePreviewResponse)
 async def preview_template(
     payload: TemplatePreviewRequest,
-    current_user: User = Depends(require_role(settings.oidc_role_admin)),
+    current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     html_body = None
