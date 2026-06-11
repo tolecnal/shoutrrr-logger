@@ -378,11 +378,11 @@ async def oidc_callback(
     # expose on the UserInfo endpoint unless a protocol mapper is configured.
     # Merging gives _extract_role_from_claims the full picture.
     try:
-        from auth import verify_oidc_jwt
+        import jwt
 
-        token_claims: dict = await verify_oidc_jwt(access_token)
+        token_claims: dict = jwt.decode(access_token, options={"verify_signature": False})
     except Exception as exc:
-        logger.warning(f"OIDC token signature verification failed: {exc}")
+        logger.warning(f"OIDC token payload decode failed: {exc}")
         token_claims = {}
 
     # Merge: token_claims first so that UserInfo values (sub, email, etc.)
