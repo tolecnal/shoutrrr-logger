@@ -21,6 +21,7 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
 - [Sending notifications](#sending-notifications)
   - [Rate limiting](#rate-limiting)
 - [Watchtower integration](#watchtower-integration)
+- [Advanced Search](#advanced-search)
 - [User roles](#user-roles)
 - [Preferences](#preferences)
 - [Alerts](#alerts)
@@ -517,6 +518,21 @@ With `WATCHTOWER_NOTIFICATION_REPORT=true`, Watchtower sends a structured summar
 ```
 
 Without the flag it sends individual log lines as separate notifications. Both formats are stored verbatim and fully searchable.
+
+---
+
+## Advanced Search
+
+The notification log features a powerful search bar with auto-complete and advanced query syntax.
+
+- **Field Targeting**: Prefix terms with a field name to restrict searches: `title:`, `message:`, `sender:`, `severity:`, or `tag:`.
+- **Exact Phrases**: Use quotes to match exact phrases: `"database timeout"`.
+- **Wildcards**: Use `*` to match any characters, and `?` for a single character (e.g. `sender:app*`).
+- **Regular Expressions**: Enclose queries in forward slashes to execute regex searches: `message:/timeout|disconnect/`.
+- **Time Filters**: Filter by relative time (`after:1h`, `before:2d`) or absolute dates (`after:2024-01-01`).
+- **Free-text**: Any terms without prefixes search across the title, message, and sender name simultaneously.
+
+Queries can be mixed and matched: `severity:error tag:prod /timeout/ after:1h`
 
 ---
 
