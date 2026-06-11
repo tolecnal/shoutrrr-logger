@@ -30,6 +30,7 @@ from middleware.performance import PerformanceMiddleware
 from models import User, UserRole
 from plugins import registry as plugin_registry
 from routers import (
+    alerts,
     api_metrics,
     audit_logs,
     me,
