@@ -328,7 +328,7 @@ export function UsersTab() {
           <AlertDialogFooter>
             <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive/60"
               onClick={handleDelete}
             >
               Delete

@@ -37,8 +37,8 @@ const WINDOWS = [
 ];
 
 function msClass(ms: number): string {
-  if (ms < 100) return "text-green-600 dark:text-green-400";
-  if (ms < 500) return "text-yellow-600 dark:text-yellow-400";
+  if (ms < 100) return "text-green-700 dark:text-green-400";
+  if (ms < 500) return "text-yellow-700 dark:text-yellow-400";
   return "text-red-600 dark:text-red-400";
 }
 

@@ -381,7 +381,7 @@ export function TokensTab() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-sm">Token Created</DialogTitle>
-            <DialogDescription className="text-xs text-amber-600 dark:text-amber-400">
+            <DialogDescription className="text-xs text-amber-700 dark:text-amber-400">
               Copy this token now. It will not be shown again.
             </DialogDescription>
           </DialogHeader>
@@ -472,7 +472,7 @@ export function TokensTab() {
           <AlertDialogFooter>
             <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive/60"
               onClick={handleDelete}
             >
               Delete

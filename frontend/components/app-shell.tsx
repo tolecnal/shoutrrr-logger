@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
                 {item.href === "/alerts" && unreadCount > 0 && (
-                  <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive w-5 h-5 text-[10px] font-medium text-destructive-foreground">
+                  <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive dark:bg-destructive/60 w-5 h-5 text-[10px] font-medium text-destructive-foreground">
                     {unreadCount}
                   </span>
                 )}
