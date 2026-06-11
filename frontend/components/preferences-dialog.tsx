@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical } from "lucide-react";
 import useSWR from "swr";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,8 @@ import {
   fetchAlertRules,
   createAlertRule,
   updateAlertRule,
-  deleteAlertRule
+  deleteAlertRule,
+  testAlertRule
 } from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
@@ -285,6 +287,21 @@ export function PreferencesDialog() {
     await mutateAlertRules();
   };
 
+  const [testingRule, setTestingRule] = useState<Record<string, boolean>>({});
+  const [testResults, setTestResults] = useState<Record<string, import("@/lib/types").NotificationOut[] | null>>({});
+
+  const handleTestAlertRule = async (rule: import("@/lib/types").AlertRuleOut) => {
+    setTestingRule(prev => ({ ...prev, [rule.id]: true }));
+    try {
+      const res = await testAlertRule(rule);
+      setTestResults(prev => ({ ...prev, [rule.id]: res.matched_notifications || [] }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to test rule");
+    } finally {
+      setTestingRule(prev => ({ ...prev, [rule.id]: false }));
+    }
+  };
+
   const handleUpdateAlertRule = async (id: string, patch: Partial<import("@/lib/types").AlertRuleOut>) => {
     // Optimistic update
     mutateAlertRules(prev => prev?.map(r => r.id === id ? { ...r, ...patch } : r), false);
@@ -515,6 +532,35 @@ export function PreferencesDialog() {
                       />
                       <Label htmlFor={`email-${rule.id}`} className="text-xs text-muted-foreground">Send Email Alert</Label>
                     </div>
+                  </div>
+                  <div className="pt-2 border-t mt-2">
+                    <div className="flex items-center justify-between">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => handleTestAlertRule(rule)}
+                        disabled={testingRule[rule.id] || !rule.match_pattern}
+                      >
+                        <FlaskConical className="h-3 w-3" />
+                        {testingRule[rule.id] ? "Testing..." : "Test Rule Match"}
+                      </Button>
+                      {testResults[rule.id] !== undefined && testResults[rule.id] !== null && (
+                        <span className="text-xs text-muted-foreground">
+                          {testResults[rule.id]?.length === 0 ? "No matches found" : `Found ${testResults[rule.id]?.length} match(es)`}
+                        </span>
+                      )}
+                    </div>
+                    {testResults[rule.id] && testResults[rule.id]!.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {testResults[rule.id]!.map(n => (
+                          <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs">
+                            <div className="font-medium truncate">{n.title || "No title"}</div>
+                            <div className="text-muted-foreground truncate">{n.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

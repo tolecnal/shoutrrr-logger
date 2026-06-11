@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
-import { fetchAdminSettings, updateSettings } from "@/lib/api";
+import { fetchAdminSettings, updateSettings, testSmtp } from "@/lib/api";
 import type { SettingOut } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ export function SettingsTab() {
 
   const [draft, setDraft] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [testingSmtp, setTestingSmtp] = useState(false);
 
   // Sync draft whenever server data arrives (first load or after save)
   useEffect(() => {
@@ -47,6 +48,24 @@ export function SettingsTab() {
       toast.error(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
+    try {
+      await testSmtp({
+        smtp_host: draft.smtp_host,
+        smtp_port: parseInt(draft.smtp_port, 10),
+        smtp_user: draft.smtp_user || "",
+        smtp_password: draft.smtp_password || "",
+        smtp_from_address: draft.smtp_from || "",
+      });
+      toast.success("SMTP test email sent successfully!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send test email");
+    } finally {
+      setTestingSmtp(false);
     }
   };
 
@@ -184,6 +203,17 @@ export function SettingsTab() {
           {renderSetting("smtp_user")}
           {renderSetting("smtp_password")}
           {renderSetting("smtp_from")}
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleTestSmtp}
+              disabled={testingSmtp || !draft.smtp_host}
+            >
+              {testingSmtp ? "Testing SMTP..." : "Test SMTP Settings"}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
 

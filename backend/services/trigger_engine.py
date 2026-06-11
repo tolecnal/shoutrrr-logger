@@ -134,6 +134,7 @@ async def send_email_async(
     to_addr: str,
     subject: str,
     body: str,
+    raise_errors: bool = False,
 ):
     def _send():
         msg = EmailMessage()
@@ -155,6 +156,8 @@ async def send_email_async(
             logger.info(f"Email sent successfully to {to_addr}")
         except Exception as e:
             logger.error(f"Failed to send email to {to_addr}: {e}")
+            if raise_errors:
+                raise
 
     if port == 465:
 
@@ -172,6 +175,8 @@ async def send_email_async(
                 logger.info(f"Email sent successfully to {to_addr}")
             except Exception as e:
                 logger.error(f"Failed to send email to {to_addr}: {e}")
+                if raise_errors:
+                    raise
 
         await asyncio.to_thread(_send_ssl)
     else:

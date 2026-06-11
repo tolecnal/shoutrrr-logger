@@ -184,6 +184,12 @@ export const updateSettings = (values: Record<string, any>) =>
     body: JSON.stringify({ values }),
   });
 
+export const testSmtp = (values: { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password: string; smtp_from_address: string }) =>
+  apiFetch<void>("/admin/settings/test-smtp", {
+    method: "POST",
+    body: JSON.stringify(values),
+  });
+
 // ---- Personal tokens ----
 export const fetchMyTokens = () => apiFetch<AccessTokenOut[]>("/me/tokens");
 
@@ -298,4 +304,4 @@ export const deleteAlertRule = (id: string) =>
   apiFetch<void>(`/alerts/rules/${id}`, { method: "DELETE" });
 
 export const testAlertRule = (body: Partial<import("./types").AlertRuleOut>) =>
-  apiFetch<import("./types").NotificationOut[]>("/alerts/test", { method: "POST", body: JSON.stringify(body) });
+  apiFetch<{ matched_notifications: import("./types").NotificationOut[] }>("/alerts/test", { method: "POST", body: JSON.stringify(body) });

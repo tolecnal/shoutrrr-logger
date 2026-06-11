@@ -277,6 +277,14 @@ class SettingsUpdate(BaseModel):
     values: dict[str, Any]
 
 
+class SmtpTestRequest(BaseModel):
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password: str
+    smtp_from_address: str
+
+
 # ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
