@@ -2,8 +2,8 @@
 
 import { X, Clock, Wifi, Tag, MessageSquare, Hash, Braces } from "lucide-react";
 import type { NotificationOut } from "@/lib/types";
-import type { TagRule } from "@/lib/use-tag-rules";
-import { TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
+import type { LabelRule } from "@/lib/use-label-rules";
+import { LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +14,7 @@ import { updateNotificationState } from "@/lib/api";
 interface Props {
   notification: NotificationOut;
   tags: string[];
-  rules: TagRule[];
+  rules: LabelRule[];
   formatTimestamp: (iso: string) => string;
   onClose: () => void;
   onUpdate: (n: NotificationOut) => void;
@@ -24,7 +24,7 @@ interface Props {
 interface ContentProps {
   notification: NotificationOut;
   tags: string[];
-  rules: TagRule[];
+  rules: LabelRule[];
   formatTimestamp: (iso: string) => string;
   onUpdate: (n: NotificationOut) => void;
   alertStatesEnabled: boolean;
@@ -110,7 +110,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
                       n.severity === "error" ? "orange" :
                       n.severity === "warning" ? "yellow" :
                       n.severity === "info" ? "blue" : "slate";
-                    const colors = TAG_COLOR_CLASSES[colorKey as keyof typeof TAG_COLOR_CLASSES];
+                    const colors = LABEL_COLOR_CLASSES[colorKey as keyof typeof LABEL_COLOR_CLASSES];
                     return `${colors.bg} ${colors.text} ${colors.border}`;
                   })()
                 )}
@@ -135,12 +135,12 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {tags.length > 0 && (
             <DetailRow
               icon={Hash}
-              label="Tags"
+              label="Labels"
               value={
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
                   {tags.map((tag) => {
                     const rule = rules.find((r) => r.name === tag);
-                    const colors = rule ? TAG_COLOR_CLASSES[rule.color] : TAG_COLOR_CLASSES.slate;
+                    const colors = rule ? LABEL_COLOR_CLASSES[rule.color] : LABEL_COLOR_CLASSES.slate;
                     return (
                       <span
                         key={tag}
@@ -155,7 +155,18 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
                       </span>
                     );
                   })}
-                  {n.tags?.map((tag) => (
+                </div>
+              }
+            />
+          )}
+
+          {n.tags && n.tags.length > 0 && (
+            <DetailRow
+              icon={Hash}
+              label="Tags"
+              value={
+                <div className="flex flex-wrap gap-1.5 mt-0.5">
+                  {n.tags.map((tag) => (
                     <span
                       key={`explicit-${tag}`}
                       className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-slate-500/10 text-slate-500 border-slate-500/20"

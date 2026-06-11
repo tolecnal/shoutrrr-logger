@@ -49,19 +49,19 @@ import {
 } from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
-  useTagRules,
-  TAG_COLOR_CLASSES,
-  type TagColor,
-  type TagRule,
-} from "@/lib/use-tag-rules";
+  useLabelRules,
+  LABEL_COLOR_CLASSES,
+  type LabelColor,
+  type LabelRule,
+} from "@/lib/use-label-rules";
 import { UserPluginsTab } from "@/components/user-plugins-tab";
 
-const TAG_COLORS: TagColor[] = [
+const LABEL_COLORS: LabelColor[] = [
   "slate","blue","green","yellow","orange","red","purple","pink","teal",
 ];
 
-function TagBadgePreview({ color, name }: { color: TagColor; name: string }) {
-  const cls = TAG_COLOR_CLASSES[color];
+function LabelBadgePreview({ color, name }: { color: LabelColor; name: string }) {
+  const cls = LABEL_COLOR_CLASSES[color];
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${cls.bg} ${cls.text} ${cls.border}`}
@@ -71,13 +71,13 @@ function TagBadgePreview({ color, name }: { color: TagColor; name: string }) {
   );
 }
 
-function RuleRow({
+function LabelRuleRow({
   rule,
   onUpdate,
   onDelete,
 }: {
-  rule: TagRule;
-  onUpdate: (patch: Partial<Omit<TagRule, "id">>) => void;
+  rule: LabelRule;
+  onUpdate: (patch: Partial<Omit<LabelRule, "id">>) => void;
   onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -119,21 +119,21 @@ function RuleRow({
         </button>
         <Select
           value={rule.color}
-          onValueChange={(v) => onUpdate({ color: v as TagColor })}
+          onValueChange={(v) => onUpdate({ color: v as LabelColor })}
         >
           <SelectTrigger className="h-7 w-28 text-xs bg-input shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {TAG_COLORS.map((c) => (
+            {LABEL_COLORS.map((c) => (
               <SelectItem key={c} value={c}>
-                <TagBadgePreview color={c} name={c} />
+                <LabelBadgePreview color={c} name={c} />
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {/* Live badge preview — acts as the visible name; click "N patterns" to edit name */}
-        <TagBadgePreview color={rule.color} name={rule.name} />
+        <LabelBadgePreview color={rule.color} name={rule.name} />
         {/* Spacer to push patterns + delete to the right */}
         <span className="flex-1" />
         <button
@@ -162,12 +162,12 @@ function RuleRow({
             <Input
               className="h-7 flex-1 min-w-0 text-xs"
               value={rule.name}
-              placeholder="Tag name"
+              placeholder="Label name"
               onChange={(e) => onUpdate({ name: e.target.value })}
             />
           </div>
           <p className="text-xs text-muted-foreground mb-2">
-            Regex patterns — any match applies this tag. Use{" "}
+            Regex patterns — any match applies this label. Use{" "}
             <code className="font-mono">(?i)</code> prefix for case-insensitive.
           </p>
           {rule.patterns.map((p, i) => (
@@ -398,7 +398,7 @@ function AlertRuleRow({
 
 export function PreferencesDialog() {
   const { prefs, setPrefs } = usePreferences();
-  const { rules, addRule, updateRule, deleteRule } = useTagRules();
+  const { rules, addRule, updateRule, deleteRule } = useLabelRules();
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -532,7 +532,7 @@ export function PreferencesDialog() {
 
   const handleAddRule = () => {
     addRule({
-      name: "New tag",
+      name: "New label",
       color: "blue",
       patterns: [],
       enabled: true,
@@ -560,7 +560,7 @@ export function PreferencesDialog() {
         <Tabs defaultValue="display" className="flex-1 flex flex-col min-h-0">
           <TabsList className="flex flex-wrap bg-secondary">
             <TabsTrigger value="display" className="flex-1">Display</TabsTrigger>
-            <TabsTrigger value="tags" className="flex-1">Tag Rules</TabsTrigger>
+            <TabsTrigger value="labels" className="flex-1">Labels</TabsTrigger>
             <TabsTrigger value="alerts" className="flex-1">Alert Rules</TabsTrigger>
             <TabsTrigger value="tokens" className="flex-1">My Tokens</TabsTrigger>
             <TabsTrigger value="plugins" className="flex-1">My Plugins</TabsTrigger>
@@ -613,16 +613,16 @@ export function PreferencesDialog() {
             </p>
           </TabsContent>
 
-          {/* ---- Tags tab ---- */}
+          {/* ---- Labels tab ---- */}
           <TabsContent
-            value="tags"
+            value="labels"
             className="mt-4 flex flex-col min-h-0 flex-1 space-y-3"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Tag rules</p>
+                <p className="text-sm font-medium">Label rules</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Rules are applied in order. A notification can match multiple tags.
+                  Rules are applied in order. A notification can match multiple labels.
                 </p>
               </div>
               <Button size="sm" onClick={handleAddRule} className="gap-1">
@@ -633,11 +633,11 @@ export function PreferencesDialog() {
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {rules.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No tag rules yet. Add one to start classifying notifications.
+                  No label rules yet. Add one to start classifying notifications.
                 </p>
               )}
               {rules.map((rule) => (
-                <RuleRow
+                <LabelRuleRow
                   key={rule.id}
                   rule={rule}
                   onUpdate={(patch) => updateRule(rule.id, patch)}

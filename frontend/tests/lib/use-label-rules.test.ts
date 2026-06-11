@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
 import {
   classifyNotification,
   isExcluded,
-  type TagRule,
-} from "@/lib/use-tag-rules";
+  useLabelRules,
+  type LabelRule,
+} from "@/lib/use-label-rules";
 import type { NotificationOut } from "@/lib/types";
+
+const STORAGE_KEY = "shoutrrr-logger:label-rules";
+const LEGACY_STORAGE_KEY = "shoutrrr-logger:tag-rules";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,7 +34,7 @@ function makeNotif(overrides: Partial<NotificationOut> = {}): NotificationOut {
   };
 }
 
-function makeRule(overrides: Partial<TagRule> = {}): TagRule {
+function makeRule(overrides: Partial<LabelRule> = {}): LabelRule {
   return {
     id: "rule-1",
     name: "Test",
@@ -58,7 +63,7 @@ describe("classifyNotification", () => {
     expect(classifyNotification(notif, rules)).toEqual([]);
   });
 
-  it("returns multiple matching tags in rule order", () => {
+  it("returns multiple matching labels in rule order", () => {
     const notif = makeNotif({ message: "error: update failed" });
     const rules = [
       makeRule({ id: "r1", name: "Error", patterns: ["(?i)error"] }),
@@ -152,5 +157,45 @@ describe("isExcluded", () => {
       makeRule({ id: "r2", patterns: ["(?i)startup"], exclude: true }),
     ];
     expect(isExcluded(notif, rules)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useLabelRules — legacy storage key migration
+// ---------------------------------------------------------------------------
+
+describe("useLabelRules legacy storage migration", () => {
+  beforeEach(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  });
+
+  it("migrates rules saved under the old 'tag-rules' key on first load", async () => {
+    const legacyRules = [makeRule({ id: "custom-1", name: "Custom" })];
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(legacyRules));
+
+    const { result } = renderHook(() => useLabelRules());
+
+    await waitFor(() => {
+      expect(result.current.rules.map((r) => r.id)).toEqual(["custom-1"]);
+    });
+
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("leaves an existing 'label-rules' key untouched even if a legacy key is present", async () => {
+    const currentRules = [makeRule({ id: "current-1", name: "Current" })];
+    const legacyRules = [makeRule({ id: "legacy-1", name: "Legacy" })];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentRules));
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(legacyRules));
+
+    const { result } = renderHook(() => useLabelRules());
+
+    await waitFor(() => {
+      expect(result.current.rules.map((r) => r.id)).toEqual(["current-1"]);
+    });
+
+    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).not.toBeNull();
   });
 });

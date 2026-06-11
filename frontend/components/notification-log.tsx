@@ -6,7 +6,7 @@ import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, In
 import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
-import { useTagRules, isExcluded, TAG_COLOR_CLASSES } from "@/lib/use-tag-rules";
+import { useLabelRules, isExcluded, LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,7 +117,7 @@ export function NotificationLog() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<NotificationOut | null>(null);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const [groupField, setGroupField] = useState<string | null>(null);
   const [groupValues, setGroupValues] = useState<Set<string>>(new Set());
   // Scope filter: all = global + own private, global = global only, mine = own private only
@@ -147,12 +147,12 @@ export function NotificationLog() {
   const autoRefreshMs = ((appSettings?.auto_refresh_interval ?? 30)) * 1000;
 
   const { formatTimestamp, formatTime } = usePreferences();
-  const { rules, classify } = useTagRules();
+  const { rules, classify } = useLabelRules();
 
   // Are any client-side filters active?
   const hasExclude = useMemo(() => rules.some((r) => r.enabled && r.exclude), [rules]);
   const groupingActive = groupField !== null && groupValues.size > 0;
-  const filtersActive = hasExclude || activeTag !== null || groupingActive;
+  const filtersActive = hasExclude || activeLabel !== null || groupingActive;
 
   // When filters are active we fetch a large page so client-side filtering
   // has enough raw material. When filters are off, use normal server pagination.
@@ -212,13 +212,13 @@ export function NotificationLog() {
       .map((n) => ({ notification: n, tags: classify(n) }));
   }, [data, rules, classify]);
 
-  // Apply tag filter on top
+  // Apply label filter on top
   const filteredItems = useMemo(() => {
-    if (!activeTag) return classifiedItems;
-    return classifiedItems.filter(({ tags }) => tags.includes(activeTag));
-  }, [classifiedItems, activeTag]);
+    if (!activeLabel) return classifiedItems;
+    return classifiedItems.filter(({ tags }) => tags.includes(activeLabel));
+  }, [classifiedItems, activeLabel]);
 
-  // Custom field keys present across the currently (tag-)filtered items —
+  // Custom field keys present across the currently (label-)filtered items —
   // populates the "Group by" field selector.
   const availableGroupFields = useMemo(() => {
     const keys = new Set<string>();
@@ -229,7 +229,7 @@ export function NotificationLog() {
   }, [filteredItems]);
 
   // Distinct values of the selected group field across the currently
-  // (tag-)filtered items — populates the value chips. Computed independently
+  // (label-)filtered items — populates the value chips. Computed independently
   // of the selected values themselves so toggling one doesn't shrink the list.
   const availableGroupValues = useMemo(() => {
     if (!groupField) return [];
@@ -413,7 +413,7 @@ export function NotificationLog() {
         }
         if (selected) { setSelected(null); return; }
         if (query) { handleClearSearch(); return; }
-        if (activeTag) { setActiveTag(null); setClientPage(1); return; }
+        if (activeLabel) { setActiveLabel(null); setClientPage(1); return; }
         if (timeRange !== "all") { handleTimeRangeChange("all"); return; }
         return;
       }
@@ -426,12 +426,12 @@ export function NotificationLog() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [
-    selected, query, activeTag, timeRange,
+    selected, query, activeLabel, timeRange,
     canGoPrev, canGoNext, handlePrev, handleNext,
     handleClearSearch, handleTimeRangeChange,
   ]);
 
-  const enabledTags = useMemo(
+  const enabledLabels = useMemo(
     () => rules.filter((r) => r.enabled).map((r) => r.name),
     [rules]
   );
@@ -621,7 +621,7 @@ export function NotificationLog() {
           )}
         </div>
 
-        {/* Filter bar: always visible — scope + tag chips on the left, time range + group-by on the right */}
+        {/* Filter bar: always visible — scope + label chips on the left, time range + group-by on the right */}
         <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
           {/* Scope filter */}
           <span className="text-[11px] text-muted-foreground shrink-0">Scope:</span>
@@ -640,14 +640,14 @@ export function NotificationLog() {
             </button>
           ))}
 
-          {enabledTags.length > 0 && (
+          {enabledLabels.length > 0 && (
             <>
               <span className="text-[11px] text-muted-foreground shrink-0 ml-1 mr-1">Filter:</span>
               <button
-                onClick={() => setActiveTag(null)}
+                onClick={() => setActiveLabel(null)}
                 className={cn(
                   "px-2.5 py-0.5 rounded-full text-xs border transition-colors shrink-0",
-                  activeTag === null
+                  activeLabel === null
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
                 )}
@@ -657,14 +657,14 @@ export function NotificationLog() {
               {rules
                 .filter((r) => r.enabled)
                 .map((rule) => {
-                  const colors = TAG_COLOR_CLASSES[rule.color];
-                  const isActive = activeTag === rule.name;
+                  const colors = LABEL_COLOR_CLASSES[rule.color];
+                  const isActive = activeLabel === rule.name;
                   return (
                     <button
                       key={rule.id}
                       onClick={() => {
                         if (rule.exclude) return;
-                        setActiveTag(isActive ? null : rule.name);
+                        setActiveLabel(isActive ? null : rule.name);
                         setClientPage(1);
                       }}
                       title={
@@ -685,12 +685,12 @@ export function NotificationLog() {
                     </button>
                   );
                 })}
-              {activeTag && (
+              {activeLabel && (
                 <button
-                  onClick={() => { setActiveTag(null); setClientPage(1); }}
+                  onClick={() => { setActiveLabel(null); setClientPage(1); }}
                   className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                  title="Clear tag filter"
-                  aria-label="Clear tag filter"
+                  title="Clear label filter"
+                  aria-label="Clear label filter"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -761,8 +761,8 @@ export function NotificationLog() {
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
-                {activeTag
-                  ? `No notifications tagged "${activeTag}".`
+                {activeLabel
+                  ? `No notifications labeled "${activeLabel}".`
                   : groupingActive
                   ? `No notifications match the selected ${groupField} value(s).`
                   : hasExclude
@@ -798,7 +798,7 @@ export function NotificationLog() {
                     Message
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-32">
-                    Tags
+                    Labels
                   </th>
                   <th className="text-right text-xs text-muted-foreground font-medium px-4 py-2 w-24">
                     Count
@@ -1199,7 +1199,7 @@ function NotificationRow({
 }: {
   notification: NotificationOut;
   tags: string[];
-  rules: ReturnType<typeof useTagRules>["rules"];
+  rules: ReturnType<typeof useLabelRules>["rules"];
   isSelected: boolean;
   formatTime: (iso: string) => string;
   onClick: () => void;
@@ -1227,7 +1227,7 @@ function NotificationRow({
                 n.severity === "error" ? "orange" :
                 n.severity === "warning" ? "yellow" :
                 n.severity === "info" ? "blue" : "slate";
-              const colors = TAG_COLOR_CLASSES[colorKey as keyof typeof TAG_COLOR_CLASSES];
+              const colors = LABEL_COLOR_CLASSES[colorKey as keyof typeof LABEL_COLOR_CLASSES];
               return `${colors.bg} ${colors.text} ${colors.border}`;
             })()
           )}
@@ -1254,7 +1254,7 @@ function NotificationRow({
         <div className="flex flex-wrap gap-1">
           {tags.map((tag) => {
             const rule = rules.find((r) => r.name === tag);
-            const colors = rule ? TAG_COLOR_CLASSES[rule.color] : TAG_COLOR_CLASSES.slate;
+            const colors = rule ? LABEL_COLOR_CLASSES[rule.color] : LABEL_COLOR_CLASSES.slate;
             return (
               <span
                 key={tag}

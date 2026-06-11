@@ -21,6 +21,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Advanced Search hardening**: `message:/regex/`, `title:/regex/`, etc. now reject invalid or excessively long (>200 character) regex patterns with a `422` response before they reach PostgreSQL, and search/export/bulk-delete queries are now bounded by a configurable statement timeout (`SEARCH_STATEMENT_TIMEOUT_MS`, default 5000ms) on PostgreSQL.
+- **Renamed "Tag Rules" to "Labels"**: the content-based classification rules in Preferences (badges shown on notifications matching a regex pattern) are now called "Labels" to avoid confusion with the unrelated, ingestion-time `tags` field on notifications. This remains a client-side (localStorage) preference; existing rules are migrated automatically to the new storage key.
 
 ## [0.7.0] — 2026-06-11
 

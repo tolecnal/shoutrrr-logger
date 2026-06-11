@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * useTagRules
+ * useLabelRules
  *
- * Stores user-defined tag classification rules in localStorage.
+ * Stores user-defined label classification rules in localStorage.
  * Each rule contains:
  *   - id:       unique identifier
  *   - name:     display label (e.g. "Update", "Error")
@@ -12,13 +12,13 @@
  *   - enabled:  if false the rule is skipped
  *
  * classifyNotification(notification, rules) returns the names of all
- * matching tags for a given notification.
+ * matching labels for a given notification.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import type { NotificationOut } from "./types";
 
-export type TagColor =
+export type LabelColor =
   | "slate"
   | "blue"
   | "green"
@@ -29,19 +29,19 @@ export type TagColor =
   | "pink"
   | "teal";
 
-export interface TagRule {
+export interface LabelRule {
   id: string;
   name: string;
-  color: TagColor;
-  patterns: string[]; // regex strings — any match → tag applied
+  color: LabelColor;
+  patterns: string[]; // regex strings — any match → label applied
   enabled: boolean;
   /** When true, any notification that matches this rule is hidden entirely,
-   *  regardless of what other tags it carries. */
+   *  regardless of what other labels it carries. */
   exclude: boolean;
 }
 
 // Sensible defaults so the feature is useful out of the box
-const DEFAULT_RULES: TagRule[] = [
+const DEFAULT_LABEL_RULES: LabelRule[] = [
   {
     id: "default-startup",
     name: "Startup",
@@ -94,13 +94,14 @@ const DEFAULT_RULES: TagRule[] = [
   },
 ];
 
-const STORAGE_KEY = "shoutrrr-logger:tag-rules";
+const STORAGE_KEY = "shoutrrr-logger:label-rules";
+const LEGACY_STORAGE_KEY = "shoutrrr-logger:tag-rules";
 
 // Index default rules by ID for fast pattern lookups during migration
-const DEFAULT_RULES_BY_ID = new Map(DEFAULT_RULES.map((r) => [r.id, r]));
+const DEFAULT_LABEL_RULES_BY_ID = new Map(DEFAULT_LABEL_RULES.map((r) => [r.id, r]));
 
 // Tailwind color map — the badge component reads these
-export const TAG_COLOR_CLASSES: Record<TagColor, { bg: string; text: string; border: string }> = {
+export const LABEL_COLOR_CLASSES: Record<LabelColor, { bg: string; text: string; border: string }> = {
   slate:  { bg: "bg-slate-100 dark:bg-slate-800",   text: "text-slate-700 dark:text-slate-300",   border: "border-slate-300 dark:border-slate-600" },
   blue:   { bg: "bg-blue-100 dark:bg-blue-900/40",  text: "text-blue-700 dark:text-blue-300",     border: "border-blue-300 dark:border-blue-700"   },
   green:  { bg: "bg-green-100 dark:bg-green-900/40",text: "text-green-700 dark:text-green-300",   border: "border-green-300 dark:border-green-700" },
@@ -112,34 +113,49 @@ export const TAG_COLOR_CLASSES: Record<TagColor, { bg: string; text: string; bor
   teal:   { bg: "bg-teal-100 dark:bg-teal-900/40",  text: "text-teal-700 dark:text-teal-300",     border: "border-teal-300 dark:border-teal-700"   },
 };
 
-function loadRules(): TagRule[] {
-  if (typeof window === "undefined") return DEFAULT_RULES;
+/**
+ * Renamed from "shoutrrr-logger:tag-rules" to "shoutrrr-logger:label-rules"
+ * to match the "Tag Rules" → "Labels" rename. Migrate any existing rules
+ * stored under the old key so users don't lose their customizations.
+ */
+function migrateLegacyStorageKey() {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem(STORAGE_KEY) !== null) return;
+  const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (legacy === null) return;
+  localStorage.setItem(STORAGE_KEY, legacy);
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+}
+
+function loadRules(): LabelRule[] {
+  if (typeof window === "undefined") return DEFAULT_LABEL_RULES;
   try {
+    migrateLegacyStorageKey();
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_RULES;
+    if (!raw) return DEFAULT_LABEL_RULES;
     // Rules saved before `exclude` existed won't have that field at runtime,
-    // even though the persisted shape is asserted as TagRule[] here.
-    const parsed = JSON.parse(raw) as (Omit<TagRule, "exclude"> & { exclude?: boolean })[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_RULES;
+    // even though the persisted shape is asserted as LabelRule[] here.
+    const parsed = JSON.parse(raw) as (Omit<LabelRule, "exclude"> & { exclude?: boolean })[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_LABEL_RULES;
     return parsed.map((r) => {
-      const def = DEFAULT_RULES_BY_ID.get(r.id);
+      const def = DEFAULT_LABEL_RULES_BY_ID.get(r.id);
       return {
         // Backfill `exclude` for rules saved before the field existed
         exclude: false,
         ...r,
-        // Always use the canonical patterns from DEFAULT_RULES for built-in
-        // rules so that pattern fixes are applied to existing users
-        // automatically. User preferences (enabled, exclude, color, name)
-        // are preserved via the spread above.
+        // Always use the canonical patterns from DEFAULT_LABEL_RULES for
+        // built-in rules so that pattern fixes are applied to existing
+        // users automatically. User preferences (enabled, exclude, color,
+        // name) are preserved via the spread above.
         ...(def ? { patterns: def.patterns } : {}),
       };
     });
   } catch {
-    return DEFAULT_RULES;
+    return DEFAULT_LABEL_RULES;
   }
 }
 
-function saveRules(rules: TagRule[]) {
+function saveRules(rules: LabelRule[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
   } catch {
@@ -147,7 +163,7 @@ function saveRules(rules: TagRule[]) {
   }
 }
 
-/** Returns the tag names (in rule order) that match the given notification. */
+/** Returns true if any pattern matches the given haystack. */
 function matchesAnyPattern(haystack: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {
     try {
@@ -160,10 +176,10 @@ function matchesAnyPattern(haystack: string, patterns: string[]): boolean {
   });
 }
 
-/** Returns the tag names (in rule order) that match the given notification. */
+/** Returns the label names (in rule order) that match the given notification. */
 export function classifyNotification(
   notification: NotificationOut,
-  rules: TagRule[]
+  rules: LabelRule[]
 ): string[] {
   const haystack = [notification.message, notification.title ?? ""].join(" ");
 
@@ -179,7 +195,7 @@ export function classifyNotification(
  */
 export function isExcluded(
   notification: NotificationOut,
-  rules: TagRule[]
+  rules: LabelRule[]
 ): boolean {
   const haystack = [notification.message, notification.title ?? ""].join(" ");
 
@@ -188,21 +204,21 @@ export function isExcluded(
     .some((r) => matchesAnyPattern(haystack, r.patterns));
 }
 
-export function useTagRules() {
-  const [rules, setRulesState] = useState<TagRule[]>(DEFAULT_RULES);
+export function useLabelRules() {
+  const [rules, setRulesState] = useState<LabelRule[]>(DEFAULT_LABEL_RULES);
 
   useEffect(() => {
     setRulesState(loadRules());
   }, []);
 
-  const setRules = useCallback((next: TagRule[]) => {
+  const setRules = useCallback((next: LabelRule[]) => {
     saveRules(next);
     setRulesState(next);
   }, []);
 
   const addRule = useCallback(
-    (rule: Omit<TagRule, "id">) => {
-      const newRule: TagRule = {
+    (rule: Omit<LabelRule, "id">) => {
+      const newRule: LabelRule = {
         ...rule,
         id: crypto.randomUUID(),
       };
@@ -212,7 +228,7 @@ export function useTagRules() {
   );
 
   const updateRule = useCallback(
-    (id: string, patch: Partial<Omit<TagRule, "id">>) => {
+    (id: string, patch: Partial<Omit<LabelRule, "id">>) => {
       setRules(rules.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     },
     [rules, setRules]

@@ -557,7 +557,7 @@ A user who has neither role is refused at login with a diagnostic message.
 Every signed-in user can open **Preferences** (gear icon in the top bar) to customize their own view. Preferences are stored in the browser (`localStorage`) and are per-user, per-device.
 
 - **Display** — theme (Light / Dark / System) and time format (locale-aware, 12-hour, or 24-hour).
-- **Tag rules** — highlight notifications whose custom fields match a pattern with a chosen color, optionally excluding matches from the log entirely.
+- **Labels** — highlight notifications whose message or title match a pattern with a chosen color, optionally excluding matches from the log entirely.
 - **Alert rules** — configure conditions (e.g. matching tags, severity, or message patterns) to trigger visual alerts in the UI, and optionally receive customized email notifications via SMTP.
 - **My Tokens** — create and manage personal access tokens (see [Access tokens](#access-tokens)).
 - **Plugins** — configure your own plugin settings, like a personal Slack webhook URL, with custom routing rules.
