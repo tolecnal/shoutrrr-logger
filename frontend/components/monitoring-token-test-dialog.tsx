@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CodeBlock } from "@/components/code-block";
+import { CopyButton } from "@/components/copy-button";
 
 const PLACEHOLDER_TOKEN = "YOUR_TOKEN";
 
@@ -91,7 +92,12 @@ export function MonitoringTokenTestDialog({
               <span className="text-xs font-semibold text-muted-foreground ml-1">
                 {s.label}
               </span>
-              <CodeBlock code={s.code} language={s.language} />
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <CodeBlock code={s.code} language={s.language} />
+                </div>
+                <CopyButton value={s.code} className="mt-0" />
+              </div>
             </div>
           ))}
         </div>

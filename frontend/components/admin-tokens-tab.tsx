@@ -289,7 +289,7 @@ export function TokensTab() {
                                 className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                                 title="Test this token"
                               >
-                                <FlaskConical className="h-3.5 w-3.5" />
+                                <span className="text-xs font-mono font-bold">{"{}"}</span>
                               </Button>
                             }
                           />
@@ -413,7 +413,7 @@ export function TokensTab() {
                 token={created.raw_token}
                 trigger={
                   <Button size="sm" variant="outline" className="gap-1.5">
-                    <FlaskConical className="h-3.5 w-3.5" />
+                    <span className="text-xs font-mono font-bold">{"{}"}</span>
                     Test this token
                   </Button>
                 }

@@ -718,8 +718,8 @@ export function PreferencesDialog() {
                   <TokenTestDialog
                     token={newRawToken}
                     trigger={
-                      <Button size="sm" variant="outline" className="h-6 text-xs gap-1 px-2">
-                        <FlaskConical className="h-3 w-3" />
+                      <Button size="sm" variant="outline" className="h-6 text-xs gap-1 px-2 text-muted-foreground hover:text-foreground">
+                        <span className="text-[10px] font-mono font-bold">{"{}"}</span>
                         Test
                       </Button>
                     }
@@ -823,7 +823,7 @@ export function PreferencesDialog() {
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
                         title="Test this token"
                       >
-                        <FlaskConical className="h-3.5 w-3.5" />
+                        <span className="text-[10px] font-mono font-bold">{"{}"}</span>
                       </Button>
                     }
                   />
