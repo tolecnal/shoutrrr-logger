@@ -18,14 +18,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install ruff
-        run: pip install ruff
+      - name: Install dependencies and ruff via venv
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install ruff
+          .venv/bin/pip install -e ".[test]"
 
       - name: Lint
-        run: ruff check backend/
+        run: .venv/bin/ruff check backend/
 
       - name: Format check
-        run: ruff format --check backend/ --exclude backend/build/
+        run: .venv/bin/ruff format --check backend/ --exclude backend/build/
 
   lint-frontend:
     name: Frontend (ESLint + tsc)
@@ -69,11 +72,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -e ".[test]"
+      - name: Install dependencies via venv
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e ".[test]"
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: .venv/bin/pytest tests/ -v --tb=short
 
   test-frontend:
     name: Frontend tests (vitest)

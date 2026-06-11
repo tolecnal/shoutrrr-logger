@@ -38,10 +38,11 @@ lint:backend:
   image: python:3.12-slim
   services: []
   before_script:
-    - pip install ruff --quiet
+    - python -m venv .venv
+    - .venv/bin/pip install ruff --quiet
   script:
-    - ruff check backend/
-    - ruff format --check backend/ --exclude backend/build/
+    - .venv/bin/ruff check backend/
+    - .venv/bin/ruff format --check backend/ --exclude backend/build/
   rules:
     - when: always
 
@@ -75,9 +76,11 @@ test:backend:
   image: python:3.12-slim
   services: []
   before_script:
-    - cd backend && pip install -e ".[test]" --quiet
+    - cd backend
+    - python -m venv .venv
+    - .venv/bin/pip install -e ".[test]" --quiet
   script:
-    - pytest tests/ -v --tb=short
+    - .venv/bin/pytest tests/ -v --tb=short
   rules:
     - when: always
 
