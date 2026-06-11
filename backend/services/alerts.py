@@ -79,7 +79,7 @@ class AlertsService:
 
     async def test_rule(
         self, session: AsyncSession, user_id: uuid.UUID, payload: AlertTestRequest
-    ) -> Sequence[Notification]:
+    ) -> tuple[Sequence[Notification], int]:
         return await self._repo.test_rule_notifications(
             session,
             user_id,

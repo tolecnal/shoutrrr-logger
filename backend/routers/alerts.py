@@ -16,6 +16,8 @@ from schemas import (
     UserAlertOut,
 )
 from services.alerts import alerts_service
+from services.settings import settings_service
+from services.trigger_engine import send_email_async
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -68,8 +70,59 @@ async def test_alert_rule(
     current_user: Annotated[User, Depends(get_current_user_from_session)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    matched = await alerts_service.test_rule(db, current_user.id, payload)
-    return AlertTestResult(matched_notifications=matched)
+    matched, total = await alerts_service.test_rule(db, current_user.id, payload)
+    return AlertTestResult(matched_notifications=matched, total_matches=total)
+
+
+@router.post("/test-email", status_code=status.HTTP_204_NO_CONTENT)
+async def test_email_alert(
+    payload: AlertTestRequest,
+    current_user: Annotated[User, Depends(get_current_user_from_session)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    if not payload.send_email:
+        raise HTTPException(status_code=400, detail="Send email alert is not enabled on this rule")
+
+    if not current_user.email:
+        raise HTTPException(status_code=400, detail="Current user has no email address configured")
+
+    app_settings = await settings_service.get_all(db)
+    settings_dict = {s["key"]: s["value"] for s in app_settings}
+
+    if not settings_dict.get("email_alerts_enabled"):
+        raise HTTPException(
+            status_code=400, detail="Email alerts are disabled globally in settings"
+        )
+
+    smtp_host = settings_dict.get("smtp_host")
+    smtp_port = settings_dict.get("smtp_port")
+    smtp_from = settings_dict.get("smtp_from")
+
+    if not smtp_host or not smtp_port or not smtp_from:
+        raise HTTPException(status_code=400, detail="SMTP is not properly configured")
+
+    subject = f"[Test Alert] {payload.name}"
+    body = (
+        f"This is a test email for your alert rule: '{payload.name}'.\n"
+        f"Match Type: {payload.match_type}\n"
+        f"Pattern: {payload.match_pattern}\n"
+    )
+
+    try:
+        await send_email_async(
+            host=smtp_host,
+            port=int(smtp_port),
+            user=settings_dict.get("smtp_user", ""),
+            password=settings_dict.get("smtp_password", ""),
+            from_addr=smtp_from,
+            to_addr=current_user.email,
+            subject=subject,
+            body=body,
+            raise_errors=True,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
+    return None
 
 
 @router.get("", response_model=list[UserAlertOut])

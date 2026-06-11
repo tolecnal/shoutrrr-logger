@@ -79,7 +79,7 @@ class AlertsRepository:
         match_pattern: str,
         match_target: str,
         notification_scope: str,
-    ) -> Sequence[Notification]:
+    ) -> tuple[Sequence[Notification], int]:
         # Simplistic approach to pull last 100 notifications visible to the user and filter in python
         # Since regex and custom contains are hard to do optimally in a single portable SQL
         # First get tokens for user
@@ -109,7 +109,7 @@ class AlertsRepository:
         try:
             pattern = re.compile(match_pattern, re.IGNORECASE) if match_type == "regex" else None
         except re.error:
-            return []
+            return [], 0
 
         for n in notifications:
             # Gather text to search
@@ -130,7 +130,7 @@ class AlertsRepository:
                 if pattern and pattern.search(combined):
                     matched.append(n)
 
-        return matched[:10]
+        return matched[:10], len(matched)
 
     async def delete_user_alerts(
         self, session: AsyncSession, user_id: uuid.UUID, alert_ids: list[uuid.UUID]

@@ -415,3 +415,4 @@ class AlertTestRequest(AlertRuleBase):
 
 class AlertTestResult(BaseModel):
     matched_notifications: list[NotificationOut]
+    total_matches: int = 0

@@ -38,7 +38,8 @@ import {
   createAlertRule,
   updateAlertRule,
   deleteAlertRule,
-  testAlertRule
+  testAlertRule,
+  testAlertEmail
 } from "@/lib/api";
 import { usePreferences, type TimeFormat } from "@/lib/use-preferences";
 import {
@@ -288,17 +289,33 @@ export function PreferencesDialog() {
   };
 
   const [testingRule, setTestingRule] = useState<Record<string, boolean>>({});
-  const [testResults, setTestResults] = useState<Record<string, import("@/lib/types").NotificationOut[] | null>>({});
+  const [testingEmail, setTestingEmail] = useState<Record<string, boolean>>({});
+  const [testResults, setTestResults] = useState<Record<string, { matches: import("@/lib/types").NotificationOut[], total: number } | null>>({});
 
   const handleTestAlertRule = async (rule: import("@/lib/types").AlertRuleOut) => {
     setTestingRule(prev => ({ ...prev, [rule.id]: true }));
     try {
       const res = await testAlertRule(rule);
-      setTestResults(prev => ({ ...prev, [rule.id]: res.matched_notifications || [] }));
+      setTestResults(prev => ({ 
+        ...prev, 
+        [rule.id]: { matches: res.matched_notifications || [], total: res.total_matches || 0 } 
+      }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to test rule");
     } finally {
       setTestingRule(prev => ({ ...prev, [rule.id]: false }));
+    }
+  };
+
+  const handleTestEmailAlert = async (rule: import("@/lib/types").AlertRuleOut) => {
+    setTestingEmail(prev => ({ ...prev, [rule.id]: true }));
+    try {
+      await testAlertEmail(rule);
+      toast.success("Test email sent via SMTP successfully!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send test email");
+    } finally {
+      setTestingEmail(prev => ({ ...prev, [rule.id]: false }));
     }
   };
 
@@ -535,30 +552,49 @@ export function PreferencesDialog() {
                   </div>
                   <div className="pt-2 border-t mt-2">
                     <div className="flex items-center justify-between">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => handleTestAlertRule(rule)}
-                        disabled={testingRule[rule.id] || !rule.match_pattern}
-                      >
-                        <FlaskConical className="h-3 w-3" />
-                        {testingRule[rule.id] ? "Testing..." : "Test Rule Match"}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => handleTestAlertRule(rule)}
+                          disabled={testingRule[rule.id] || !rule.match_pattern}
+                        >
+                          <FlaskConical className="h-3 w-3" />
+                          {testingRule[rule.id] ? "Testing..." : "Test Rule Match"}
+                        </Button>
+                        {rule.send_email && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => handleTestEmailAlert(rule)}
+                            disabled={testingEmail[rule.id] || !rule.match_pattern}
+                          >
+                            <FlaskConical className="h-3 w-3" />
+                            {testingEmail[rule.id] ? "Sending..." : "Test Email Alert"}
+                          </Button>
+                        )}
+                      </div>
                       {testResults[rule.id] !== undefined && testResults[rule.id] !== null && (
                         <span className="text-xs text-muted-foreground">
-                          {testResults[rule.id]?.length === 0 ? "No matches found" : `Found ${testResults[rule.id]?.length} match(es)`}
+                          {testResults[rule.id]!.total === 0 ? "No matches found" : `Found ${testResults[rule.id]!.total} match(es)`}
                         </span>
                       )}
                     </div>
-                    {testResults[rule.id] && testResults[rule.id]!.length > 0 && (
+                    {testResults[rule.id] && testResults[rule.id]!.total > 0 && (
                       <div className="mt-2 space-y-2">
-                        {testResults[rule.id]!.map(n => (
+                        {testResults[rule.id]!.matches.slice(0, 3).map(n => (
                           <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs">
                             <div className="font-medium truncate">{n.title || "No title"}</div>
                             <div className="text-muted-foreground truncate">{n.message}</div>
                           </div>
                         ))}
+                        {testResults[rule.id]!.total > 3 && (
+                          <p className="text-xs text-muted-foreground italic pl-1">
+                            ...and {testResults[rule.id]!.total - 3} more.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
