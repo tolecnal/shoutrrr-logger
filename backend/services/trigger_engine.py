@@ -11,6 +11,7 @@ from sqlalchemy import select
 import database
 from models import AccessToken, AlertRule, Notification, User, UserAlert
 from services.settings import settings_service
+from utils.sanitize import sanitize_html
 from utils.templates import safe_format
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ async def run_trigger_engine(
                             # Fallback if the user has messed up the template variables
                             body = f"Hello {user.username},\n\nThe following notification matched your alert rules ({rule_names}):\n\nTitle: {title_text or 'No title'}\nMessage: {message_text}\n\nView details in Shoutrrr Logger: {app_base_url}"
 
-                        html_body = markdown.markdown(body)
+                        html_body = sanitize_html(markdown.markdown(body))
 
                         asyncio.create_task(
                             send_email_async(

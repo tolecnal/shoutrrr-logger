@@ -1,6 +1,7 @@
 """Business logic for storing, searching, and dispatching notifications."""
 
 import csv
+import hashlib
 import io
 import json
 import logging
@@ -119,8 +120,6 @@ class NotificationService:
         tags: list[str] | None = None,
         fingerprint_group: str | None = None,
     ) -> Notification:
-        import hashlib
-
         tags = tags or []
 
         # Calculate fingerprint
@@ -128,7 +127,8 @@ class NotificationService:
             fp_raw = fingerprint_group
         else:
             fp_raw = f"{title or ''}:{message}:{severity}"
-        fingerprint = hashlib.md5(fp_raw.encode()).hexdigest()
+        # Non-cryptographic dedup grouping key, not a security control.
+        fingerprint = hashlib.md5(fp_raw.encode(), usedforsecurity=False).hexdigest()
 
         # Look for a recent duplicate (last 5 minutes)
         cutoff = datetime.now(UTC) - timedelta(minutes=5)

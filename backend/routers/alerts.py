@@ -22,6 +22,7 @@ from schemas import (
 from services.alerts import alerts_service
 from services.settings import settings_service
 from services.trigger_engine import send_email_async
+from utils.sanitize import sanitize_html
 from utils.templates import safe_format
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -138,7 +139,7 @@ async def test_email_alert(
             except Exception:
                 body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules ({payload.name}):\n\nTitle: {n.title or 'No title'}\nMessage: {n.message}\n\nView details in Shoutrrr Logger: {app_base_url}"
 
-            html_body = markdown.markdown(body)
+            html_body = sanitize_html(markdown.markdown(body))
         else:
             body = (
                 f"This is a generic test email for your alert rule: '{payload.name}'.\n"
@@ -208,7 +209,7 @@ async def preview_template(
     except Exception:
         body = f"Hello {current_user.username},\n\nThe following notification matched your alert rules ({mock_rule_names}):\n\nTitle: {mock_title}\nMessage: {mock_message}\n\nView details in Shoutrrr Logger: {app_base_url}"
 
-    html_body = markdown.markdown(body)
+    html_body = sanitize_html(markdown.markdown(body))
 
     return TemplatePreviewResponse(html=html_body)
 

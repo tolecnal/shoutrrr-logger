@@ -3,11 +3,14 @@ Tests for auth.py — token hashing, JWT creation/decoding.
 These are pure unit tests with no database or HTTP involvement.
 """
 
+import json
 import time
 
 import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
+from jwt.algorithms import RSAAlgorithm
 
 from auth import (
     SESSION_ALGORITHM,
@@ -16,8 +19,10 @@ from auth import (
     decode_session_jwt,
     generate_raw_token,
     hash_token,
+    verify_oidc_jwt,
     verify_token,
 )
+from config import settings
 
 
 class TestTokenHashing:
@@ -97,3 +102,143 @@ class TestSessionJWT:
         with pytest.raises(HTTPException) as exc_info:
             decode_session_jwt(fake_token)
         assert exc_info.value.status_code == 401
+
+
+_DISCOVERY_URL = "https://idp.example.com/.well-known/openid-configuration"
+_JWKS_URL = "https://idp.example.com/jwks"
+_ISSUER = "https://idp.example.com"
+
+
+def _jwk_from_key(private_key, kid: str) -> dict:
+    jwk = json.loads(RSAAlgorithm.to_jwk(private_key.public_key()))
+    jwk["kid"] = kid
+    jwk["use"] = "sig"
+    return jwk
+
+
+class TestVerifyOidcJwt:
+    """OIDC access tokens must be signature/issuer/expiry verified via JWKS."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_caches(self, monkeypatch):
+        import auth as auth_module
+
+        monkeypatch.setattr(auth_module, "_oidc_config", None)
+        monkeypatch.setattr(auth_module, "_jwks_keys", None)
+        monkeypatch.setattr(settings, "oidc_discovery_url", _DISCOVERY_URL)
+
+    @pytest.fixture
+    def discovery_response(self, httpx_mock):
+        httpx_mock.add_response(
+            url=_DISCOVERY_URL,
+            json={
+                "issuer": _ISSUER,
+                "jwks_uri": _JWKS_URL,
+                "authorization_endpoint": f"{_ISSUER}/auth",
+                "token_endpoint": f"{_ISSUER}/token",
+                "userinfo_endpoint": f"{_ISSUER}/userinfo",
+            },
+        )
+
+    async def test_valid_token_is_verified(self, httpx_mock, discovery_response):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        token = jwt.encode(
+            {
+                "sub": "user-1",
+                "iss": _ISSUER,
+                "exp": time.time() + 3600,
+                "realm_access": {"roles": ["admin"]},
+            },
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        claims = await verify_oidc_jwt(token)
+        assert claims["sub"] == "user-1"
+        assert claims["realm_access"]["roles"] == ["admin"]
+
+    async def test_token_signed_by_unknown_key_is_rejected(self, httpx_mock, discovery_response):
+        legit_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        attacker_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(legit_key, "key-1")]})
+
+        # Attacker signs a token with their own key but reuses the legit kid.
+        forged = jwt.encode(
+            {"sub": "attacker", "iss": _ISSUER, "exp": time.time() + 3600},
+            attacker_key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        with pytest.raises(jwt.PyJWTError):
+            await verify_oidc_jwt(forged)
+
+    async def test_expired_token_is_rejected(self, httpx_mock, discovery_response):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        expired = jwt.encode(
+            {"sub": "user-1", "iss": _ISSUER, "exp": time.time() - 60},
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        with pytest.raises(jwt.ExpiredSignatureError):
+            await verify_oidc_jwt(expired)
+
+    async def test_wrong_issuer_is_rejected(self, httpx_mock, discovery_response):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        token = jwt.encode(
+            {"sub": "user-1", "iss": "https://evil.example.com", "exp": time.time() + 3600},
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        with pytest.raises(jwt.InvalidIssuerError):
+            await verify_oidc_jwt(token)
+
+    async def test_unknown_kid_triggers_jwks_refetch(self, httpx_mock, discovery_response):
+        """Simulates signing-key rotation: the cached JWKS is missing the
+        token's `kid`, so a fresh JWKS fetch must be attempted before giving
+        up."""
+        old_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        new_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(old_key, "old-key")]})
+        httpx_mock.add_response(
+            url=_JWKS_URL,
+            json={"keys": [_jwk_from_key(old_key, "old-key"), _jwk_from_key(new_key, "new-key")]},
+        )
+
+        token = jwt.encode(
+            {"sub": "user-1", "iss": _ISSUER, "exp": time.time() + 3600},
+            new_key,
+            algorithm="RS256",
+            headers={"kid": "new-key"},
+        )
+
+        claims = await verify_oidc_jwt(token)
+        assert claims["sub"] == "user-1"
+
+    async def test_audience_is_not_validated(self, httpx_mock, discovery_response):
+        """Keycloak access tokens commonly carry `aud: account` rather than
+        this client's client_id; the token must still verify."""
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        token = jwt.encode(
+            {"sub": "user-1", "iss": _ISSUER, "aud": "account", "exp": time.time() + 3600},
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        claims = await verify_oidc_jwt(token)
+        assert claims["aud"] == "account"

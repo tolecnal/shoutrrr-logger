@@ -36,6 +36,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Notification ingestion**: `severity`/`level` and `tags` from `/shoutrrr` payloads are now length-validated (`severity` ≤ 32 chars, each tag ≤ 64 chars), returning `400` instead of an unhandled database error for oversized values.
 - **Alert rule names**: `AlertRule.name` can no longer contain CR/LF characters (rejected with `422`), and is sanitized again before being used in the alert email `Subject` header.
 - Routing rule evaluation errors for one plugin's user-configured rules (e.g. malformed JSON) no longer abort dispatch for the remaining plugins.
+- **Alert email HTML sanitization**: HTML produced by `markdown.markdown()` for alert/test/preview emails is now sanitized (script/iframe/event-handler attributes and `javascript:` links stripped) before being sent, preventing stored HTML injection via untrusted notification `title`/`message` content.
+- **SSRF DNS-rebinding/TOCTOU fix**: outbound Slack/Splunk plugin requests now resolve and re-validate the destination hostname against the SSRF denylist at connection time and pin the connection to that resolved IP, closing a gap where `validate_url_for_ssrf`'s lookup and the actual outbound request could resolve to different addresses (e.g. via DNS rebinding).
+- **OIDC login**: the access token's role claims are now verified against the identity provider's JWKS (signature, issuer, expiration) instead of being decoded without signature verification.
+
+### Fixed
+
+- Corrected the packed-integer value of the retention-loop advisory lock key (`_RETENTION_LOCK_KEY`) so it matches its documented "sh_rt" encoding (cosmetic — the lock only needs to be a stable constant).
 
 ### Changed
 

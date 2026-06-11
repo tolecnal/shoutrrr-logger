@@ -1,10 +1,8 @@
 import logging
 from typing import Any
 
-import httpx
-
 from plugins.base import BasePlugin
-from utils.ssrf import validate_url_for_ssrf
+from utils.ssrf import create_ssrf_safe_async_client, validate_url_for_ssrf
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +73,7 @@ class SlackPlugin(BasePlugin):
             if fields:
                 payload["attachments"] = [{"fields": fields}]
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with create_ssrf_safe_async_client(timeout=10.0) as client:
             resp = await client.post(webhook_url, json=payload)
             resp.raise_for_status()
 

@@ -158,3 +158,79 @@ class TestTestEmailAccessControl:
         assert resp.status_code == 204
         assert "My own title" in captured["body"]
         assert "My own message body" in captured["body"]
+
+
+class TestAlertEmailHtmlSanitization:
+    """`title`/`message` come from untrusted /shoutrrr ingestion and are
+    rendered to HTML via markdown.markdown() before being emailed; raw HTML
+    in those fields must be stripped from the resulting html_body."""
+
+    async def _patch_send_email(self, monkeypatch):
+        captured = {}
+
+        async def _fake_send_email_async(**kwargs):
+            captured.update(kwargs)
+
+        import routers.alerts as alerts_router
+
+        monkeypatch.setattr(alerts_router, "send_email_async", _fake_send_email_async)
+        return captured
+
+    async def test_test_email_html_body_strips_script_tag(
+        self, client, viewer_session_headers, db, viewer_user, monkeypatch
+    ):
+        captured = await self._patch_send_email(monkeypatch)
+        await _enable_email_alerts(db)
+
+        priv = await _private_token(db, viewer_user)
+        n = Notification(
+            token_id=priv.id,
+            title="<script>alert('xss')</script>Evil title",
+            message="<img src=x onerror=alert(1)>Evil message",
+        )
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.post(
+            "/api/v1/alerts/test-email",
+            headers=viewer_session_headers,
+            json={
+                "name": "My Rule",
+                "match_type": "contains",
+                "match_pattern": "anything",
+                "send_email": True,
+                "notification_id": str(n.id),
+            },
+        )
+        assert resp.status_code == 204
+        html_body = captured.get("html_body") or ""
+        assert "<script" not in html_body
+        assert "onerror" not in html_body
+        assert "Evil title" in html_body
+        assert "Evil message" in html_body
+
+    async def test_preview_template_strips_script_tag_from_notification(
+        self, client, admin_session_headers, db, admin_user
+    ):
+        priv = await _private_token(db, admin_user)
+        n = Notification(
+            token_id=priv.id,
+            title="<script>alert('xss')</script>Title",
+            message="Body <iframe src='https://evil.example.com'></iframe>",
+        )
+        db.add(n)
+        await db.flush()
+        await db.refresh(n)
+
+        resp = await client.post(
+            "/api/v1/alerts/preview-template",
+            headers=admin_session_headers,
+            json={"template": "**{title}**\n\n{message}", "notification_id": str(n.id)},
+        )
+        assert resp.status_code == 200
+        html = resp.json()["html"]
+        assert "<script" not in html
+        assert "<iframe" not in html
+        assert "Title" in html
+        assert "Body" in html

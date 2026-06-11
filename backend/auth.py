@@ -115,9 +115,9 @@ async def exchange_code_for_tokens(code: str, redirect_uri: str) -> dict:
 _jwks_keys: dict | None = None
 
 
-async def get_jwks_keys() -> dict:
+async def get_jwks_keys(*, force_refresh: bool = False) -> dict:
     global _jwks_keys
-    if _jwks_keys is None:
+    if _jwks_keys is None or force_refresh:
         config = await get_oidc_config()
         async with httpx.AsyncClient() as client:
             resp = await client.get(config["jwks_uri"], timeout=10)
@@ -126,33 +126,48 @@ async def get_jwks_keys() -> dict:
     return _jwks_keys
 
 
-async def verify_oidc_jwt(token: str) -> dict:
-    """Verifies the JWT signature using the provider's JWKS."""
-    unverified_header = jwt.get_unverified_header(token)
-    jwks = await get_jwks_keys()
-
-    rsa_key = {}
+def _find_rsa_key(jwks: dict, kid: str | None) -> dict | None:
     for key in jwks.get("keys", []):
-        if key["kid"] == unverified_header["kid"]:
-            rsa_key = {
+        if key.get("kid") == kid:
+            return {
                 "kty": key["kty"],
                 "kid": key["kid"],
                 "use": key.get("use", "sig"),
                 "n": key["n"],
                 "e": key["e"],
             }
-            break
+    return None
 
-    if not rsa_key:
-        raise HTTPException(status_code=401, detail="Unable to find appropriate key")
+
+async def verify_oidc_jwt(token: str) -> dict:
+    """Verifies the JWT signature, issuer, and expiration using the provider's JWKS.
+
+    Audience is intentionally not validated here: Keycloak access tokens are
+    typically issued with ``aud: "account"`` rather than this client's
+    ``client_id`` unless a custom audience mapper is configured, and this
+    token is only used to read supplemental role claims, not as a bearer
+    credential against our own API.
+    """
+    unverified_header = jwt.get_unverified_header(token)
+    kid = unverified_header.get("kid")
+
+    jwks = await get_jwks_keys()
+    rsa_key = _find_rsa_key(jwks, kid)
+    if rsa_key is None:
+        # The signing key may have been rotated since we last cached the JWKS.
+        jwks = await get_jwks_keys(force_refresh=True)
+        rsa_key = _find_rsa_key(jwks, kid)
+
+    if rsa_key is None:
+        raise PyJWTError("Unable to find a matching JWKS key for this token")
 
     config = await get_oidc_config()
     return jwt.decode(
         token,
         jwt.algorithms.RSAAlgorithm.from_jwk(rsa_key),
         algorithms=["RS256"],
-        audience=settings.oidc_client_id,
         issuer=config["issuer"],
+        options={"verify_aud": False},
     )
 
 

@@ -23,6 +23,7 @@ from auth import (
     get_current_user_from_session,
     get_oidc_config,
     get_userinfo,
+    verify_oidc_jwt,
 )
 from config import settings
 from database import get_db, init_db
@@ -58,7 +59,7 @@ logger = logging.getLogger(__name__)
 
 # Arbitrary fixed key for the cross-worker "retention loop owner" advisory
 # lock (see _acquire_retention_leadership below).
-_RETENTION_LOCK_KEY = 0x7368F57274  # "sh_rt" packed into an int, just needs to be stable
+_RETENTION_LOCK_KEY = 0x73685F7274  # "sh_rt" packed into an int, just needs to be stable
 
 
 async def _acquire_retention_leadership(engine: AsyncEngine) -> tuple[bool, AsyncConnection | None]:
@@ -374,17 +375,15 @@ async def oidc_callback(
     # Fetch profile claims from the UserInfo endpoint.
     userinfo = await get_userinfo(access_token)
 
-    # Decode the access token payload WITHOUT signature verification.
-    # We trust it was issued by the OIDC provider we just talked to; we only
-    # need the role claims which Keycloak puts in the token body but does NOT
-    # expose on the UserInfo endpoint unless a protocol mapper is configured.
-    # Merging gives _extract_role_from_claims the full picture.
+    # Decode the access token payload, verifying its signature, issuer, and
+    # expiration against the provider's JWKS. We only need the role claims
+    # which Keycloak puts in the token body but does NOT expose on the
+    # UserInfo endpoint unless a protocol mapper is configured. Merging gives
+    # _extract_role_from_claims the full picture.
     try:
-        import jwt
-
-        token_claims: dict = jwt.decode(access_token, options={"verify_signature": False})
+        token_claims: dict = await verify_oidc_jwt(access_token)
     except Exception as exc:
-        logger.warning(f"OIDC token payload decode failed: {exc}")
+        logger.warning(f"OIDC access token verification failed: {exc}")
         token_claims = {}
 
     # Merge: token_claims first so that UserInfo values (sub, email, etc.)

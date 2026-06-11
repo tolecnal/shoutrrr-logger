@@ -28,7 +28,7 @@ from typing import Any
 import httpx
 
 from plugins.base import BasePlugin
-from utils.ssrf import validate_url_for_ssrf
+from utils.ssrf import create_ssrf_safe_async_client, validate_url_for_ssrf
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ class SplunkPlugin(BasePlugin):
         verify_tls: bool = bool(config.get("verify_tls", True))
 
         try:
-            async with httpx.AsyncClient(
+            async with create_ssrf_safe_async_client(
                 verify=verify_tls,
                 timeout=10.0,
                 # Do NOT follow redirects automatically — a redirect from the
