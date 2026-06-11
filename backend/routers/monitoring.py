@@ -27,7 +27,7 @@ async def verify_monitoring_token(request: Request, db: AsyncSession = Depends(g
             detail="Missing or invalid Authorization header",
         )
 
-    raw_token = auth_header[7:]
+    raw_token = auth_header.replace("Bearer ", "", 1).strip()
     token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
     stmt = select(MonitoringToken).where(
