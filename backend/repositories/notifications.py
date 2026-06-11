@@ -72,32 +72,17 @@ class NotificationRepository:
         except ValueError:
             return None
 
-    async def search_paginated(
+    def _build_search_query(
         self,
-        session: AsyncSession,
+        base_query,
         *,
         query: str | None,
-        cursor: str | None,
-        page_size: int,
-        after: datetime | None = None,
-        before: datetime | None = None,
-        scope: str = "all",
-        user_id: uuid.UUID | None = None,
-        is_admin: bool = False,
-    ) -> tuple[Sequence[Notification], int, str | None]:
-        """Return ``(rows, total, next_cursor)`` for a search-and-paginate query, newest first.
-
-        scope="all"    admin → everything; viewer → global + own private
-        scope="global" → notifications from global tokens (or orphaned)
-        scope="mine"   → notifications from the caller's own private tokens
-
-        Pagination is keyset-based: ``cursor`` (if given) is the opaque
-        ``(received_at, id)`` of the last row of the previous page, decoded
-        and applied as a ``WHERE`` filter instead of an ``OFFSET`` so deep
-        pagination stays an indexed range scan.
-        """
-        base_query = select(Notification)
-
+        after: datetime | None,
+        before: datetime | None,
+        scope: str,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
+    ):
         # Apply scope visibility filter before full-text / date filters
         if scope == "mine":
             # Inner join: only notifications that have a matching private token owned by this user
@@ -231,6 +216,33 @@ class NotificationRepository:
         if before:
             base_query = base_query.where(Notification.last_received_at <= before)
 
+        return base_query
+
+    async def search_paginated(
+        self,
+        session: AsyncSession,
+        *,
+        query: str | None,
+        cursor: str | None,
+        page_size: int,
+        after: datetime | None = None,
+        before: datetime | None = None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
+    ) -> tuple[Sequence[Notification], int, str | None]:
+        """Return ``(rows, total, next_cursor)`` for a search-and-paginate query, newest first."""
+        base_query = select(Notification)
+        base_query = self._build_search_query(
+            base_query,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
+
         count_query = select(func.count()).select_from(base_query.subquery())
         total: int = (await session.execute(count_query)).scalar_one()
 
@@ -290,23 +302,48 @@ class NotificationRepository:
         query: str | None,
         after: datetime | None,
         before: datetime | None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
     ) -> Sequence[Notification]:
         base_query = select(Notification)
-        if query:
-            term = f"%{query}%"
-            base_query = base_query.where(
-                or_(
-                    Notification.message.ilike(term),
-                    Notification.title.ilike(term),
-                    Notification.sender_name.ilike(term),
-                )
-            )
-        if after:
-            base_query = base_query.where(Notification.received_at >= after)
-        if before:
-            base_query = base_query.where(Notification.received_at <= before)
-        result = await session.execute(base_query.order_by(Notification.received_at.desc()))
+        base_query = self._build_search_query(
+            base_query,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
+        base_query = base_query.order_by(Notification.last_received_at.desc())
+        result = await session.execute(base_query)
         return result.scalars().all()
+
+    async def delete_bulk(
+        self,
+        session: AsyncSession,
+        *,
+        query: str | None,
+        after: datetime | None,
+        before: datetime | None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
+    ) -> int:
+        base_query = select(Notification.id)
+        base_query = self._build_search_query(
+            base_query,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
+        delete_stmt = delete(Notification).where(Notification.id.in_(base_query))
+        result = await session.execute(delete_stmt)
+        return result.rowcount
 
     async def count_since(
         self, session: AsyncSession, *, token_id: uuid.UUID, since: datetime

@@ -196,8 +196,19 @@ class NotificationService:
         query: str | None,
         after: datetime | None,
         before: datetime | None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
     ) -> str:
-        rows = await self._repo.export_all(session, query=query, after=after, before=before)
+        rows = await self._repo.export_all(
+            session,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(
@@ -232,14 +243,46 @@ class NotificationService:
         query: str | None,
         after: datetime | None,
         before: datetime | None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
     ) -> str:
-        rows = await self._repo.export_all(session, query=query, after=after, before=before)
+        rows = await self._repo.export_all(
+            session,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
         items = [NotificationOut.model_validate(r).model_dump(mode="json") for r in rows]
         return json.dumps(items, indent=2, default=str)
 
     async def purge_old(self, session: AsyncSession, *, retention_days: int) -> int:
         cutoff = datetime.now(UTC) - timedelta(days=retention_days)
         return await self._repo.delete_older_than(session, cutoff)
+
+    async def bulk_delete(
+        self,
+        session: AsyncSession,
+        *,
+        query: str | None,
+        after: datetime | None,
+        before: datetime | None,
+        scope: str = "all",
+        user_id: uuid.UUID | None = None,
+        is_admin: bool = False,
+    ) -> int:
+        return await self._repo.delete_bulk(
+            session,
+            query=query,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user_id,
+            is_admin=is_admin,
+        )
 
     async def dispatch_plugins(self, notification_dict: dict, user_id_str: str | None) -> None:
         """

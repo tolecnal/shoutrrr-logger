@@ -48,18 +48,39 @@ async def export_notifications(
     q: str | None = Query(None),
     after: datetime | None = Query(None),
     before: datetime | None = Query(None),
+    scope: str = Query(
+        "all",
+        pattern="^(all|global|mine)$",
+        description="all=visible to caller, global=global tokens only, mine=own private tokens only",
+    ),
     format: str = Query("csv", pattern="^(csv|json)$", description="Export format: csv or json"),
-    _user: User = Depends(require_viewer),
+    user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
     if format == "json":
-        data = await notification_service.export_json(db, query=q, after=after, before=before)
+        data = await notification_service.export_json(
+            db,
+            query=q,
+            after=after,
+            before=before,
+            scope=scope,
+            user_id=user.id,
+            is_admin=(user.role == UserRole.admin),
+        )
         return StreamingResponse(
             iter([data]),
             media_type="application/json",
             headers={"Content-Disposition": "attachment; filename=notifications.json"},
         )
-    csv_data = await notification_service.export_csv(db, query=q, after=after, before=before)
+    csv_data = await notification_service.export_csv(
+        db,
+        query=q,
+        after=after,
+        before=before,
+        scope=scope,
+        user_id=user.id,
+        is_admin=(user.role == UserRole.admin),
+    )
     return StreamingResponse(
         iter([csv_data]),
         media_type="text/csv",
@@ -141,6 +162,35 @@ async def list_notifications(
         user_id=user.id,
         is_admin=(user.role == UserRole.admin),
     )
+
+
+@router.delete(
+    "",
+    summary="Bulk delete notifications",
+    description="Deletes all notifications matching the provided search filters.",
+)
+async def bulk_delete_notifications(
+    q: str | None = Query(None, description="Search query"),
+    after: datetime | None = Query(None),
+    before: datetime | None = Query(None),
+    scope: str = Query(
+        "all",
+        pattern="^(all|global|mine)$",
+    ),
+    user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    deleted_count = await notification_service.bulk_delete(
+        db,
+        query=q,
+        after=after,
+        before=before,
+        scope=scope,
+        user_id=user.id,
+        is_admin=(user.role == UserRole.admin),
+    )
+    await db.commit()
+    return {"deleted": deleted_count}
 
 
 @router.get(
