@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function SettingsTab() {
   const { data, isLoading, mutate } = useSWR<SettingOut[]>(
@@ -63,82 +64,108 @@ export function SettingsTab() {
     );
   }
 
-  return (
-    <div className="max-w-lg space-y-6">
-      {data.map((setting) => {
-        const val = draft[setting.key] ?? setting.value;
-        const changed = val !== setting.value;
-        if (setting.value_type === "bool") {
-          return (
-            <div key={setting.key} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-4">
-                <label
-                  htmlFor={`setting-${setting.key}`}
-                  className="text-sm font-medium text-foreground"
-                >
-                  {setting.label}
-                </label>
-                <Switch
-                  id={`setting-${setting.key}`}
-                  checked={val !== 0}
-                  onCheckedChange={(checked) =>
-                    setDraft((prev) => ({ ...prev, [setting.key]: checked ? 1 : 0 }))
-                  }
-                  className={changed ? "ring-2 ring-primary/50" : ""}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">{setting.description}</p>
-            </div>
-          );
-        }
+  // Helper to render a setting
+  const renderSetting = (key: string) => {
+    const setting = data.find((s) => s.key === key);
+    if (!setting) return null;
 
-        return (
-          <div key={setting.key} className="space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <label
-                htmlFor={`setting-${setting.key}`}
-                className="text-sm font-medium text-foreground"
-              >
-                {setting.label}
-              </label>
-              {setting.unit && (
-                <span className="text-xs text-muted-foreground">{setting.unit}</span>
-              )}
-            </div>
-            <Input
+    const val = draft[setting.key] ?? setting.value;
+    const changed = val !== setting.value;
+
+    if (setting.value_type === "bool") {
+      return (
+        <div key={setting.key} className="space-y-1.5 p-4 rounded-md border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between gap-4">
+            <label
+              htmlFor={`setting-${setting.key}`}
+              className="text-sm font-medium text-foreground"
+            >
+              {setting.label}
+            </label>
+            <Switch
               id={`setting-${setting.key}`}
-              type="number"
-              min={setting.min_value}
-              max={setting.max_value}
-              value={val}
-              onChange={(e) => {
-                const n = parseInt(e.target.value, 10);
-                if (!Number.isNaN(n)) {
-                  setDraft((prev) => ({ ...prev, [setting.key]: n }));
-                }
-              }}
-              className={changed ? "border-primary/50 bg-primary/5" : ""}
+              checked={val !== 0}
+              onCheckedChange={(checked) =>
+                setDraft((prev) => ({ ...prev, [setting.key]: checked ? 1 : 0 }))
+              }
+              className={changed ? "ring-2 ring-primary/50" : ""}
             />
-            <p className="text-xs text-muted-foreground">{setting.description}</p>
-            {setting.min_value === 0 && setting.key === "retention_days" && (
-              <p className="text-xs text-muted-foreground/70 italic">
-                Current value: {val === 0 ? "disabled (keep forever)" : `${val} days`}
-              </p>
-            )}
-            {setting.key === "auto_refresh_interval" && (
-              <p className="text-xs text-muted-foreground/70 italic">
-                Current value: {val === 0 ? "disabled" : `every ${val}s`}
-              </p>
-            )}
-            {setting.key === "stats_window_days" && (
-              <p className="text-xs text-muted-foreground/70 italic">
-                Cannot exceed Retention period or API metrics retention (when either is
-                non-zero).
-              </p>
-            )}
           </div>
-        );
-      })}
+          <p className="text-xs text-muted-foreground">{setting.description}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div key={setting.key} className="space-y-1.5 p-4 rounded-md border border-border/50 bg-muted/20">
+        <div className="flex items-baseline justify-between">
+          <label
+            htmlFor={`setting-${setting.key}`}
+            className="text-sm font-medium text-foreground"
+          >
+            {setting.label}
+          </label>
+          {setting.unit && (
+            <span className="text-xs text-muted-foreground">{setting.unit}</span>
+          )}
+        </div>
+        <Input
+          id={`setting-${setting.key}`}
+          type="number"
+          min={setting.min_value}
+          max={setting.max_value}
+          value={val}
+          onChange={(e) => {
+            const n = parseInt(e.target.value, 10);
+            if (!Number.isNaN(n)) {
+              setDraft((prev) => ({ ...prev, [setting.key]: n }));
+            }
+          }}
+          className={changed ? "border-primary/50 bg-primary/5" : ""}
+        />
+        <p className="text-xs text-muted-foreground">{setting.description}</p>
+        {setting.min_value === 0 && setting.key === "retention_days" && (
+          <p className="text-xs text-muted-foreground/70 italic">
+            Current value: {val === 0 ? "disabled (keep forever)" : `${val} days`}
+          </p>
+        )}
+        {setting.key === "auto_refresh_interval" && (
+          <p className="text-xs text-muted-foreground/70 italic">
+            Current value: {val === 0 ? "disabled" : `every ${val}s`}
+          </p>
+        )}
+        {setting.key === "stats_window_days" && (
+          <p className="text-xs text-muted-foreground/70 italic">
+            Cannot exceed Retention period or API metrics retention (when either is
+            non-zero).
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <Tabs defaultValue="ui" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="ui">UI</TabsTrigger>
+          <TabsTrigger value="retention">Retention</TabsTrigger>
+          <TabsTrigger value="access">Access</TabsTrigger>
+        </TabsList>
+        <TabsContent value="ui" className="space-y-4">
+          {renderSetting("page_size")}
+          {renderSetting("auto_refresh_interval")}
+        </TabsContent>
+        <TabsContent value="retention" className="space-y-4">
+          {renderSetting("retention_days")}
+          {renderSetting("stats_window_days")}
+          {renderSetting("api_metrics_retention_days")}
+          {renderSetting("audit_log_retention_days")}
+        </TabsContent>
+        <TabsContent value="access" className="space-y-4">
+          {renderSetting("private_tokens_enabled")}
+        </TabsContent>
+      </Tabs>
 
       <div className="pt-2 flex items-center gap-3">
         <Button
