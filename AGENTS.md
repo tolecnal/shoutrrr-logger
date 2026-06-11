@@ -148,8 +148,8 @@ default=uuid4,
   }
   }
 - FastAPI Dependency Enforcement:
-  current_user = Depends(get_current_user)
-  admin_user = Depends(require_role("admin"))
+  current_user = Depends(get_current_user_from_session)
+  admin_user = Depends(require_admin)
 
 ### 5. Frontend (Next.js 16 & TypeScript) Rules
 
