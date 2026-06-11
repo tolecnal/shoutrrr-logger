@@ -360,7 +360,7 @@ class OIDCCallbackResponse(BaseModel):
 class AlertRuleBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     match_type: str = Field(default="contains", pattern="^(exact|contains|regex)$")
-    match_pattern: str = Field(..., min_length=1)
+    match_pattern: str = Field(default="", min_length=0)
     match_target: str = Field(default="all", pattern="^(title|message|all)$")
     notification_scope: str = Field(default="all", pattern="^(global_only|personal_only|all)$")
     send_email: bool = False
