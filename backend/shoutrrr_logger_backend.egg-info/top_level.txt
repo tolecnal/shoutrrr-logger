@@ -1,7 +1,0 @@
-middleware
-plugins
-repositories
-routers
-services
-tests
-utils

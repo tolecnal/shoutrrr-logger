@@ -16,6 +16,10 @@ backend/build/
 # python
 __pycache__/
 *.py[cod]
+*.egg-info/
+
+# claude code (local-only state)
+.claude/
 
 # debug
 npm-debug.log*
