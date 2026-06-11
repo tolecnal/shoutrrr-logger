@@ -14,6 +14,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from fastapi.responses import JSONResponse
+from prometheus_client import Counter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import verify_bearer_access_token
@@ -27,6 +28,10 @@ from services.trigger_engine import run_trigger_engine
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/shoutrrr", tags=["shoutrrr"])
+
+INGESTION_COUNT = Counter(
+    "shoutrrr_notifications_total", "Total ingested notifications", ["token_type", "severity"]
+)
 
 
 @router.post(
@@ -148,6 +153,11 @@ async def receive_notification(
 
     # Commit before enqueuing background tasks to avoid race conditions
     await db.commit()
+
+    INGESTION_COUNT.labels(
+        token_type="global" if token.is_global else "private",
+        severity=severity,
+    ).inc()
 
     background_tasks.add_task(
         notification_service.dispatch_plugins,

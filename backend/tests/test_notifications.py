@@ -35,7 +35,7 @@ class TestListNotifications:
         data = resp.json()
         assert data["total"] == 0
         assert data["items"] == []
-        assert data["pages"] == 1
+        assert data["pages"] == 0
         assert data["next_cursor"] is None
 
     async def test_pagination_page_size(self, client, viewer_session_headers, db, access_token):

@@ -10,9 +10,20 @@ import time
 from collections.abc import Callable
 from uuid import uuid4
 
+from prometheus_client import Counter, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+
+REQUEST_COUNT = Counter(
+    "shoutrrr_http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
+)
+
+REQUEST_LATENCY = Histogram(
+    "shoutrrr_http_request_duration_seconds",
+    "HTTP request latency in seconds",
+    ["method", "endpoint"],
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +55,13 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
         # (e.g. /api/v1/notifications/{notification_id}) instead of the raw URL.
         route = request.scope.get("route")
         path_template: str = getattr(route, "path", path) if route else "<unmatched>"
+
+        REQUEST_COUNT.labels(
+            method=request.method, endpoint=path_template, status=response.status_code
+        ).inc()
+        REQUEST_LATENCY.labels(method=request.method, endpoint=path_template).observe(
+            duration_ms / 1000.0
+        )
 
         asyncio.create_task(
             _persist(
