@@ -14,9 +14,9 @@ class SettingMeta:
     key: str
     label: str
     description: str
-    default: int
-    min_value: int
-    max_value: int
+    default: Any
+    min_value: Any = None
+    max_value: Any = None
     unit: str = ""
     value_type: str = "int"
 
@@ -131,6 +131,61 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         max_value=100,
         unit="notifications",
     ),
+    SettingMeta(
+        key="user_alert_retention_days",
+        label="User alerts retention",
+        description="Automatically delete user alerts older than this many days. Set to 0 to keep all alerts forever.",
+        default=0,
+        min_value=0,
+        max_value=3650,
+        unit="days",
+    ),
+    SettingMeta(
+        key="email_alerts_enabled",
+        label="Enable email alerts",
+        description="Allow users to receive alerts via email. Requires SMTP configuration below.",
+        default=0,
+        min_value=0,
+        max_value=1,
+        unit="",
+        value_type="bool",
+    ),
+    SettingMeta(
+        key="smtp_host",
+        label="SMTP Host",
+        description="Hostname or IP address of the SMTP server.",
+        default="",
+        value_type="string",
+    ),
+    SettingMeta(
+        key="smtp_port",
+        label="SMTP Port",
+        description="Port of the SMTP server (e.g. 587, 465, 25).",
+        default=587,
+        min_value=1,
+        max_value=65535,
+    ),
+    SettingMeta(
+        key="smtp_user",
+        label="SMTP Username",
+        description="Username for SMTP authentication.",
+        default="",
+        value_type="string",
+    ),
+    SettingMeta(
+        key="smtp_password",
+        label="SMTP Password",
+        description="Password for SMTP authentication. Leave blank if not required.",
+        default="",
+        value_type="string",
+    ),
+    SettingMeta(
+        key="smtp_from",
+        label="SMTP From Address",
+        description="The email address to send alerts from.",
+        default="alerts@shoutrrr-logger.local",
+        value_type="string",
+    ),
 ]
 
 _META_BY_KEY: dict[str, SettingMeta] = {s.key: s for s in KNOWN_SETTINGS}
@@ -140,7 +195,10 @@ class SettingsService:
     def __init__(self, repo: SettingsRepository = settings_repository) -> None:
         self._repo = repo
 
-    def _coerce(self, meta: SettingMeta, raw: Any) -> int:
+    def _coerce(self, meta: SettingMeta, raw: Any) -> Any:
+        if meta.value_type == "string":
+            return str(raw) if raw is not None else ""
+
         try:
             v = int(raw)
         except (TypeError, ValueError) as exc:
@@ -148,12 +206,16 @@ class SettingsService:
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Setting '{meta.key}' must be an integer",
             ) from exc
-        if v < meta.min_value or v > meta.max_value:
+
+        if meta.min_value is not None and v < meta.min_value:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    f"Setting '{meta.key}' must be between {meta.min_value} and {meta.max_value}"
-                ),
+                detail=f"Setting '{meta.key}' cannot be less than {meta.min_value}",
+            )
+        if meta.max_value is not None and v > meta.max_value:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Setting '{meta.key}' cannot be greater than {meta.max_value}",
             )
         return v
 
@@ -163,10 +225,15 @@ class SettingsService:
         result = []
         for meta in KNOWN_SETTINGS:
             raw = stored.get(meta.key, meta.default)
+            if meta.value_type == "string":
+                val = str(raw) if raw is not None else meta.default
+            else:
+                val = int(raw) if raw is not None else meta.default
+
             result.append(
                 {
                     "key": meta.key,
-                    "value": int(raw) if raw is not None else meta.default,
+                    "value": val,
                     "label": meta.label,
                     "description": meta.description,
                     "default": meta.default,
@@ -195,8 +262,18 @@ class SettingsService:
         int_default = None if default is None else int(default)
         return await self.get_int(session, key, default=int_default) != 0
 
+    async def get_string(
+        self, session: AsyncSession, key: str, *, default: str | None = None
+    ) -> str:
+        meta = _META_BY_KEY.get(key)
+        fallback = default if default is not None else (meta.default if meta else "")
+        row = await self._repo.get(session, key)
+        if row is None:
+            return fallback
+        return str(row.value)
+
     async def update(self, session: AsyncSession, updates: dict[str, Any]) -> list[dict]:
-        coerced: dict[str, int] = {}
+        coerced: dict[str, Any] = {}
         for key, raw in updates.items():
             meta = _META_BY_KEY.get(key)
             if meta is None:
@@ -206,12 +283,15 @@ class SettingsService:
                 )
             coerced[key] = self._coerce(meta, raw)
 
-        merged: dict[str, int] = {}
+        merged: dict[str, Any] = {}
         for meta in KNOWN_SETTINGS:
             if meta.key in coerced:
                 merged[meta.key] = coerced[meta.key]
             else:
-                merged[meta.key] = await self.get_int(session, meta.key)
+                if meta.value_type == "string":
+                    merged[meta.key] = await self.get_string(session, meta.key)
+                else:
+                    merged[meta.key] = await self.get_int(session, meta.key)
 
         stats_window_days = merged.get("stats_window_days")
         retention_days = merged.get("retention_days")
