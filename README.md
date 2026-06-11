@@ -540,7 +540,9 @@ Every signed-in user can open **Preferences** (gear icon in the top bar) to cust
 
 - **Display** — theme (Light / Dark / System) and time format (locale-aware, 12-hour, or 24-hour).
 - **Tag rules** — highlight notifications whose custom fields match a pattern with a chosen color, optionally excluding matches from the log entirely.
+- **Alert rules** — configure conditions to trigger visual alerts in the UI, and optionally receive emails via SMTP.
 - **My Tokens** — create and manage personal access tokens (see [Access tokens](#access-tokens)).
+- **Plugins** — configure your own plugin settings, like a personal Slack webhook URL.
 
 ---
 

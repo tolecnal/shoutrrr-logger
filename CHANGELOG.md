@@ -14,6 +14,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Server-Sent Events (SSE)**: The notification log now uses SSE to stream real-time updates directly to the UI, eliminating the need for periodic polling or manual refreshing.
 - **Time Formatting**: Timestamps on the notifications page now intelligently format themselves. If a notification is from today, only the time is shown. For older notifications, the date is included.
 - **Audit Logging**: Added audit log capture for updates to User Plugin Configurations.
+- **Alert System**: Users can now define personal Alert Rules to highlight specific notifications and optionally receive email alerts via SMTP. Includes testing tools, a draft editor, and a template engine for customizing alert emails.
+- **Alerts Navigation**: Added an "Alerts" item to the main sidebar with an unread badge for quick access to triggered visual alerts.
 
 ### Added
 
