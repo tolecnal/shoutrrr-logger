@@ -193,6 +193,11 @@ class MonitoringTokenCreate(BaseModel):
     name: str = Field(..., max_length=255)
 
 
+class MonitoringTokenUpdate(BaseModel):
+    name: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
+
+
 class MonitoringTokenOut(BaseModel):
     id: uuid.UUID
     name: str

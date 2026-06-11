@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-06-11
+
+### Added
+
+- **External Monitoring**: Added dedicated monitoring tokens and a `/api/v1/monitoring/health` endpoint intended for use by external monitoring tools (e.g. Icinga2, Nagios). Exposes unread alerts, user counts, database status, and pending email digests.
+- **Monitoring Tokens UI**: Added a "Monitoring" tab in the Admin panel to manage these separate, read-only system tokens.
+- **Monitoring Documentation**: Added a `MONITORING.md` guide to the root of the project with configuration instructions for Nagios and Icinga2.
+
+### Changed
+
+- Replaced `secrets.token_urlsafe` with `secrets.token_hex` for generating access tokens to eliminate hyphens and underscores, preventing double-click truncation when copying tokens from the UI.
+
 ## [0.6.0] — 2026-06-11
 
 ### Added

@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_admin
 from database import get_db
 from models import MonitoringToken
-from schemas import MonitoringTokenCreate, MonitoringTokenCreated, MonitoringTokenOut
+from schemas import (
+    MonitoringTokenCreate,
+    MonitoringTokenCreated,
+    MonitoringTokenOut,
+    MonitoringTokenUpdate,
+)
 
 router = APIRouter()
 
@@ -56,8 +61,7 @@ async def create_monitoring_token(
 @router.patch("/{token_id}", response_model=MonitoringTokenOut, summary="Update a monitoring token")
 async def update_monitoring_token(
     token_id: UUID,
-    name: str | None = None,
-    is_active: bool | None = None,
+    payload: MonitoringTokenUpdate,
     _admin=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -65,10 +69,10 @@ async def update_monitoring_token(
     if not token:
         raise HTTPException(status_code=404, detail="Token not found")
 
-    if name is not None:
-        token.name = name
-    if is_active is not None:
-        token.is_active = is_active
+    if payload.name is not None:
+        token.name = payload.name
+    if payload.is_active is not None:
+        token.is_active = payload.is_active
 
     await db.commit()
     await db.refresh(token)
