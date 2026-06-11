@@ -121,3 +121,22 @@ class TestAdvancedSearch:
         data = resp.json()["items"]
         assert len(data) == 1
         assert data[0]["sender_name"] == "ci-cd"
+
+    async def test_search_invalid_regex_returns_422(
+        self, client: AsyncClient, admin_session_headers, search_notifications
+    ):
+        resp = await client.get(
+            "/api/v1/notifications?q=message:/[unclosed/", headers=admin_session_headers
+        )
+        assert resp.status_code == 422
+        assert "Invalid regex pattern" in resp.json()["detail"]
+
+    async def test_search_overlong_regex_returns_422(
+        self, client: AsyncClient, admin_session_headers, search_notifications
+    ):
+        pattern = "a" * 201
+        resp = await client.get(
+            f"/api/v1/notifications?q=message:/{pattern}/", headers=admin_session_headers
+        )
+        assert resp.status_code == 422
+        assert "too long" in resp.json()["detail"]

@@ -45,17 +45,22 @@ class NotificationService:
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
     ) -> CursorPage[NotificationOut]:
-        rows, total, next_cursor = await self._repo.search_paginated(
-            session,
-            query=query,
-            cursor=cursor,
-            page_size=page_size,
-            after=after,
-            before=before,
-            scope=scope,
-            user_id=user_id,
-            is_admin=is_admin,
-        )
+        try:
+            rows, total, next_cursor = await self._repo.search_paginated(
+                session,
+                query=query,
+                cursor=cursor,
+                page_size=page_size,
+                after=after,
+                before=before,
+                scope=scope,
+                user_id=user_id,
+                is_admin=is_admin,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
         return CursorPage(
             items=[NotificationOut.model_validate(r) for r in rows],
             total=total,
@@ -200,15 +205,20 @@ class NotificationService:
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
     ) -> str:
-        rows = await self._repo.export_all(
-            session,
-            query=query,
-            after=after,
-            before=before,
-            scope=scope,
-            user_id=user_id,
-            is_admin=is_admin,
-        )
+        try:
+            rows = await self._repo.export_all(
+                session,
+                query=query,
+                after=after,
+                before=before,
+                scope=scope,
+                user_id=user_id,
+                is_admin=is_admin,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
         buf = io.StringIO()
         writer = csv.writer(buf)
         writer.writerow(
@@ -247,15 +257,20 @@ class NotificationService:
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
     ) -> str:
-        rows = await self._repo.export_all(
-            session,
-            query=query,
-            after=after,
-            before=before,
-            scope=scope,
-            user_id=user_id,
-            is_admin=is_admin,
-        )
+        try:
+            rows = await self._repo.export_all(
+                session,
+                query=query,
+                after=after,
+                before=before,
+                scope=scope,
+                user_id=user_id,
+                is_admin=is_admin,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
         items = [NotificationOut.model_validate(r).model_dump(mode="json") for r in rows]
         return json.dumps(items, indent=2, default=str)
 
@@ -274,15 +289,20 @@ class NotificationService:
         user_id: uuid.UUID | None = None,
         is_admin: bool = False,
     ) -> int:
-        return await self._repo.delete_bulk(
-            session,
-            query=query,
-            after=after,
-            before=before,
-            scope=scope,
-            user_id=user_id,
-            is_admin=is_admin,
-        )
+        try:
+            return await self._repo.delete_bulk(
+                session,
+                query=query,
+                after=after,
+                before=before,
+                scope=scope,
+                user_id=user_id,
+                is_admin=is_admin,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
 
     async def dispatch_plugins(self, notification_dict: dict, user_id_str: str | None) -> None:
         """

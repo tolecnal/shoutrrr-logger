@@ -12,6 +12,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Monitoring health counters**: `/api/v1/monitoring/health` always reported `alerts_unread` and `alerts_email_pending` as `0` due to a Python `not <Column>` expression being evaluated before query construction. Both counters now reflect actual data.
 - **Email alert digests**: the background email digest loop never sent any emails, for the same `not <Column>` reason — it could never find unsent alerts. Email digests now send correctly.
 
+### Changed
+
+- **Advanced Search hardening**: `message:/regex/`, `title:/regex/`, etc. now reject invalid or excessively long (>200 character) regex patterns with a `422` response before they reach PostgreSQL, and search/export/bulk-delete queries are now bounded by a configurable statement timeout (`SEARCH_STATEMENT_TIMEOUT_MS`, default 5000ms) on PostgreSQL.
+
 ## [0.7.0] — 2026-06-11
 
 ### Added

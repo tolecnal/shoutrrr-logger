@@ -6,10 +6,17 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import String, and_, delete, func, or_, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import settings
 from models import AccessToken, Notification
 from repositories.cursor import decode_cursor, encode_cursor
+
+# Reject absurdly long user-supplied regex patterns (e.g. message:/.../) before
+# they ever reach PostgreSQL — both as a sanity check and to keep the compiled
+# automaton small.
+MAX_REGEX_LENGTH = 200
 
 
 class NotificationRepository:
@@ -57,6 +64,17 @@ class NotificationRepository:
             )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def _apply_search_timeout(self, session: AsyncSession) -> None:
+        """Bound how long a single search/export/bulk-delete query may run.
+
+        Only takes effect on PostgreSQL — ``SET LOCAL`` isn't valid on the
+        SQLite backend used by the test suite, and is reset automatically
+        when the surrounding transaction ends.
+        """
+        if session.get_bind().dialect.name == "postgresql":
+            timeout_ms = int(settings.search_statement_timeout_ms)
+            await session.execute(text(f"SET LOCAL statement_timeout = {timeout_ms}"))
 
     def _parse_time_string(self, val: str) -> datetime | None:
         try:
@@ -148,6 +166,16 @@ class NotificationRepository:
                     value = d["unquoted"]
                 else:
                     continue
+
+                if is_regex:
+                    if len(value) > MAX_REGEX_LENGTH:
+                        raise ValueError(
+                            f"Regex pattern too long (max {MAX_REGEX_LENGTH} characters)"
+                        )
+                    try:
+                        re.compile(value)
+                    except re.error as exc:
+                        raise ValueError(f"Invalid regex pattern '{value}': {exc}") from exc
 
                 def build_condition(col, val, regex_mode):
                     if regex_mode:
@@ -243,28 +271,34 @@ class NotificationRepository:
             is_admin=is_admin,
         )
 
-        count_query = select(func.count()).select_from(base_query.subquery())
-        total: int = (await session.execute(count_query)).scalar_one()
+        if query:
+            await self._apply_search_timeout(session)
 
-        if cursor:
-            cursor_ts, cursor_id = decode_cursor(cursor)
-            base_query = base_query.where(
-                or_(
-                    Notification.last_received_at < cursor_ts,
-                    and_(
-                        Notification.last_received_at == cursor_ts,
-                        Notification.id < cursor_id,
-                    ),
+        try:
+            count_query = select(func.count()).select_from(base_query.subquery())
+            total: int = (await session.execute(count_query)).scalar_one()
+
+            if cursor:
+                cursor_ts, cursor_id = decode_cursor(cursor)
+                base_query = base_query.where(
+                    or_(
+                        Notification.last_received_at < cursor_ts,
+                        and_(
+                            Notification.last_received_at == cursor_ts,
+                            Notification.id < cursor_id,
+                        ),
+                    )
                 )
-            )
 
-        # Fetch one extra row to detect whether a next page exists, without
-        # a second query.
-        result = await session.execute(
-            base_query.order_by(Notification.last_received_at.desc(), Notification.id.desc()).limit(
-                page_size + 1
+            # Fetch one extra row to detect whether a next page exists, without
+            # a second query.
+            result = await session.execute(
+                base_query.order_by(
+                    Notification.last_received_at.desc(), Notification.id.desc()
+                ).limit(page_size + 1)
             )
-        )
+        except OperationalError as exc:
+            raise ValueError("Search query timed out — try a more specific search.") from exc
         rows = list(result.scalars().all())
 
         next_cursor: str | None = None
@@ -317,7 +351,14 @@ class NotificationRepository:
             is_admin=is_admin,
         )
         base_query = base_query.order_by(Notification.last_received_at.desc())
-        result = await session.execute(base_query)
+
+        if query:
+            await self._apply_search_timeout(session)
+
+        try:
+            result = await session.execute(base_query)
+        except OperationalError as exc:
+            raise ValueError("Search query timed out — try a more specific search.") from exc
         return result.scalars().all()
 
     async def delete_bulk(
@@ -342,7 +383,14 @@ class NotificationRepository:
             is_admin=is_admin,
         )
         delete_stmt = delete(Notification).where(Notification.id.in_(base_query))
-        result = await session.execute(delete_stmt)
+
+        if query:
+            await self._apply_search_timeout(session)
+
+        try:
+            result = await session.execute(delete_stmt)
+        except OperationalError as exc:
+            raise ValueError("Search query timed out — try a more specific search.") from exc
         return result.rowcount
 
     async def count_since(

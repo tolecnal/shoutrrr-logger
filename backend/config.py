@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     db_pool_size: int = 5
     db_max_overflow: int = 5
 
+    # Maximum time (ms) PostgreSQL may spend on a single notification
+    # search/export/bulk-delete query before it's cancelled. Guards against
+    # pathological search input (e.g. a slow regex over a large table) tying
+    # up a worker/connection indefinitely. Ignored on SQLite (test suite).
+    search_statement_timeout_ms: int = 5000
+
     # OpenID Connect
     oidc_discovery_url: str = "http://localhost:8080/realms/master/.well-known/openid-configuration"
     oidc_client_id: str = "shoutrrr-logger"
