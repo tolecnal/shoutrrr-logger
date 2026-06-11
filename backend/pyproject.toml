@@ -1,7 +1,7 @@
 [project]
 name = "shoutrrr-logger-backend"
-version = "0.7.0"
-description = "FastAPI backend for shoutrrr-logger"
+version = "0.7.1"
+description = "Backend API for shoutrrr-logger"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.115.0",

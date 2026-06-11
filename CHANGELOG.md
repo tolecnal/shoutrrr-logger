@@ -5,18 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased]
+## [0.7.1] — 2026-06-11
 
 ### Added
 
 - **Database migrations**: Added Alembic configuration (`backend/alembic.ini`, `backend/migrations/`) with a baseline migration matching the current schema. Existing databases are stamped at this baseline automatically on startup; future schema changes ship as Alembic migrations.
-- **CI**: a new workflow job applies Alembic migrations to a fresh PostgreSQL database, runs `alembic check` to catch model/migration drift, and verifies `alembic downgrade base` / `upgrade head` round-trip cleanly.
+- **CI**: a new workflow job applies Alembic migrations to a fresh PostgreSQL database, runs `alembic check` to catch model/migration drift, and verifies `alembic downgrade base` / `upgrade head` round-trip cleanly. Added to both GitHub and GitLab CI workflows.
+- **Generic Webhook Config UI**: The generic webhook plugin now has a fully featured configuration panel in the user preferences, supporting custom HTTP methods, headers, a payload template, a TLS verification toggle, and a syntax-highlighted live payload preview.
+- **Syntax Highlighting**: Splunk HEC and Generic Webhook plugin live payload previews now feature full JSON syntax highlighting.
 
 ### Fixed
 
 - **Monitoring health counters**: `/api/v1/monitoring/health` always reported `alerts_unread` and `alerts_email_pending` as `0` due to a Python `not <Column>` expression being evaluated before query construction. Both counters now reflect actual data.
 - **Email alert digests**: the background email digest loop never sent any emails, for the same `not <Column>` reason — it could never find unsent alerts. Email digests now send correctly.
 - **Log noise**: every `HTTPException` (including normal 401/403/404/422 responses) was logged at `ERROR` level with a full traceback by the `get_db` dependency. Only unexpected errors and 5xx responses are now logged as errors.
+- **Alembic Downgrade**: The `userrole` enum type is now explicitly dropped during `alembic downgrade base` to prevent a `DuplicateObjectError` on subsequent `upgrade head` operations.
 
 ### Changed
 
