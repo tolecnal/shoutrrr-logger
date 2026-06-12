@@ -853,3 +853,11 @@ The nginx config is generated from the template at [`nginx-config/templates/defa
 3. **Set `APP_BASE_URL=https://<NGINX_SERVER_NAME>`** (no port — nginx terminates TLS on 443) and register the matching redirect URI with your OIDC provider: `https://<NGINX_SERVER_NAME>/api/auth/callback`.
 
 Plain HTTP requests on port 80 are permanently redirected to HTTPS.
+
+---
+
+## Contributing & security
+
+- **Contributing**: see [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, and the [Code of Conduct](CODE_OF_CONDUCT.md) that applies to all project spaces.
+- **Security**: please report vulnerabilities privately per the [security policy](SECURITY.md) — not via public issues.
+- **License**: [MIT](LICENSE).

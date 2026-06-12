@@ -1,5 +1,9 @@
 # Contributing to shoutrrr-logger
 
+By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). For
+security vulnerabilities, please follow the [security policy](SECURITY.md)
+instead of opening a public issue.
+
 ## Prerequisites
 
 | Tool | Version | Install |
