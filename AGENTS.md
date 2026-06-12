@@ -124,6 +124,7 @@ default=uuid4,
 - Every schema modification requires a separate Alembic migration file.
 - Never modify an existing, committed migration file.
 - Autogenerate migrations from changes to SQLAlchemy models, but review the generated script for consistency before final execution.
+- Migrations are applied automatically by the application at container startup (`docker-entrypoint.sh` runs `alembic upgrade head` before the servers start). A release must NEVER require a manual migration step at deploy time, and migrations must tolerate `init_db()`'s create_all-built fresh databases (use defensive existence checks).
 
 ### 3. API & Response Formatting
 

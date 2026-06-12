@@ -102,6 +102,9 @@ Rules:
 - Never modify existing migrations.
 - Generate migrations from model changes.
 - Review generated migrations before committing.
+- Migrations are applied automatically by the application at container
+  startup (docker-entrypoint.sh runs `alembic upgrade head`). A release must
+  NEVER require a manual migration step at deploy time.
 
 ---
 
