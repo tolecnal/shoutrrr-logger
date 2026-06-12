@@ -447,11 +447,9 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    if _SAFE_REDIRECT_PATH_RE.fullmatch(state):
-        destination = state
-    else:
-        destination = "/log"
-    response = RedirectResponse(url=destination, status_code=status.HTTP_302_FOUND)
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(state):
+        state = "/log"
+    response = RedirectResponse(url=state, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="session",
         value=session_token,
