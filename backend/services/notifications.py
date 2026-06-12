@@ -21,6 +21,18 @@ from schemas import CursorPage, NotificationOut, NotificationStats
 logger = logging.getLogger(__name__)
 
 
+def _csv_safe(value: str) -> str:
+    """Neutralize spreadsheet formula injection in CSV exports.
+
+    Notification content is attacker-controlled (it comes from the ingestion
+    endpoint). Cells beginning with =, +, -, @, tab, or CR are interpreted as
+    formulas by Excel/LibreOffice/Sheets, so prefix them with a single quote.
+    """
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{value}"
+    return value
+
+
 class NotificationService:
     def __init__(
         self,
@@ -237,11 +249,11 @@ class NotificationService:
                 [
                     str(n.id),
                     n.received_at.isoformat(),
-                    n.sender_name or "",
-                    n.title or "",
-                    n.message,
-                    n.source_ip or "",
-                    custom,
+                    _csv_safe(n.sender_name or ""),
+                    _csv_safe(n.title or ""),
+                    _csv_safe(n.message),
+                    _csv_safe(n.source_ip or ""),
+                    _csv_safe(custom),
                 ]
             )
         return buf.getvalue()
