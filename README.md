@@ -130,6 +130,9 @@ All variables are read from `.env` (or from the process environment). The `.env.
 | `OIDC_ROLES_CLAIM` | no | `realm_access.roles` | Dot-separated path into the token claims that resolves to a list of role strings. Use `roles` for flat-claim providers (Auth0, Authentik, Entra). |
 | `OIDC_ROLE_VIEWER` | no | `viewer` | The role string that grants read-only access. |
 | `OIDC_ROLE_ADMIN` | no | `admin` | The role string that grants full admin access. |
+| `OIDC_VERIFY_AUDIENCE` | no | `false` | Validate the `aud` claim of OIDC access tokens. Off by default because Keycloak issues access tokens with `aud: "account"` unless an audience mapper is configured for the client. |
+| `OIDC_AUDIENCE` | no | _(empty)_ | Expected `aud` value when `OIDC_VERIFY_AUDIENCE=true`. Falls back to `OIDC_CLIENT_ID` when empty. |
+| `METRICS_TOKEN` | no | _(empty)_ | Optional bearer token protecting the Prometheus `GET /metrics` endpoint. Empty = unauthenticated, which is safe behind the bundled nginx (it never routes `/metrics` to the backend); set it if you expose the backend port directly. |
 | `WORKERS` | no | `4` | Number of Gunicorn/Uvicorn worker processes. |
 | `DB_POOL_SIZE` | no | `5` | SQLAlchemy connection pool size, *per worker*. Total connections ≈ `WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW)` — keep this under PostgreSQL's `max_connections` (default 100). |
 | `DB_MAX_OVERFLOW` | no | `5` | Extra burst connections allowed beyond `DB_POOL_SIZE`, per worker. |
@@ -140,7 +143,7 @@ All variables are read from `.env` (or from the process environment). The `.env.
 
 ## OpenID Connect setup
 
-shoutrrr-logger uses the **Authorization Code flow**. Any provider that publishes a standard OIDC discovery document (`/.well-known/openid-configuration`) works.
+shoutrrr-logger uses the **Authorization Code flow with PKCE (S256)**. The login flow also binds the OIDC `state` to the initiating browser via a signed nonce, so callbacks from other sessions are rejected. Any provider that publishes a standard OIDC discovery document (`/.well-known/openid-configuration`) works.
 
 ### How role resolution works
 
@@ -843,7 +846,7 @@ The nginx config is generated from the template at [`nginx-config/templates/defa
    /etc/ssl/certs/<NGINX_SERVER_NAME>.crt       # certificate (PEM, full chain)
    /etc/ssl/private/<NGINX_SERVER_NAME>.key      # private key (PEM)
    ```
-   These directories are bind-mounted read-only into the nginx container. The filenames must match `NGINX_SERVER_NAME` exactly.
+   These two files are bind-mounted read-only into the nginx container (only this site's cert/key — not the whole `/etc/ssl` tree). The filenames must match `NGINX_SERVER_NAME` exactly.
 
 3. **Set `APP_BASE_URL=https://<NGINX_SERVER_NAME>`** (no port — nginx terminates TLS on 443) and register the matching redirect URI with your OIDC provider: `https://<NGINX_SERVER_NAME>/api/auth/callback`.
 

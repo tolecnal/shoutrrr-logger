@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.4] — 2026-06-12
+
 ### Security
 
 - **OIDC Login CSRF & PKCE**: The callback now *rejects* requests whose `state` fails signature/expiry verification or whose nonce doesn't match the new browser-bound `oidc_nonce` cookie (previously a forged or missing state silently fell back and the login still completed). The login flow also implements PKCE (RFC 7636, S256), so an intercepted authorization code cannot be redeemed without the browser-bound verifier cookie.
