@@ -283,25 +283,18 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 # ---------------------------------------------------------------------------
 # Auth endpoints
 # ---------------------------------------------------------------------------
-_UNSAFE_REDIRECT_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+# A safe same-origin redirect target: starts with a single "/" (not "//" or
+# "/\\", which browsers may normalise to "//..." -> a protocol-relative
+# URL), followed only by characters that aren't ASCII control characters.
+# Control characters (tab, CR, LF, ...) are excluded because the WHATWG URL
+# spec strips them during parsing, so a value such as "/\\t/evil.com" would
+# otherwise be interpreted by the browser as "//evil.com".
+_SAFE_REDIRECT_PATH_RE = re.compile(r"/(?![/\\])[^\x00-\x1f\x7f]*")
 
 
 def _safe_redirect_path(path: str, default: str = "/log") -> str:
-    """Validate that ``path`` is a safe same-origin redirect target.
-
-    Rejects absolute/protocol-relative URLs (``//...``) and backslash
-    variants (``/\\...``, which some browsers normalise to ``//...``).
-    Also rejects any ASCII control characters (tab, CR, LF, ...): the
-    WHATWG URL spec strips these during parsing, so a value such as
-    ``"/\\t/evil.com"`` would otherwise pass the leading-slash check here
-    but be interpreted by the browser as ``"//evil.com"``.
-    """
-    if (
-        path.startswith("/")
-        and not path.startswith("//")
-        and not path.startswith("/\\")
-        and _UNSAFE_REDIRECT_CHARS.search(path) is None
-    ):
+    """Validate that ``path`` is a safe same-origin redirect target."""
+    if _SAFE_REDIRECT_PATH_RE.fullmatch(path):
         return path
     return default
 
