@@ -60,10 +60,49 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    # Docker's default /dev/shm is 64MB, which can fail PostgreSQL parallel
+    # queries; 128MB is the official postgres image recommendation.
+    shm_size: 128mb
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-shoutrrr_logger}"
       POSTGRES_USER: "${POSTGRES_USER:-shoutrrr}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    # Tuning aligned with this app's workload: append-heavy writes (one
+    # api_metric_logs row per API request, notification ingestion), trigram
+    # GIN index searches, and hourly bulk retention DELETEs. Defaults below
+    # assume a host with ~2GB RAM available to PostgreSQL; see .env.example
+    # for recommended values on 4GB/8GB hosts. All overridable via .env.
+    command:
+      - postgres
+      # Cache: postgres' own page cache; ~25% of available RAM.
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      # Planner hint (allocates nothing): total RAM available for caching,
+      # including the OS page cache; ~50-75% of available RAM.
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-1GB}
+      # Per-sort/hash memory for search ordering and stats aggregations.
+      - -c
+      - work_mem=${PG_WORK_MEM:-16MB}
+      # Vacuum and (GIN) index maintenance memory.
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-128MB}
+      # SSD cost model (default 4.0 assumes spinning disks) — makes the
+      # planner actually use the trigram GIN indexes for searches.
+      - -c
+      - random_page_cost=${PG_RANDOM_PAGE_COST:-1.1}
+      # Vacuum at 5% dead tuples (default 20%) and let it work faster, so
+      # the hourly retention purges don't leave tables bloated for long.
+      - -c
+      - autovacuum_vacuum_scale_factor=${PG_AUTOVACUUM_SCALE_FACTOR:-0.05}
+      - -c
+      - autovacuum_vacuum_cost_limit=${PG_AUTOVACUUM_COST_LIMIT:-1000}
+      # Smoother checkpoints and smaller WAL volume for the append-heavy
+      # ingestion/metrics write pattern.
+      - -c
+      - wal_compression=${PG_WAL_COMPRESSION:-on}
+      - -c
+      - max_wal_size=${PG_MAX_WAL_SIZE:-2GB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

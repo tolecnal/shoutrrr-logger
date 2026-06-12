@@ -139,6 +139,8 @@ All variables are read from `.env` (or from the process environment). The `.env.
 | `BACKEND_URL` | no | `http://localhost:9000` | Internal URL the Next.js server uses to reach FastAPI. Only change this if you run the two as separate services. |
 | `SSRF_ALLOWED_HOSTNAMES` | no | _(empty)_ | Comma-separated list of hostnames or IPs explicitly permitted to bypass SSRF IP restriction. Useful for internal webhooks. |
 
+The docker-compose PostgreSQL service is additionally tuned via optional `PG_*` variables (shared buffers, autovacuum, WAL, SSD cost model). Defaults target a 2 GB host; see [.env.example](.env.example) for the full list and recommended values for 4 GB / 8 GB hosts.
+
 ---
 
 ## OpenID Connect setup

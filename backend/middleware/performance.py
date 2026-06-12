@@ -77,10 +77,20 @@ class PerformanceMiddleware(BaseHTTPMiddleware):
 
 async def _persist(path: str, method: str, status_code: int, duration_ms: float) -> None:
     try:
+        from sqlalchemy import text  # noqa: PLC0415
+
         from database import async_session_factory  # noqa: PLC0415
         from models import ApiMetricLog  # noqa: PLC0415
 
         async with async_session_factory() as session:
+            # Metrics rows are fire-and-forget telemetry: skipping the
+            # synchronous WAL flush removes an fsync from every API request,
+            # and losing the last few milliseconds of latency metrics on a
+            # crash is a non-event. SET LOCAL scopes this to this transaction
+            # only — notification/audit writes elsewhere stay fully durable.
+            # (Not supported on SQLite, which the test suite uses.)
+            if session.get_bind().dialect.name == "postgresql":
+                await session.execute(text("SET LOCAL synchronous_commit TO off"))
             session.add(
                 ApiMetricLog(
                     id=uuid4(),

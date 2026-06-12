@@ -10,6 +10,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Security Policy**: Added `SECURITY.md` with private vulnerability reporting channels (GitHub advisories / email), scope, and the project's deployment security model.
+- **PostgreSQL Tuning**: The docker-compose postgres service now ships workload-aligned settings (shared buffers, effective cache size, work/maintenance memory, SSD cost model, faster autovacuum for retention churn, WAL compression) — all overridable via new optional `PG_*` environment variables. Defaults target a 2 GB host; `.env.example` documents recommended values for 4 GB / 8 GB. Also sets `shm_size: 128mb` per the official postgres image recommendation.
+- **Metrics Write Optimization**: The per-request API metric insert now uses `SET LOCAL synchronous_commit TO off`, removing a WAL fsync from every API request. Scoped to the telemetry transaction only — notification, audit, and alert writes remain fully durable.
 
 ### Fixed
 
