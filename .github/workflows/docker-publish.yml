@@ -10,6 +10,9 @@ env:
   # Updated to point to Docker Hub. Change 'shoutrrr-logger' to your target repo name if needed.
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/shoutrrr-logger
 
+permissions:
+  contents: read
+
 jobs:
   build-publish:
     name: Build & push Docker image
