@@ -11,6 +11,8 @@ param is an opaque CSRF nonce, decoupled from user-controlled input.
 redirects there after completing the login — clearing the cookie.
 """
 
+import urllib.parse
+
 import pytest
 
 from config import settings
@@ -83,8 +85,9 @@ class TestOidcLoginRedirectAfter:
         )
 
     def _redirect_cookie(self, resp) -> str:
-        # SimpleCookie quotes values containing "/", so strip surrounding quotes.
-        return (resp.cookies.get("oidc_redirect") or "").strip('"')
+        # The cookie value is percent-encoded; SimpleCookie may also quote it.
+        raw = (resp.cookies.get("oidc_redirect") or "").strip('"')
+        return urllib.parse.unquote(raw)
 
     async def test_safe_redirect_after_is_stored_in_cookie(self, client):
         resp = await client.get(
@@ -137,7 +140,7 @@ class TestOidcCallbackRedirectCookie:
         resp = await client.get(
             "/api/auth/callback",
             params={"code": "abc123"},
-            cookies={"oidc_redirect": "/admin/users"},
+            cookies={"oidc_redirect": urllib.parse.quote("/admin/users", safe="")},
             follow_redirects=False,
         )
         assert resp.headers["location"] == "/admin/users"
@@ -148,7 +151,7 @@ class TestOidcCallbackRedirectCookie:
         resp = await client.get(
             "/api/auth/callback",
             params={"code": "abc123"},
-            cookies={"oidc_redirect": "//evil.com"},
+            cookies={"oidc_redirect": urllib.parse.quote("//evil.com", safe="")},
             follow_redirects=False,
         )
         assert resp.headers["location"] == "/log"

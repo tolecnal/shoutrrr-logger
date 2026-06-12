@@ -317,7 +317,10 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     response = RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
     response.set_cookie(
         key=_REDIRECT_COOKIE_NAME,
-        value=redirect_after,
+        # Percent-encode so the cookie value can only ever contain a safe
+        # subset of ASCII (letters, digits, "%"), regardless of what
+        # redirect_after contained.
+        value=urllib.parse.quote(redirect_after, safe=""),
         httponly=True,
         samesite="lax",
         secure=settings.app_base_url.startswith("https"),
@@ -463,7 +466,7 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    redirect_after = request.cookies.get(_REDIRECT_COOKIE_NAME, "/log")
+    redirect_after = urllib.parse.unquote(request.cookies.get(_REDIRECT_COOKIE_NAME, "/log"))
     if not _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after):
         redirect_after = "/log"
     response = RedirectResponse(url=redirect_after, status_code=status.HTTP_302_FOUND)
