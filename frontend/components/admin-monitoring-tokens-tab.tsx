@@ -257,7 +257,7 @@ export function MonitoringTokensTab() {
 
       {/* CREATED DIALOG */}
       <Dialog open={!!createdToken} onOpenChange={(o) => !o && setCreatedToken(null)}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Token Created</DialogTitle>
             <DialogDescription className="text-amber-600 dark:text-amber-400 font-medium">
@@ -271,9 +271,8 @@ export function MonitoringTokensTab() {
                 <CopyButton value={createdToken.raw_token} className="h-6 w-6" />
               </div>
               <p className="text-xs text-muted-foreground">
-                To use this token, include it in an Authorization header:
-                <br />
-                <code className="bg-muted px-1 py-0.5 rounded text-foreground">Authorization: Bearer {createdToken.raw_token}</code>
+                Use this as a Bearer token in the <code className="font-mono">Authorization</code> header
+                when polling <code className="font-mono">/api/v1/monitoring/health</code>.
               </p>
             </div>
           )}

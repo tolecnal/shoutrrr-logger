@@ -11,6 +11,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **Security Policy**: Added `SECURITY.md` with private vulnerability reporting channels (GitHub advisories / email), scope, and the project's deployment security model.
 
+### Fixed
+
+- **Monitoring Token Dialog Overflow**: The "Token Created" dialog shown after creating a monitoring token was too narrow for its content — the usage example inlined the full raw token in a non-wrapping code element. The dialog now matches the access-token dialog width and references the token instead of duplicating it.
+
 ## [0.7.4] — 2026-06-12
 
 ### Security
