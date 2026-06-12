@@ -653,7 +653,7 @@ The admin UI supports filtering by action and time range. The same data is avail
 
 Plugins react to every incoming notification — forward it to an external system, transform it, trigger an alert, and so on. The bundled **Splunk HEC** plugin forwards events to a Splunk HTTP Event Collector with configurable field mappings, and the **Slack** plugin forwards events to a Slack workspace via an Incoming Webhook URL.
 
-Plugins are configured globally in **Admin → Plugins**. Click the plugin row to expand the configuration panel. Each plugin has an enabled/disabled toggle and a **Send test event** button to verify connectivity without waiting for a real notification. Admins can also toggle the ability for individual users to configure the plugin for themselves.
+Plugins are configured globally in **Admin → Plugins**. Click the plugin row to expand the configuration panel. Global configurations use the same named **profiles** as user configurations (see below): each profile has its own settings, routing rules, enable toggle, and **Send test** button, and admins may create any number of them. Admins can also toggle the ability for individual users to configure the plugin for themselves.
 
 ### User Plugin Configurations
 
@@ -661,7 +661,7 @@ If enabled by the admin, users can manage their own plugin configurations under 
 
 #### Configuration profiles
 
-Each plugin supports multiple **named configuration profiles** per user, shown as tabs in the plugin's panel. Every profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently — so you can, say, send `critical` notifications to one Slack channel and everything else to another. Profiles can be renamed, duplicated ("copy settings and rules from the current profile"), deleted, and test-fired individually.
+Both global (admin) and per-user plugin configurations support multiple **named configuration profiles**, shown as tabs in the plugin's panel. Every profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently — so you can, say, send `critical` notifications to one Slack channel and everything else to another. Profiles can be renamed, duplicated ("copy settings and rules from the current profile"), deleted, and test-fired individually.
 
 By default users may create up to **5 profiles per plugin** — adjustable via the *Max plugin profiles per user* setting in **Admin → Settings** (0 = unlimited). Admins are always exempt from the cap.
 

@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import PluginConfig, User, UserPluginConfig, UserRole
+from models import PluginConfig, PluginProfile, User, UserPluginConfig, UserRole
 from plugins import registry as plugin_registry
 from repositories.plugin_configs import PluginConfigRepository, plugin_config_repository
 from repositories.user_plugin_configs import (
@@ -16,11 +16,11 @@ from repositories.user_plugin_configs import (
 )
 from schemas import (
     PluginOut,
+    PluginProfileCreate,
+    PluginProfileOut,
+    PluginProfileUpdate,
     PluginUpdate,
     UserPluginOut,
-    UserPluginProfileCreate,
-    UserPluginProfileOut,
-    UserPluginProfileUpdate,
 )
 from services.settings import settings_service
 
@@ -34,54 +34,74 @@ class PluginService:
         self._repo = repo
         self._user_repo = user_repo
 
-    def merge_config(self, plugin_id: str, row: PluginConfig) -> dict[str, Any]:
-        """Merge a plugin's default_config with the stored overrides."""
+    def _merged_config(self, plugin_id: str, config: dict[str, Any]) -> dict[str, Any]:
+        """Merge a plugin's default_config with stored overrides."""
         plugin = plugin_registry.get_plugin(plugin_id)
         defaults = plugin.default_config if plugin else {}
-        return {**defaults, **row.config}
+        return {**defaults, **config}
 
     async def get_or_create_config(self, session: AsyncSession, plugin_id: str) -> PluginConfig:
-        """Return the DB row for a plugin, creating it with defaults if absent."""
+        """Return the plugin-level row for a plugin, creating it if absent."""
         row = await self._repo.get_by_id(session, plugin_id)
         if row is None:
             plugin = plugin_registry.get_plugin(plugin_id)
             if plugin is None:
                 raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
-            row = await self._repo.add(
-                session,
-                PluginConfig(
-                    id=plugin_id, enabled=False, allow_user_configs=True, config={}, rules=[]
-                ),
-            )
+            row = await self._repo.add(session, PluginConfig(id=plugin_id, allow_user_configs=True))
         return row
 
-    def _to_out(self, plugin_id: str, row: PluginConfig) -> PluginOut:
+    def _global_profile_out(self, row: PluginProfile) -> PluginProfileOut:
+        return PluginProfileOut(
+            id=row.id,
+            name=row.name,
+            enabled=row.enabled,
+            config=self._merged_config(row.plugin_id, row.config),
+            rules=row.rules,
+        )
+
+    async def _list_global_profiles(
+        self, session: AsyncSession, plugin_id: str
+    ) -> list[PluginProfile]:
+        rows = await self._repo.list_profiles(session, plugin_id)
+        if not rows:
+            # Every plugin always has at least a "Default" profile so the UI
+            # has something to edit (mirrors the user side).
+            rows = [
+                await self._repo.add_profile(
+                    session,
+                    PluginProfile(
+                        plugin_id=plugin_id, name="Default", enabled=False, config={}, rules=[]
+                    ),
+                )
+            ]
+        return rows
+
+    async def _to_out(self, session: AsyncSession, plugin_id: str) -> PluginOut:
         plugin = plugin_registry.get_plugin(plugin_id)
+        row = await self.get_or_create_config(session, plugin_id)
+        profiles = await self._list_global_profiles(session, plugin_id)
         return PluginOut(
             id=plugin.plugin_id,
             name=plugin.name,
             description=plugin.description,
-            enabled=row.enabled,
             allow_user_configs=row.allow_user_configs,
-            config=self.merge_config(plugin_id, row),
-            rules=row.rules,
+            profiles=[self._global_profile_out(p) for p in profiles],
         )
 
     async def list_plugins(self, session: AsyncSession) -> list[PluginOut]:
         result = []
         for plugin in plugin_registry.all_plugins():
-            row = await self.get_or_create_config(session, plugin.plugin_id)
-            await session.commit()
-            result.append(self._to_out(plugin.plugin_id, row))
+            result.append(await self._to_out(session, plugin.plugin_id))
+        await session.commit()
         return result
 
     async def get_plugin(self, session: AsyncSession, plugin_id: str) -> PluginOut:
         plugin = plugin_registry.get_plugin(plugin_id)
         if not plugin:
             raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
-        row = await self.get_or_create_config(session, plugin_id)
+        out = await self._to_out(session, plugin_id)
         await session.commit()
-        return self._to_out(plugin_id, row)
+        return out
 
     async def update_plugin(
         self, session: AsyncSession, plugin_id: str, body: PluginUpdate
@@ -91,19 +111,113 @@ class PluginService:
             raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
         row = await self.get_or_create_config(session, plugin_id)
 
-        if body.enabled is not None:
-            row.enabled = body.enabled
         if body.allow_user_configs is not None:
             row.allow_user_configs = body.allow_user_configs
+
+        await session.flush()
+        return await self._to_out(session, plugin_id)
+
+    async def _get_global_profile_or_404(
+        self, session: AsyncSession, plugin_id: str, profile_id: uuid.UUID
+    ) -> PluginProfile:
+        row = await self._repo.get_profile_by_id(session, profile_id)
+        if row is None or row.plugin_id != plugin_id:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        return row
+
+    async def create_plugin_profile(
+        self, session: AsyncSession, plugin_id: str, body: PluginProfileCreate
+    ) -> PluginProfileOut:
+        plugin = plugin_registry.get_plugin(plugin_id)
+        if not plugin:
+            raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
+
+        name = body.name.strip()
+        if await self._repo.get_profile_by_name(session, plugin_id, name):
+            raise HTTPException(status_code=409, detail=f"A profile named '{name}' already exists")
+
+        config: dict[str, Any] = {}
+        rules: list[dict[str, Any]] = []
+        if body.copy_from is not None:
+            source = await self._get_global_profile_or_404(session, plugin_id, body.copy_from)
+            config = dict(source.config)
+            rules = list(source.rules)
         if body.config is not None:
-            # Store only the keys that differ from defaults to keep the DB lean
+            config = body.config
+        if body.rules is not None:
+            rules = body.rules
+
+        row = await self._repo.add_profile(
+            session,
+            PluginProfile(
+                plugin_id=plugin_id, name=name, enabled=False, config=config, rules=rules
+            ),
+        )
+        return self._global_profile_out(row)
+
+    async def update_plugin_profile(
+        self,
+        session: AsyncSession,
+        plugin_id: str,
+        profile_id: uuid.UUID,
+        body: PluginProfileUpdate,
+    ) -> PluginProfileOut:
+        row = await self._get_global_profile_or_404(session, plugin_id, profile_id)
+
+        if body.name is not None:
+            name = body.name.strip()
+            if name != row.name:
+                if await self._repo.get_profile_by_name(session, plugin_id, name):
+                    raise HTTPException(
+                        status_code=409, detail=f"A profile named '{name}' already exists"
+                    )
+                row.name = name
+        if body.enabled is not None:
+            row.enabled = body.enabled
+        if body.config is not None:
             row.config = body.config
         if body.rules is not None:
             row.rules = body.rules
 
-        await session.commit()
-        await session.refresh(row)
-        return self._to_out(plugin_id, row)
+        await session.flush()
+        return self._global_profile_out(row)
+
+    async def delete_plugin_profile(
+        self, session: AsyncSession, plugin_id: str, profile_id: uuid.UUID
+    ) -> PluginProfile:
+        row = await self._get_global_profile_or_404(session, plugin_id, profile_id)
+        await self._repo.delete_profile(session, row)
+        return row
+
+    async def test_plugin_profile(
+        self, session: AsyncSession, plugin_id: str, profile_id: uuid.UUID
+    ) -> None:
+        """Fire a synthetic test notification through one global profile.
+
+        Does not require the profile to be enabled — testing a configuration
+        before switching it on is the point.
+        """
+        plugin = plugin_registry.get_plugin(plugin_id)
+        if not plugin:
+            raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
+        row = await self._get_global_profile_or_404(session, plugin_id, profile_id)
+        config = self._merged_config(plugin_id, row.config)
+
+        test_notification = {
+            "id": str(uuid.uuid4()),
+            "sender_name": "shoutrrr-logger test",
+            "title": f"Profile test: {row.name}",
+            "message": "This is a test notification sent from the shoutrrr-logger admin panel.",
+            "received_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "source_ip": "127.0.0.1",
+            "custom_fields": {},
+        }
+        try:
+            await plugin.on_notification(test_notification, config)
+        except Exception as exc:
+            # str(exc) can be empty for low-level network errors; fall back to repr
+            detail = str(exc) or repr(exc) or type(exc).__name__
+            raise HTTPException(status_code=502, detail=f"Plugin error: {detail}") from exc
 
     # -----------------------------------------------------------------------
     # User Plugins — named configuration profiles
@@ -133,10 +247,10 @@ class PluginService:
             raise HTTPException(status_code=404, detail="Profile not found")
         return row
 
-    def _to_profile_out(self, plugin_id: str, row: UserPluginConfig) -> UserPluginProfileOut:
+    def _to_profile_out(self, plugin_id: str, row: UserPluginConfig) -> PluginProfileOut:
         plugin = plugin_registry.get_plugin(plugin_id)
         defaults = plugin.default_config if plugin else {}
-        return UserPluginProfileOut(
+        return PluginProfileOut(
             id=row.id,
             name=row.name,
             enabled=row.enabled,
@@ -189,8 +303,8 @@ class PluginService:
         return await self._to_user_out(session, user, plugin_id)
 
     async def create_user_profile(
-        self, session: AsyncSession, user: User, plugin_id: str, body: UserPluginProfileCreate
-    ) -> UserPluginProfileOut:
+        self, session: AsyncSession, user: User, plugin_id: str, body: PluginProfileCreate
+    ) -> PluginProfileOut:
         await self._require_user_configurable(session, plugin_id)
 
         cap = await self._resolve_profile_cap(session, user)
@@ -237,8 +351,8 @@ class PluginService:
         user: User,
         plugin_id: str,
         profile_id: uuid.UUID,
-        body: UserPluginProfileUpdate,
-    ) -> UserPluginProfileOut:
+        body: PluginProfileUpdate,
+    ) -> PluginProfileOut:
         await self._require_user_configurable(session, plugin_id)
         row = await self._get_profile_or_404(session, user.id, plugin_id, profile_id)
 
@@ -292,32 +406,6 @@ class PluginService:
         try:
             await plugin.on_notification(test_notification, config)
         except Exception as exc:
-            detail = str(exc) or repr(exc) or type(exc).__name__
-            raise HTTPException(status_code=502, detail=f"Plugin error: {detail}") from exc
-
-    async def test_plugin(self, session: AsyncSession, plugin_id: str) -> None:
-        """Fire a synthetic test notification through the plugin."""
-        plugin = plugin_registry.get_plugin(plugin_id)
-        if not plugin:
-            raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
-        row = await self.get_or_create_config(session, plugin_id)
-        if not row.enabled:
-            raise HTTPException(status_code=400, detail="Plugin is disabled")
-        config = self.merge_config(plugin_id, row)
-
-        test_notification = {
-            "id": str(uuid.uuid4()),
-            "sender_name": "shoutrrr-logger test",
-            "title": "Plugin test",
-            "message": "This is a test notification sent from the shoutrrr-logger admin panel.",
-            "received_at": datetime.datetime.now(datetime.UTC).isoformat(),
-            "source_ip": "127.0.0.1",
-            "custom_fields": {},
-        }
-        try:
-            await plugin.on_notification(test_notification, config)
-        except Exception as exc:
-            # str(exc) can be empty for low-level network errors; fall back to repr
             detail = str(exc) or repr(exc) or type(exc).__name__
             raise HTTPException(status_code=502, detail=f"Plugin error: {detail}") from exc
 

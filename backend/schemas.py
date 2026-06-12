@@ -260,27 +260,8 @@ class RoutingRuleOut(RoutingRuleBase):
 # ---------------------------------------------------------------------------
 # Plugins
 # ---------------------------------------------------------------------------
-class PluginOut(BaseModel):
-    id: str
-    name: str
-    description: str
-    enabled: bool
-    allow_user_configs: bool
-    config: dict[str, Any]
-    rules: list[dict[str, Any]] = Field(default_factory=list)
-
-    model_config = {"from_attributes": True}
-
-
-class PluginUpdate(BaseModel):
-    enabled: bool | None = None
-    allow_user_configs: bool | None = None
-    config: dict[str, Any] | None = None
-    rules: list[dict[str, Any]] | None = None
-
-
-class UserPluginProfileOut(BaseModel):
-    """One named configuration profile of a plugin for the current user."""
+class PluginProfileOut(BaseModel):
+    """One named configuration profile of a plugin (global or per-user)."""
 
     id: uuid.UUID
     name: str
@@ -291,19 +272,35 @@ class UserPluginProfileOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PluginOut(BaseModel):
+    """A registered plugin with its global (admin-managed) profiles."""
+
+    id: str
+    name: str
+    description: str
+    allow_user_configs: bool
+    profiles: list[PluginProfileOut] = Field(default_factory=list)
+
+
+class PluginUpdate(BaseModel):
+    """Plugin-level settings; per-configuration state lives on profiles."""
+
+    allow_user_configs: bool | None = None
+
+
 class UserPluginOut(BaseModel):
     """A plugin available for user configuration, with all of the user's profiles."""
 
     plugin_id: str
     name: str = ""
     description: str = ""
-    profiles: list[UserPluginProfileOut] = Field(default_factory=list)
+    profiles: list[PluginProfileOut] = Field(default_factory=list)
     # Resolved cap for this user (0 = unlimited); the UI disables "add
     # profile" when len(profiles) >= max_profiles and max_profiles != 0.
     max_profiles: int = 0
 
 
-class UserPluginProfileCreate(BaseModel):
+class PluginProfileCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     # Optionally seed the new profile by copying an existing one
     # ("duplicate profile"); config/rules below win over the copied values.
@@ -312,7 +309,7 @@ class UserPluginProfileCreate(BaseModel):
     rules: list[dict[str, Any]] | None = None
 
 
-class UserPluginProfileUpdate(BaseModel):
+class PluginProfileUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     enabled: bool | None = None
     config: dict[str, Any] | None = None

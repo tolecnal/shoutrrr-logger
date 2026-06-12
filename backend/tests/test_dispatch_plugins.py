@@ -5,7 +5,7 @@ rules that fail RoutingRuleCreate validation must not abort dispatch for the
 remaining plugin configs.
 """
 
-from models import PluginConfig
+from models import PluginProfile
 from plugins import registry
 from services.notifications import notification_service
 
@@ -14,9 +14,15 @@ class TestDispatchPluginsRuleValidation:
     async def test_malformed_rules_on_one_plugin_does_not_block_others(self, app, db, caplog):
         # "slack" has rules that fail RoutingRuleCreate validation (missing
         # required "name" field) - simulates a user-set malformed rules JSON.
-        bad = PluginConfig(id="slack", enabled=True, config={}, rules=[{"severities": ["error"]}])
+        bad = PluginProfile(
+            plugin_id="slack",
+            name="Default",
+            enabled=True,
+            config={},
+            rules=[{"severities": ["error"]}],
+        )
         # "splunk" has valid (empty) rules and should still run.
-        good = PluginConfig(id="splunk", enabled=True, config={}, rules=[])
+        good = PluginProfile(plugin_id="splunk", name="Default", enabled=True, config={}, rules=[])
         db.add_all([bad, good])
         await db.commit()
 

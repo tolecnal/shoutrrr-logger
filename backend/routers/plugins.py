@@ -1,11 +1,16 @@
 """
 Admin routes for plugin management.
 
-GET  /api/v1/admin/plugins          — list all registered plugins with their DB config
-GET  /api/v1/admin/plugins/{id}     — get one plugin
-PATCH /api/v1/admin/plugins/{id}    — update enabled flag and/or config dict
-POST /api/v1/admin/plugins/{id}/test — trigger a test notification through the plugin
+GET    /api/v1/admin/plugins                         — list plugins with their global profiles
+GET    /api/v1/admin/plugins/{id}                    — get one plugin
+PATCH  /api/v1/admin/plugins/{id}                    — update plugin-level settings (allow_user_configs)
+POST   /api/v1/admin/plugins/{id}/profiles           — create a global configuration profile
+PATCH  /api/v1/admin/plugins/{id}/profiles/{pid}     — update a profile (name/enabled/config/rules)
+DELETE /api/v1/admin/plugins/{id}/profiles/{pid}     — delete a profile
+POST   /api/v1/admin/plugins/{id}/profiles/{pid}/test — fire a test notification through a profile
 """
+
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import get_current_user_from_session
 from database import get_db
 from models import UserRole
-from schemas import PluginOut, PluginUpdate
+from schemas import (
+    PluginOut,
+    PluginProfileCreate,
+    PluginProfileOut,
+    PluginProfileUpdate,
+    PluginUpdate,
+)
 from services.audit_logs import AuditAction, audit_log_service
 from services.notifications import notification_service
 from services.plugins import plugin_service
@@ -78,12 +89,83 @@ async def update_plugin(
     return result
 
 
-@router.post("/{plugin_id}/test", status_code=status.HTTP_202_ACCEPTED)
-async def test_plugin(
+@router.post(
+    "/{plugin_id}/profiles",
+    response_model=PluginProfileOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_plugin_profile(
     plugin_id: str,
+    body: PluginProfileCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(_require_admin),
+) -> PluginProfileOut:
+    result = await plugin_service.create_plugin_profile(db, plugin_id, body)
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.PLUGIN_PROFILE_CREATE,
+        target_type="plugin_profile",
+        target_id=f"{plugin_id}:{result.id}",
+        details={
+            "name": result.name,
+            "copied_from": str(body.copy_from) if body.copy_from else None,
+        },
+        request=request,
+    )
+    return result
+
+
+@router.patch("/{plugin_id}/profiles/{profile_id}", response_model=PluginProfileOut)
+async def update_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
+    body: PluginProfileUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(_require_admin),
+) -> PluginProfileOut:
+    result = await plugin_service.update_plugin_profile(db, plugin_id, profile_id, body)
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.PLUGIN_PROFILE_UPDATE,
+        target_type="plugin_profile",
+        target_id=f"{plugin_id}:{profile_id}",
+        details=body.model_dump(exclude_none=True, mode="json"),
+        request=request,
+    )
+    return result
+
+
+@router.delete("/{plugin_id}/profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(_require_admin),
+) -> None:
+    deleted = await plugin_service.delete_plugin_profile(db, plugin_id, profile_id)
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.PLUGIN_PROFILE_DELETE,
+        target_type="plugin_profile",
+        target_id=f"{plugin_id}:{profile_id}",
+        details={"name": deleted.name},
+        request=request,
+    )
+
+
+@router.post("/{plugin_id}/profiles/{profile_id}/test", status_code=status.HTTP_202_ACCEPTED)
+async def test_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _user=Depends(_require_admin),
 ) -> dict[str, str]:
-    """Fire a synthetic test notification through the plugin."""
-    await plugin_service.test_plugin(db, plugin_id)
-    return {"detail": f"Test notification sent to plugin '{plugin_id}'"}
+    """Fire a synthetic test notification through this profile's saved config."""
+    await plugin_service.test_plugin_profile(db, plugin_id, profile_id)
+    return {"detail": "Test notification sent"}

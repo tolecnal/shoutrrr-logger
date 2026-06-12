@@ -251,11 +251,16 @@ class TestSettingsAuditLog:
 
 
 class TestPluginAuditLog:
-    async def test_update_plugin_redacts_secrets_in_audit_details(
+    async def test_update_plugin_profile_redacts_secrets_in_audit_details(
         self, client, admin_session_headers
     ):
+        plugins_resp = await client.get(
+            "/api/v1/admin/plugins/splunk", headers=admin_session_headers
+        )
+        profile_id = plugins_resp.json()["profiles"][0]["id"]
+
         resp = await client.patch(
-            "/api/v1/admin/plugins/splunk",
+            f"/api/v1/admin/plugins/splunk/profiles/{profile_id}",
             json={
                 "enabled": True,
                 "config": {
@@ -269,12 +274,12 @@ class TestPluginAuditLog:
 
         logs_resp = await client.get(
             "/api/v1/admin/audit-logs",
-            params={"action": "plugin.update"},
+            params={"action": "plugin_profile.update"},
             headers=admin_session_headers,
         )
         entry = logs_resp.json()["items"][0]
-        assert entry["target_type"] == "plugin"
-        assert entry["target_id"] == "splunk"
+        assert entry["target_type"] == "plugin_profile"
+        assert entry["target_id"] == f"splunk:{profile_id}"
         # Both keys are masked: "hec_token" matches "token"/"hec", and
         # "hec_url" matches "hec" too — the redaction errs on the side of caution.
         assert entry["details"]["config"]["hec_token"] == "***REDACTED***"

@@ -158,19 +158,46 @@ class Notification(Base):
 
 
 class PluginConfig(Base):
-    """Persists the enabled state and config dict for each global plugin."""
+    """Plugin-level settings for a global plugin (one row per plugin).
+
+    The per-configuration state (enabled/config/rules) lives in named
+    PluginProfile rows; this table only holds settings that apply to the
+    plugin as a whole.
+    """
 
     __tablename__ = "plugin_configs"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)  # == plugin_id
-    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     allow_user_configs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+
+class PluginProfile(Base):
+    """One named global configuration profile of a plugin (admin-managed).
+
+    Mirrors UserPluginConfig: every enabled profile is dispatched
+    independently with its own config and routing rules. Admins may create
+    any number of profiles.
+    """
+
+    __tablename__ = "plugin_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plugin_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="Default", server_default="Default"
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Free-form JSON config merged on top of the plugin's default_config
     config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     rules: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
+
+    __table_args__ = (Index("ix_plugin_profiles_plugin_name", "plugin_id", "name", unique=True),)
 
 
 class RoutingRule(Base):

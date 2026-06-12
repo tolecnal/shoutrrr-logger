@@ -16,10 +16,10 @@ from auth import require_viewer
 from database import get_db
 from models import User
 from schemas import (
+    PluginProfileCreate,
+    PluginProfileOut,
+    PluginProfileUpdate,
     UserPluginOut,
-    UserPluginProfileCreate,
-    UserPluginProfileOut,
-    UserPluginProfileUpdate,
 )
 from services.audit_logs import AuditAction, audit_log_service
 from services.plugins import plugin_service
@@ -46,12 +46,12 @@ async def get_user_plugin(
 
 @router.post(
     "/{plugin_id}/profiles",
-    response_model=UserPluginProfileOut,
+    response_model=PluginProfileOut,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user_plugin_profile(
     plugin_id: str,
-    body: UserPluginProfileCreate,
+    body: PluginProfileCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
@@ -72,11 +72,11 @@ async def create_user_plugin_profile(
     return result
 
 
-@router.patch("/{plugin_id}/profiles/{profile_id}", response_model=UserPluginProfileOut)
+@router.patch("/{plugin_id}/profiles/{profile_id}", response_model=PluginProfileOut)
 async def update_user_plugin_profile(
     plugin_id: str,
     profile_id: uuid.UUID,
-    body: UserPluginProfileUpdate,
+    body: PluginProfileUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),

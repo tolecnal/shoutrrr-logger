@@ -37,17 +37,7 @@ export interface NotificationSearchFilters {
 // ---------------------------------------------------------------------------
 // Plugins
 // ---------------------------------------------------------------------------
-export interface PluginMeta {
-  id: string;        // e.g. "splunk"
-  name: string;      // display name
-  description: string;
-  enabled: boolean;
-  allow_user_configs: boolean;
-  config: Record<string, unknown>;
-  rules: any[];
-}
-
-export interface UserPluginProfileOut {
+export interface PluginProfileOut {
   id: string;
   name: string;
   enabled: boolean;
@@ -55,11 +45,19 @@ export interface UserPluginProfileOut {
   rules: any[];
 }
 
+export interface PluginMeta {
+  id: string;        // e.g. "splunk"
+  name: string;      // display name
+  description: string;
+  allow_user_configs: boolean;
+  profiles: PluginProfileOut[];
+}
+
 export interface UserPluginOut {
   plugin_id: string;
   name: string;
   description: string;
-  profiles: UserPluginProfileOut[];
+  profiles: PluginProfileOut[];
   /** Max profiles per plugin for this user; 0 = unlimited (admins). */
   max_profiles: number;
 }

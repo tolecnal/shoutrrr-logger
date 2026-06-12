@@ -11,7 +11,7 @@ from models import (
     AlertRule,
     MonitoringToken,
     Notification,
-    PluginConfig,
+    PluginProfile,
     User,
     UserAlert,
 )
@@ -82,7 +82,7 @@ async def monitoring_health(
         )
 
         active_plugins = await db.scalar(
-            select(func.count(PluginConfig.id)).where(PluginConfig.enabled)
+            select(func.count(PluginProfile.id)).where(PluginProfile.enabled)
         )
         active_ingest_tokens = await db.scalar(
             select(func.count(AccessToken.id)).where(AccessToken.is_active)

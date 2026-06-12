@@ -323,13 +323,13 @@ class NotificationService:
         from sqlalchemy import select
 
         from database import engine  # noqa: PLC0415
-        from models import PluginConfig, UserPluginConfig
+        from models import PluginProfile, UserPluginConfig
         from plugins import registry as plugin_registry  # noqa: PLC0415
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
-            # Load global plugins
-            global_stmt = select(PluginConfig).where(PluginConfig.enabled.is_(True))
+            # Load enabled global plugin profiles
+            global_stmt = select(PluginProfile).where(PluginProfile.enabled.is_(True))
             global_configs = (await session.execute(global_stmt)).scalars().all()
 
             user_configs = []

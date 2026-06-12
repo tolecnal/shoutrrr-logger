@@ -1,20 +1,36 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
-import { Puzzle, ChevronDown, ChevronRight, Save } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Puzzle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchPlugins, fetchCustomFieldKeys, updatePlugin, testPlugin } from "@/lib/api";
-import type { PluginMeta, RoutingRuleOut } from "@/lib/types";
-import { PLUGIN_CONFIG_PANELS } from "@/plugins/registry";
-import { RoutingRulesEditor } from "@/components/routing-rules-editor";
+import {
+  fetchPlugins,
+  fetchCustomFieldKeys,
+  updatePlugin,
+  createPluginProfile,
+  updatePluginProfile,
+  deletePluginProfile,
+  testPluginProfile,
+} from "@/lib/api";
+import type { PluginMeta } from "@/lib/types";
+import {
+  PluginCardHeader,
+  PluginProfileTabs,
+  type ProfileApi,
+} from "@/components/plugin-profile-tabs";
+
+const adminProfileApi: ProfileApi = {
+  create: createPluginProfile,
+  update: updatePluginProfile,
+  remove: deletePluginProfile,
+  test: testPluginProfile,
+};
 
 // ---------------------------------------------------------------------------
-// Per-plugin card — owns all local edit state for that plugin
+// Per-plugin card — global profiles + plugin-level settings
 // ---------------------------------------------------------------------------
 
 function PluginCard({
@@ -27,101 +43,35 @@ function PluginCard({
   onSaved: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [enabled, setEnabled] = useState(plugin.enabled);
   const [allowUserConfigs, setAllowUserConfigs] = useState(plugin.allow_user_configs ?? true);
-  const [config, setConfig] = useState<Record<string, unknown>>(plugin.config);
-  const [rules, setRules] = useState<any[]>(plugin.rules ?? []);
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [allowSaving, setAllowSaving] = useState(false);
 
-  const ConfigPanel = PLUGIN_CONFIG_PANELS[plugin.id] ?? null;
+  const enabledCount = plugin.profiles.filter((p) => p.enabled).length;
 
-  const dirty =
-    enabled !== plugin.enabled ||
-    allowUserConfigs !== (plugin.allow_user_configs ?? true) ||
-    JSON.stringify(config) !== JSON.stringify(plugin.config) ||
-    JSON.stringify(rules) !== JSON.stringify(plugin.rules ?? []);
-
-  async function handleSave() {
-    setSaving(true);
-    setSaveMsg(null);
+  async function handleAllowUserConfigs(value: boolean): Promise<void> {
+    setAllowUserConfigs(value);
+    setAllowSaving(true);
     try {
-      await updatePlugin(plugin.id, { enabled, allow_user_configs: allowUserConfigs, config, rules });
-      setSaveMsg("Saved.");
+      await updatePlugin(plugin.id, { allow_user_configs: value });
       onSaved();
-    } catch (e: unknown) {
-      setSaveMsg(e instanceof Error ? e.message : "Save failed.");
+    } catch {
+      setAllowUserConfigs(!value); // revert on failure
     } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleTest() {
-    const res = await testPlugin(plugin.id);
-    if (!res.detail?.toLowerCase().includes("sent")) {
-      throw new Error(res.detail ?? "Unknown error");
+      setAllowSaving(false);
     }
   }
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      {/* Header row — click anywhere except the switch/save to expand config */}
-      <div
-        className={cn(
-          "flex items-center gap-3 px-4 py-3",
-          ConfigPanel && "cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg",
-          ConfigPanel && expanded && "rounded-b-none"
-        )}
-        onClick={ConfigPanel ? () => setExpanded((v) => !v) : undefined}
-      >
-        {/* Stop propagation so toggling the switch doesn't also expand/collapse */}
-        <div onClick={(e) => e.stopPropagation()}>
-          <Switch
-            checked={enabled}
-            onCheckedChange={(v) => {
-              setEnabled(v);
-              setSaveMsg(null);
-            }}
-            aria-label={`Enable ${plugin.name}`}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-none">{plugin.name}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{plugin.description}</p>
-        </div>
-        {/* Stop propagation on the action area so Save doesn't toggle expansion */}
-        <div
-          className="flex items-center gap-2 shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {saveMsg && !dirty && (
-            <span className="text-xs text-muted-foreground">{saveMsg}</span>
-          )}
-          {dirty && (
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleSave}
-              disabled={saving}
-              className="h-7 text-xs gap-1"
-            >
-              <Save className="h-3 w-3" />
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          )}
-          {ConfigPanel && (
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                !expanded && "-rotate-90"
-              )}
-            />
-          )}
-        </div>
-      </div>
+      <PluginCardHeader
+        name={plugin.name}
+        description={plugin.description}
+        enabledCount={enabledCount}
+        expanded={expanded}
+        onToggle={() => setExpanded((v) => !v)}
+      />
 
-      {/* Config panel — lazy-loaded from the plugin registry */}
-      {ConfigPanel && expanded && (
+      {expanded && (
         <>
           <Separator />
           <div className="px-4 py-4 space-y-6">
@@ -134,33 +84,20 @@ function PluginCard({
               </div>
               <Switch
                 checked={allowUserConfigs}
-                onCheckedChange={(v) => {
-                  setAllowUserConfigs(v);
-                  setSaveMsg(null);
-                }}
+                disabled={allowSaving}
+                onCheckedChange={(v) => void handleAllowUserConfigs(v)}
               />
             </div>
             <Separator />
-            <RoutingRulesEditor
-              rules={rules}
-              onChange={(next) => {
-                setRules(next);
-                setSaveMsg(null);
-              }}
+            <PluginProfileTabs
+              pluginId={plugin.id}
+              pluginName={plugin.name}
+              profiles={plugin.profiles}
+              maxProfiles={0}
+              availableCustomFields={availableCustomFields}
+              api={adminProfileApi}
+              onSaved={onSaved}
             />
-            <Separator />
-            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-              <ConfigPanel
-                config={config}
-                onChange={(next) => {
-                  setConfig(next);
-                  setSaveMsg(null);
-                }}
-                onTest={handleTest}
-                saving={saving}
-                availableCustomFields={availableCustomFields}
-              />
-            </Suspense>
           </div>
         </>
       )}
