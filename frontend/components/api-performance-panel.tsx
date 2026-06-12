@@ -206,6 +206,8 @@ export function ApiPerformancePanel() {
           </p>
         </div>
         <select
+          id="performance-window"
+          name="performance-window"
           value={windowHours}
           onChange={(e) => setWindowHours(Number(e.target.value))}
           className="rounded-md border border-border bg-card text-sm text-foreground px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
@@ -323,6 +325,8 @@ export function ApiPerformancePanel() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
+                id="performance-endpoint-search"
+                name="performance-endpoint-search"
                 type="text"
                 placeholder="Search endpoints..."
                 value={searchQuery}

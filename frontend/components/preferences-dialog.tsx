@@ -158,8 +158,10 @@ function LabelRuleRow({
         <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
           {/* Name editor */}
           <div className="flex items-center gap-2 pb-1">
-            <Label className="text-xs text-muted-foreground shrink-0 w-12">Name</Label>
+            <Label className="text-xs text-muted-foreground shrink-0 w-12" htmlFor={`label-rule-name-${rule.id}`}>Name</Label>
             <Input
+              id={`label-rule-name-${rule.id}`}
+              name={`label-rule-name-${rule.id}`}
               className="h-7 flex-1 min-w-0 text-xs"
               value={rule.name}
               placeholder="Label name"
@@ -188,6 +190,8 @@ function LabelRuleRow({
           ))}
           <div className="flex items-center gap-2 pt-1">
             <Input
+              id={`label-rule-pattern-${rule.id}`}
+              name={`label-rule-pattern-${rule.id}`}
               className="h-7 flex-1 font-mono text-xs bg-input"
               placeholder="(?i)new pattern"
               value={patternInput}
@@ -263,9 +267,11 @@ function AlertRuleRow({
       <AccordionContent>
         <div className="space-y-3 pl-2 pb-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground w-16">Name</Label>
-            <Input 
-              value={draft.name} 
+            <Label className="text-xs text-muted-foreground w-16" htmlFor={`alert-rule-name-${draft.id}`}>Name</Label>
+            <Input
+              id={`alert-rule-name-${draft.id}`}
+              name={`alert-rule-name-${draft.id}`}
+              value={draft.name}
               onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
               className="h-7 text-xs flex-1"
               placeholder="Rule Name"
@@ -273,8 +279,10 @@ function AlertRuleRow({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Match Type</Label>
-              <select 
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-type-${draft.id}`}>Match Type</Label>
+              <select
+                id={`alert-rule-match-type-${draft.id}`}
+                name={`alert-rule-match-type-${draft.id}`}
                 className="h-8 text-xs bg-input rounded-md border border-border px-2"
                 value={draft.match_type}
                 onChange={(e) => setDraft(prev => ({ ...prev, match_type: e.target.value as any }))}
@@ -285,8 +293,10 @@ function AlertRuleRow({
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Match Target</Label>
-              <select 
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-target-${draft.id}`}>Match Target</Label>
+              <select
+                id={`alert-rule-match-target-${draft.id}`}
+                name={`alert-rule-match-target-${draft.id}`}
                 className="h-8 text-xs bg-input rounded-md border border-border px-2"
                 value={draft.match_target}
                 onChange={(e) => setDraft(prev => ({ ...prev, match_target: e.target.value as any }))}
@@ -298,9 +308,11 @@ function AlertRuleRow({
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs text-muted-foreground">Pattern</Label>
-            <Input 
-              placeholder="String or regex to match..." 
+            <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-pattern-${draft.id}`}>Pattern</Label>
+            <Input
+              id={`alert-rule-pattern-${draft.id}`}
+              name={`alert-rule-pattern-${draft.id}`}
+              placeholder="String or regex to match..."
               value={draft.match_pattern}
               onChange={(e) => setDraft(prev => ({ ...prev, match_pattern: e.target.value }))}
               className="h-8 text-xs bg-input"
@@ -308,8 +320,10 @@ function AlertRuleRow({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Scope</Label>
-              <select 
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-scope-${draft.id}`}>Scope</Label>
+              <select
+                id={`alert-rule-scope-${draft.id}`}
+                name={`alert-rule-scope-${draft.id}`}
                 className="h-8 text-xs bg-input rounded-md border border-border px-2"
                 value={draft.notification_scope}
                 onChange={(e) => setDraft(prev => ({ ...prev, notification_scope: e.target.value as any }))}
@@ -745,6 +759,8 @@ export function PreferencesDialog() {
                 </p>
                 <div className="flex gap-2">
                   <Input
+                    id="personal-token-name"
+                    name="personal-token-name"
                     className="h-8 flex-1 text-sm bg-input"
                     placeholder="Token name"
                     value={tokenName}
@@ -752,6 +768,8 @@ export function PreferencesDialog() {
                     onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
                   />
                   <Input
+                    id="personal-token-expiry"
+                    name="personal-token-expiry"
                     type="date"
                     className="h-8 w-36 text-sm bg-input"
                     title="Optional expiry date"

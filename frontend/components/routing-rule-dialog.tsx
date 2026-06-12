@@ -90,8 +90,8 @@ export function RoutingRuleDialog({
 
         <div className="space-y-4 py-4">
           <div className="space-y-1.5">
-            <Label>Rule Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Production Errors" />
+            <Label htmlFor="rule-name">Rule Name</Label>
+            <Input id="rule-name" name="rule-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Production Errors" />
           </div>
 
           <div className="space-y-1.5">
@@ -104,7 +104,7 @@ export function RoutingRuleDialog({
                 </Badge>
               ))}
             </div>
-            <Input value={sevInput} onChange={(e) => setSevInput(e.target.value)} onKeyDown={(e) => addItem(e, sevInput, setSevInput, severities, setSeverities)} placeholder="e.g. critical (press Enter)" />
+            <Input id="rule-severity-input" name="rule-severity-input" value={sevInput} onChange={(e) => setSevInput(e.target.value)} onKeyDown={(e) => addItem(e, sevInput, setSevInput, severities, setSeverities)} placeholder="e.g. critical (press Enter)" />
           </div>
 
           <div className="space-y-1.5">
@@ -117,7 +117,7 @@ export function RoutingRuleDialog({
                 </Badge>
               ))}
             </div>
-            <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => addItem(e, tagInput, setTagInput, tags, setTags)} placeholder="e.g. prod (press Enter)" list="tag-suggestions" />
+            <Input id="rule-tag-input" name="rule-tag-input" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => addItem(e, tagInput, setTagInput, tags, setTags)} placeholder="e.g. prod (press Enter)" list="tag-suggestions" />
             <datalist id="tag-suggestions">
               {tagSuggestions.map((t) => <option key={t} value={t} />)}
             </datalist>
@@ -134,6 +134,8 @@ export function RoutingRuleDialog({
               ))}
             </div>
             <select
+              id="rule-token-select"
+              name="rule-token-select"
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               value=""
               onChange={(e) => {
@@ -165,11 +167,11 @@ export function RoutingRuleDialog({
               ))}
             </div>
             <div className="flex gap-2">
-              <Input className="flex-1" value={cfKeyInput} onChange={(e) => setCfKeyInput(e.target.value)} placeholder="Key" list="cf-suggestions" />
+              <Input id="rule-custom-field-key" name="rule-custom-field-key" className="flex-1" value={cfKeyInput} onChange={(e) => setCfKeyInput(e.target.value)} placeholder="Key" list="cf-suggestions" />
               <datalist id="cf-suggestions">
                 {cfSuggestions.map((t) => <option key={t} value={t} />)}
               </datalist>
-              <Input className="flex-1" value={cfValInput} onChange={(e) => setCfValInput(e.target.value)} placeholder="Value" onKeyDown={(e) => { if (e.key === "Enter") addCustomField(); }} />
+              <Input id="rule-custom-field-value" name="rule-custom-field-value" className="flex-1" value={cfValInput} onChange={(e) => setCfValInput(e.target.value)} placeholder="Value" onKeyDown={(e) => { if (e.key === "Enter") addCustomField(); }} />
               <Button type="button" variant="outline" onClick={addCustomField}>Add</Button>
             </div>
           </div>

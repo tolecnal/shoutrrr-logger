@@ -130,6 +130,8 @@ function FieldMappingRow({
     >
       <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing" />
       <Input
+        id={`splunk-mapping-source-${index}`}
+        name={`splunk-mapping-source-${index}`}
         value={mapping.source_field}
         placeholder="Source field"
         list={listId}
@@ -143,6 +145,8 @@ function FieldMappingRow({
       </datalist>
       <span className="text-muted-foreground text-xs shrink-0">→</span>
       <Input
+        id={`splunk-mapping-output-${index}`}
+        name={`splunk-mapping-output-${index}`}
         value={mapping.output_key}
         placeholder="Output key"
         onChange={(e) => onUpdate({ ...mapping, output_key: e.target.value })}
@@ -230,8 +234,10 @@ export function SplunkConfigPanel({
         <h4 className="text-xs font-semibold text-foreground">HEC endpoint</h4>
         <div className="grid gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">URL</Label>
+            <Label className="text-xs" htmlFor="splunk-hec-url">URL</Label>
             <Input
+              id="splunk-hec-url"
+              name="splunk-hec-url"
               value={config.hec_url}
               onChange={(e) => update("hec_url", e.target.value)}
               placeholder="https://splunk.example.com:8088/services/collector/event"
@@ -239,8 +245,10 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">HEC token</Label>
+            <Label className="text-xs" htmlFor="splunk-hec-token">HEC token</Label>
             <Input
+              id="splunk-hec-token"
+              name="splunk-hec-token"
               type="password"
               value={config.hec_token}
               onChange={(e) => update("hec_token", e.target.value)}
@@ -268,8 +276,10 @@ export function SplunkConfigPanel({
         <h4 className="text-xs font-semibold text-foreground">Splunk metadata</h4>
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">Index</Label>
+            <Label className="text-xs" htmlFor="splunk-index">Index</Label>
             <Input
+              id="splunk-index"
+              name="splunk-index"
               value={config.index}
               onChange={(e) => update("index", e.target.value)}
               placeholder="main"
@@ -277,8 +287,10 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Source</Label>
+            <Label className="text-xs" htmlFor="splunk-source">Source</Label>
             <Input
+              id="splunk-source"
+              name="splunk-source"
               value={config.source}
               onChange={(e) => update("source", e.target.value)}
               placeholder="shoutrrr-logger"
@@ -286,8 +298,10 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Sourcetype</Label>
+            <Label className="text-xs" htmlFor="splunk-sourcetype">Sourcetype</Label>
             <Input
+              id="splunk-sourcetype"
+              name="splunk-sourcetype"
               value={config.sourcetype}
               onChange={(e) => update("sourcetype", e.target.value)}
               placeholder="_json"

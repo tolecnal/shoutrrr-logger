@@ -247,8 +247,10 @@ export function UsersTab() {
           <div className="space-y-3 py-2">
             {!editing && (
               <div className="space-y-1">
-                <Label className="text-xs">OIDC Subject (sub)</Label>
+                <Label className="text-xs" htmlFor="user-sub">OIDC Subject (sub)</Label>
                 <Input
+                  id="user-sub"
+                  name="user-sub"
                   className="h-8 text-xs"
                   value={form.sub}
                   onChange={(e) => setForm({ ...form, sub: e.target.value })}
@@ -258,16 +260,20 @@ export function UsersTab() {
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Username</Label>
+                <Label className="text-xs" htmlFor="user-username">Username</Label>
                 <Input
+                  id="user-username"
+                  name="user-username"
                   className="h-8 text-xs"
                   value={form.username}
                   onChange={(e) => setForm({ ...form, username: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Full name</Label>
+                <Label className="text-xs" htmlFor="user-full-name">Full name</Label>
                 <Input
+                  id="user-full-name"
+                  name="user-full-name"
                   className="h-8 text-xs"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
@@ -275,8 +281,10 @@ export function UsersTab() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Email</Label>
+              <Label className="text-xs" htmlFor="user-email">Email</Label>
               <Input
+                id="user-email"
+                name="user-email"
                 className="h-8 text-xs"
                 type="email"
                 value={form.email}

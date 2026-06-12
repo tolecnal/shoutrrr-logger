@@ -55,8 +55,10 @@ export function SlackConfigPanel({
   return (
     <div className="space-y-5">
       <div className="space-y-1.5">
-        <Label>Webhook URL</Label>
+        <Label htmlFor="slack-webhook-url">Webhook URL</Label>
         <Input
+          id="slack-webhook-url"
+          name="slack-webhook-url"
           placeholder="https://hooks.slack.com/services/..."
           value={url}
           onChange={(e) => onChange({ ...config, webhook_url: e.target.value })}
@@ -68,8 +70,10 @@ export function SlackConfigPanel({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Message Template</Label>
+          <Label htmlFor="slack-message-template">Message Template</Label>
           <Textarea
+            id="slack-message-template"
+            name="slack-message-template"
             rows={4}
             value={messageTemplate}
             onChange={(e) => onChange({ ...config, message_template: e.target.value })}
@@ -83,8 +87,10 @@ export function SlackConfigPanel({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Emoji Icon</Label>
+            <Label htmlFor="slack-emoji">Emoji Icon</Label>
             <Input
+              id="slack-emoji"
+              name="slack-emoji"
               value={emoji}
               onChange={(e) => onChange({ ...config, emoji: e.target.value })}
               placeholder=":rotating_light:"
@@ -113,6 +119,8 @@ export function SlackConfigPanel({
               ))}
             </div>
             <Input
+              id="slack-included-field"
+              name="slack-included-field"
               placeholder="Add a field e.g. tags, source_ip (press Enter)"
               value={newField}
               onChange={(e) => setNewField(e.target.value)}

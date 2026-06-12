@@ -63,8 +63,10 @@ export function WebhookConfigPanel({
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-4">
         <div className="sm:col-span-3 space-y-1.5">
-          <Label>Webhook URL</Label>
+          <Label htmlFor="webhook-url">Webhook URL</Label>
           <Input
+            id="webhook-url"
+            name="webhook-url"
             placeholder="https://example.com/webhook"
             value={url}
             onChange={(e) => onChange({ ...config, url: e.target.value })}
@@ -103,8 +105,10 @@ export function WebhookConfigPanel({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Headers (JSON)</Label>
+        <Label htmlFor="webhook-headers">Headers (JSON)</Label>
         <Textarea
+          id="webhook-headers"
+          name="webhook-headers"
           rows={3}
           value={headers}
           onChange={(e) => onChange({ ...config, headers: e.target.value })}
@@ -117,8 +121,10 @@ export function WebhookConfigPanel({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Payload Template</Label>
+          <Label htmlFor="webhook-payload-template">Payload Template</Label>
           <Textarea
+            id="webhook-payload-template"
+            name="webhook-payload-template"
             rows={10}
             value={payloadTemplate}
             onChange={(e) => onChange({ ...config, payload_template: e.target.value })}

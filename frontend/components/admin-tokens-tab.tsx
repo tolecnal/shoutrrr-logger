@@ -83,6 +83,8 @@ function RateLimitFields({
             Custom
           </Label>
           <Input
+            id={`${idPrefix}-rl-custom-value`}
+            name={`${idPrefix}-rl-custom-value`}
             className="h-7 w-24 text-xs"
             type="number"
             min={1}
@@ -340,8 +342,10 @@ export function TokensTab() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label className="text-xs">Token name</Label>
+              <Label className="text-xs" htmlFor="create-token-name">Token name</Label>
               <Input
+                id="create-token-name"
+                name="create-token-name"
                 className="h-8 text-xs"
                 placeholder="e.g. homelab-alertmanager"
                 value={form.name}
@@ -349,8 +353,10 @@ export function TokensTab() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Expiration date <span className="text-muted-foreground">(optional)</span></Label>
+              <Label className="text-xs" htmlFor="create-token-expires-at">Expiration date <span className="text-muted-foreground">(optional)</span></Label>
               <Input
+                id="create-token-expires-at"
+                name="create-token-expires-at"
                 className="h-8 text-xs"
                 type="datetime-local"
                 value={form.expires_at}
@@ -435,8 +441,10 @@ export function TokensTab() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label className="text-xs">Token name</Label>
+              <Label className="text-xs" htmlFor="edit-token-name">Token name</Label>
               <Input
+                id="edit-token-name"
+                name="edit-token-name"
                 className="h-8 text-xs"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
