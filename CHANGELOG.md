@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Security Policy**: Added `SECURITY.md` with private vulnerability reporting channels (GitHub advisories / email), scope, and the project's deployment security model.
+
 ## [0.7.4] — 2026-06-12
 
 ### Security
