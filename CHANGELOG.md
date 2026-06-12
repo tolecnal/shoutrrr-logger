@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- **OIDC Login CSRF & PKCE**: The callback now *rejects* requests whose `state` fails signature/expiry verification or whose nonce doesn't match the new browser-bound `oidc_nonce` cookie (previously a forged or missing state silently fell back and the login still completed). The login flow also implements PKCE (RFC 7636, S256), so an intercepted authorization code cannot be redeemed without the browser-bound verifier cookie.
+- **SMTP TLS Enforcement**: Alert emails no longer fall back to plaintext authentication when STARTTLS fails or is stripped by a MITM — sending credentials now *requires* an encrypted connection, and certificates are validated via `ssl.create_default_context()` on both STARTTLS and implicit-TLS (465) paths. Unauthenticated internal relays without TLS keep working, with a logged warning.
+- **CSV Formula Injection**: Notification exports neutralize cells beginning with `=`, `+`, `-`, `@`, tab, or CR so attacker-supplied notification content cannot execute as spreadsheet formulas when the export is opened in Excel/LibreOffice/Sheets.
+- **Spoofable Source IPs**: The ingestion endpoint and audit logger no longer trust the client-controlled left-most `X-Forwarded-For` entry; the real client IP is taken from nginx's authoritative `X-Real-IP`, falling back to the right-most XFF hop, then the socket peer.
+- **Bulk Delete Auditing**: `DELETE /api/v1/notifications` now writes a `notification.bulk_delete` audit-log entry recording the actor, filters, deleted count, and client IP.
+- **Security Headers**: The bundled nginx config now sends `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+- **Non-root Container**: The Docker image now runs both servers as an unprivileged `app` user (uid 999) instead of root.
+- **SECRET_KEY Strength**: Production startup now requires `SECRET_KEY` to be at least 32 characters (RFC 7518 §3.2 minimum for HMAC-SHA256), not merely different from the default.
+
+### Fixed
+
+- **Routing Rules Admin Check**: Admin detection in the routing-rules API compared the internal role enum against the *configurable OIDC role name*, silently demoting admins to per-user rule scope when `OIDC_ROLE_ADMIN` was customized. It now checks the internal role enum directly.
+
 ## [0.7.3] — 2026-06-12
 
 ### Security
