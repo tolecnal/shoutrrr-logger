@@ -40,6 +40,21 @@ server {
 
     client_max_body_size 10m;
 
+    # Security headers. `always` ensures they are also sent on error pages
+    # and proxied 4xx/5xx responses.
+    #
+    # HSTS: only effective over HTTPS; 6 months, no includeSubDomains so an
+    # operator's other subdomains are unaffected. Bump max-age / add preload
+    # deliberately if you control the whole domain.
+    add_header Strict-Transport-Security "max-age=15552000" always;
+    # Forbid MIME sniffing of responses.
+    add_header X-Content-Type-Options "nosniff" always;
+    # The app never needs to be framed; blocks clickjacking.
+    add_header X-Frame-Options "DENY" always;
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    # Don't leak full URLs (which may contain search queries) to other origins.
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
     # FastAPI backend — REST API, Swagger/ReDoc, OIDC callback, shoutrrr ingest.
     location /api/ {
         proxy_pass http://app:9000;
