@@ -296,19 +296,23 @@ _SAFE_REDIRECT_PATH_RE = re.compile(r"/(?![/\\])[^\x00-\x1f\x7f]*")
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     """Redirects the browser to the OIDC provider's authorization endpoint."""
-    if not (
+    if (
         isinstance(redirect_after, str)
         and redirect_after.startswith("/")
         and not redirect_after.startswith("//")
         and not redirect_after.startswith("/\\")
-        and _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after)
     ):
-        redirect_after = "/log"
+        safe_redirect = redirect_after
+    else:
+        safe_redirect = "/log"
+
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(safe_redirect):
+        safe_redirect = "/log"
 
     import base64
     import json
 
-    state_payload = {"nonce": secrets.token_urlsafe(16), "redirect": redirect_after}
+    state_payload = {"nonce": secrets.token_urlsafe(16), "redirect": safe_redirect}
     state_b64 = base64.urlsafe_b64encode(json.dumps(state_payload).encode()).decode()
 
     config = await get_oidc_config()
@@ -472,15 +476,20 @@ async def oidc_callback(
     except Exception:
         pass
 
-    if not (
+    if (
         isinstance(redirect_after, str)
         and redirect_after.startswith("/")
         and not redirect_after.startswith("//")
         and not redirect_after.startswith("/\\")
-        and _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after)
     ):
-        redirect_after = "/log"
-    response = RedirectResponse(url=redirect_after, status_code=status.HTTP_302_FOUND)
+        safe_redirect = redirect_after
+    else:
+        safe_redirect = "/log"
+
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(safe_redirect):
+        safe_redirect = "/log"
+
+    response = RedirectResponse(url=safe_redirect, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="session",
         value=session_token,
