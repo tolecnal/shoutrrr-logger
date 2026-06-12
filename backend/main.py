@@ -285,6 +285,12 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     """Redirects the browser to the OIDC provider's authorization endpoint."""
+    if not (
+        redirect_after.startswith("/")
+        and not redirect_after.startswith("//")
+        and not redirect_after.startswith("/\\")
+    ):
+        redirect_after = "/log"
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
         {
