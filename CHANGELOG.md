@@ -17,10 +17,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Security Headers**: The bundled nginx config now sends `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'`, and `Referrer-Policy: strict-origin-when-cross-origin`.
 - **Non-root Container**: The Docker image now runs both servers as an unprivileged `app` user (uid 999) instead of root.
 - **SECRET_KEY Strength**: Production startup now requires `SECRET_KEY` to be at least 32 characters (RFC 7518 §3.2 minimum for HMAC-SHA256), not merely different from the default.
+- **POST-only Logout**: `/api/auth/logout` no longer accepts GET, closing a cross-site forced-logout vector (SameSite=Lax cookies are sent on top-level navigations). The frontend now logs out via a POST from the API client.
+- **OIDC Audience Validation (opt-in)**: New `OIDC_VERIFY_AUDIENCE` / `OIDC_AUDIENCE` settings enforce the `aud` claim of OIDC access tokens for providers with a properly configured audience mapper. Off by default for Keycloak compatibility.
+- **Metrics Endpoint Guard (opt-in)**: New `METRICS_TOKEN` setting requires `Authorization: Bearer <token>` on `GET /metrics` for deployments that expose the backend port directly. Empty (default) keeps the endpoint open, which is safe behind the bundled nginx.
+- **Narrower TLS Mounts**: docker-compose now bind-mounts only this site's certificate and key into the nginx container instead of all of `/etc/ssl/certs` and `/etc/ssl/private` (which handed the container every private key on the host).
+- **CI Supply Chain**: The third-party `peter-evans/dockerhub-description` action is now pinned to a commit SHA instead of a mutable tag.
+
+### Changed
+
+- **Token Update API**: `PATCH /api/v1/admin/tokens/{id}` now takes a JSON body (`AccessTokenUpdate`) instead of query parameters, so token names no longer appear in proxy/access logs via the query string.
+- **SSE Backpressure**: Per-subscriber SSE queues are now bounded (100 entries, drop-oldest) so a stalled client connection can no longer grow memory indefinitely.
+- **Docker Build**: The backend dependency wheel list is now derived from `backend/pyproject.toml` at build time instead of being hand-duplicated in the Dockerfile.
 
 ### Fixed
 
 - **Routing Rules Admin Check**: Admin detection in the routing-rules API compared the internal role enum against the *configurable OIDC role name*, silently demoting admins to per-user rule scope when `OIDC_ROLE_ADMIN` was customized. It now checks the internal role enum directly.
+- **Test-Email Diagnostics**: SMTP test failures are logged with full tracebacks through the structured logger (instead of `traceback.print_exc()` to stderr) and return a 502 with a concise error summary.
+
+### Removed
+
+- **`fix_db.py`**: Obsolete one-off data-fix script (predates the Alembic baseline where `last_received_at` is NOT NULL).
 
 ## [0.7.3] — 2026-06-12
 
