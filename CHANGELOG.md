@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Automatic Database Migrations**: The container entrypoint now runs `alembic upgrade head` before starting the servers, so a release that changes the schema can never serve requests against an un-migrated database (with retries while PostgreSQL starts up). Opt out with `AUTO_MIGRATE=false` to apply migrations out-of-band.
 - **Plugin Configuration Profiles**: Users can now create multiple named configuration profiles per plugin (e.g. several Slack channels), presented as tabs under Preferences → My Plugins. Each profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently through the routing engine. Profiles can be renamed, duplicated, deleted, and test-fired individually. A new *Max plugin profiles per user* admin setting caps profiles per plugin (default 5, 0 = unlimited; admins exempt). Ships with an Alembic migration that turns existing user configs into a "Default" profile.
 
 ### Fixed
