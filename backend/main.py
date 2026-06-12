@@ -302,8 +302,10 @@ _REDIRECT_COOKIE_MAX_AGE = 600  # 10 minutes — generous for an OIDC login roun
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     """Redirects the browser to the OIDC provider's authorization endpoint."""
-    if not _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after):
-        redirect_after = "/log"
+    # Explicitly strip CRLF to appease CodeQL's Cookie Injection checks
+    safe_redirect = redirect_after.replace("\r", "").replace("\n", "")
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(safe_redirect):
+        safe_redirect = "/log"
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
         {
@@ -320,7 +322,7 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
         # Percent-encode so the cookie value can only ever contain a safe
         # subset of ASCII (letters, digits, "%"), regardless of what
         # redirect_after contained.
-        value=urllib.parse.quote(redirect_after, safe=""),
+        value=urllib.parse.quote(safe_redirect, safe=""),
         httponly=True,
         samesite="lax",
         secure=settings.app_base_url.startswith("https"),
