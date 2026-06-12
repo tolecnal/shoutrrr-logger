@@ -8,6 +8,7 @@ Production:    gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4
 import asyncio
 import logging
 import re
+import secrets
 import urllib.parse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -291,6 +292,12 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 # otherwise be interpreted by the browser as "//evil.com".
 _SAFE_REDIRECT_PATH_RE = re.compile(r"/(?![/\\])[^\x00-\x1f\x7f]*")
 
+# Short-lived cookie used to carry the post-login redirect target across the
+# OIDC round trip to the identity provider. The OIDC `state` param is left as
+# an opaque CSRF nonce, decoupling it from user-controlled redirect input.
+_REDIRECT_COOKIE_NAME = "oidc_redirect"
+_REDIRECT_COOKIE_MAX_AGE = 600  # 10 minutes — generous for an OIDC login round trip
+
 
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
@@ -304,10 +311,19 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
             "client_id": settings.oidc_client_id,
             "redirect_uri": f"{settings.app_base_url}/api/auth/callback",
             "scope": settings.oidc_scopes,
-            "state": redirect_after,
+            "state": secrets.token_urlsafe(24),
         }
     )
-    return RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
+    response = RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
+    response.set_cookie(
+        key=_REDIRECT_COOKIE_NAME,
+        value=redirect_after,
+        httponly=True,
+        samesite="lax",
+        secure=settings.app_base_url.startswith("https"),
+        max_age=_REDIRECT_COOKIE_MAX_AGE,
+    )
+    return response
 
 
 def _resolve_claim_path(userinfo: dict, dotted_path: str) -> object:
@@ -390,8 +406,8 @@ def _extract_role_from_claims(userinfo: dict) -> tuple[UserRole | None, str]:
     tags=["auth"],
 )
 async def oidc_callback(
+    request: Request,
     code: str,
-    state: str = "/log",
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
     """
@@ -447,9 +463,11 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    if not _SAFE_REDIRECT_PATH_RE.fullmatch(state):
-        state = "/log"
-    response = RedirectResponse(url=state, status_code=status.HTTP_302_FOUND)
+    redirect_after = request.cookies.get(_REDIRECT_COOKIE_NAME, "/log")
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after):
+        redirect_after = "/log"
+    response = RedirectResponse(url=redirect_after, status_code=status.HTTP_302_FOUND)
+    response.delete_cookie(_REDIRECT_COOKIE_NAME)
     response.set_cookie(
         key="session",
         value=session_token,
