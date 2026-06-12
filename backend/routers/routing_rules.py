@@ -5,9 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_viewer
-from config import settings
 from database import get_db
-from models import AccessToken, Notification, User
+from models import AccessToken, Notification, User, UserRole
 from schemas import (
     AccessTokenOut,
     NotificationOut,
@@ -29,7 +28,7 @@ async def list_rules(
     # Admins get all global rules. Regular users get global rules + their rules.
     # We pass user_id. If admin wants only global rules, we can just pass None.
     # Actually, the user wants to see their rules and global rules.
-    if current_user.role.value == settings.oidc_role_admin:
+    if current_user.role == UserRole.admin:
         # Admins can manage global rules (user_id=None)
         return await routing_rule_service.list_rules(db, None)
     return await routing_rule_service.list_rules(db, current_user.id)
@@ -49,7 +48,7 @@ async def get_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    user_id = None if current_user.role.value == settings.oidc_role_admin else current_user.id
+    user_id = None if current_user.role == UserRole.admin else current_user.id
     return await routing_rule_service.get_rule(db, rule_id, user_id)
 
 
@@ -61,7 +60,7 @@ async def create_rule(
 ):
     # If admin creates a rule here, should it be global or theirs?
     # Let's say admin creates global rules, user creates their rules.
-    user_id = None if current_user.role.value == settings.oidc_role_admin else current_user.id
+    user_id = None if current_user.role == UserRole.admin else current_user.id
     return await routing_rule_service.create_rule(db, body, user_id)
 
 
@@ -72,7 +71,7 @@ async def update_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    user_id = None if current_user.role.value == settings.oidc_role_admin else current_user.id
+    user_id = None if current_user.role == UserRole.admin else current_user.id
     return await routing_rule_service.update_rule(db, rule_id, body, user_id)
 
 
@@ -82,7 +81,7 @@ async def delete_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    user_id = None if current_user.role.value == settings.oidc_role_admin else current_user.id
+    user_id = None if current_user.role == UserRole.admin else current_user.id
     await routing_rule_service.delete_rule(db, rule_id, user_id)
 
 
@@ -94,7 +93,7 @@ async def test_rule(
 ):
     # Tests a given rule against recent notifications.
     limit = await settings_service.get_int(db, "test_rule_limit", default=10)
-    user_id = None if current_user.role.value == settings.oidc_role_admin else current_user.id
+    user_id = None if current_user.role == UserRole.admin else current_user.id
     return await routing_rule_service.test_rule(db, body, user_id, limit)
 
 
@@ -110,7 +109,7 @@ async def autocomplete_tags(
     stmt = select(func.jsonb_array_elements_text(Notification.tags)).distinct()
 
     # Restrict to user's tokens if not admin
-    if current_user.role.value != settings.oidc_role_admin:
+    if current_user.role != UserRole.admin:
         token_stmt = select(AccessToken.id).where(
             (AccessToken.user_id == current_user.id) | (AccessToken.is_global.is_(True))
         )
@@ -129,7 +128,7 @@ async def autocomplete_custom_fields(
 ):
     stmt = select(func.jsonb_object_keys(Notification.custom_fields)).distinct()
 
-    if current_user.role.value != settings.oidc_role_admin:
+    if current_user.role != UserRole.admin:
         token_stmt = select(AccessToken.id).where(
             (AccessToken.user_id == current_user.id) | (AccessToken.is_global.is_(True))
         )
@@ -146,7 +145,7 @@ async def autocomplete_tokens(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    if current_user.role.value == settings.oidc_role_admin:
+    if current_user.role == UserRole.admin:
         stmt = select(AccessToken)
     else:
         stmt = select(AccessToken).where(
