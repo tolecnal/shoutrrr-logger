@@ -54,6 +54,17 @@ export const getMe = (url: string) =>
     return res.json() as Promise<UserOut>;
   });
 
+// Logout is POST-only on the backend (a state-changing GET would allow
+// cross-site forced logout via top-level navigation). Clear the session,
+// then do a full navigation so all client state is dropped.
+export const logout = (): Promise<void> =>
+  fetch(`${BASE_UNVERSIONED}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).then(() => {
+    window.location.href = "/";
+  });
+
 // ---- Version ----
 // /api/version is intentionally unversioned — call it directly
 export const fetchVersion = () =>

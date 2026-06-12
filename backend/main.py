@@ -567,14 +567,17 @@ async def oidc_callback(
     return response
 
 
-@app.api_route(
+@app.post(
     "/api/auth/logout",
-    methods=["GET", "POST"],
     tags=["auth"],
     summary="Clear session cookie and redirect to home",
 )
 async def logout() -> RedirectResponse:
-    """Clears the session cookie. Accepts GET (browser link) and POST (fetch)."""
+    """Clears the session cookie.
+
+    POST-only: a state-changing GET would let any site force-logout users
+    via a top-level navigation (SameSite=Lax cookies are sent on those).
+    """
     response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
     response.delete_cookie("session")
     return response

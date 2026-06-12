@@ -18,7 +18,7 @@ import {
 import { PreferencesDialog } from "@/components/preferences-dialog";
 import { Topbar } from "@/components/topbar";
 import useSWR from "swr";
-import { fetchAlerts } from "@/lib/api";
+import { fetchAlerts, logout } from "@/lib/api";
 
 const navItems = [
   { href: "/log", label: "Notification Log", icon: Inbox, roles: ["viewer", "admin"] },
@@ -113,10 +113,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <a href="/api/auth/logout" className="flex items-center gap-2 text-destructive">
+                  <button
+                    type="button"
+                    onClick={() => void logout()}
+                    className="flex w-full items-center gap-2 text-destructive"
+                  >
                     <LogOut className="h-3.5 w-3.5" />
                     Sign out
-                  </a>
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -146,9 +150,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
           {user ? (
-            <a href="/api/auth/logout" className="text-xs text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
               Sign out
-            </a>
+            </button>
           ) : (
             <a href="/api/auth/login" className="text-xs text-primary">
               Sign in
