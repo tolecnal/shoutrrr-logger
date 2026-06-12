@@ -52,7 +52,7 @@ export function WebhookConfigPanel({
 
   let renderedPayload = payloadTemplate;
   for (const [key, value] of Object.entries(previewData)) {
-    const escapedValue = String(value).replace(/"/g, '\\"').replace(/\n/g, "\\n");
+    const escapedValue = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n");
     renderedPayload = renderedPayload.replaceAll(`{${key}}`, escapedValue);
   }
 
