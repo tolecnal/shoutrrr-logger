@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncGenerator
 
@@ -7,6 +8,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+# Per-subscriber buffer. Payloads are tiny "something changed" pings, so a
+# slow/stalled consumer loses nothing meaningful when old ones are dropped —
+# but an unbounded queue would grow forever and leak memory.
+_QUEUE_MAXSIZE = 100
 
 
 class SSEService:
@@ -25,7 +31,7 @@ class SSEService:
             await self._engine.dispose()
 
     async def subscribe(self) -> AsyncGenerator[str, None]:
-        queue = asyncio.Queue()
+        queue = asyncio.Queue(maxsize=_QUEUE_MAXSIZE)
         self.queues.add(queue)
         try:
             while True:
@@ -37,7 +43,14 @@ class SSEService:
     def _on_notify(self, connection, pid, channel, payload):
         """asyncpg callback for NOTIFY events."""
         for queue in self.queues:
-            queue.put_nowait(payload)
+            try:
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                # Slow consumer: drop the oldest ping to make room.
+                with contextlib.suppress(asyncio.QueueEmpty):
+                    queue.get_nowait()
+                with contextlib.suppress(asyncio.QueueFull):
+                    queue.put_nowait(payload)
 
     async def _listen(self):
         self._engine = create_async_engine(settings.database_url, pool_pre_ping=True)
