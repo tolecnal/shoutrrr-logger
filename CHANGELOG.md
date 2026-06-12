@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.3] — 2026-06-12
+
+### Security
+
+- **OIDC Open Redirects**: Fixed multiple instances of Open Redirect vulnerabilities flagged by CodeQL in both the OIDC login initiation and callback flows by tightening relative path verification and breaking taint chains.
+- **OIDC State Integrity**: Refactored the OIDC post-login redirection architecture to eliminate the short-lived `oidc_redirect` cookie. The redirect target is now bundled alongside the CSRF nonce inside a cryptographically signed JSON Web Token (JWT) passed via the OIDC `state` parameter, completely resolving CodeQL "Cookie Injection" / HTTP Response Splitting alerts and providing tamper-proof state.
+- **XSS Prevention**: Fixed incomplete JSON string escaping in the Generic Webhook live payload preview generator that failed to escape literal backslash characters.
+- **CI Least Privilege**: Explicitly set default `permissions: { contents: read }` across all GitHub Actions workflows to prevent privilege escalation via `GITHUB_TOKEN`.
+
 ## [0.7.2] — 2026-06-12
 
 ### Added
