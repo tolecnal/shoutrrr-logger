@@ -7,9 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-06-12
+
 ### Added
 
 - **SSRF Whitelist**: Added a new `SSRF_ALLOWED_HOSTNAMES` environment variable. This accepts a comma-separated list of hostnames or IPs that are explicitly permitted for outbound plugin requests (like Webhooks or Splunk), even if they resolve to a private, loopback, or reserved IP address. This is critical for self-hosted instances that need to route notifications to internal services on the same LAN without completely disabling SSRF protection.
+
+### Changed
+
+- **Node.js**: Bumped Dockerfile and CI pipelines to use the current LTS version, Node.js 24 ("Jod").
+- **Frontend Dependencies**: Updated core libraries including Next.js 16, React 19, Recharts v3 (with corresponding component upgrades), Zod, Vitest, and Lucide React.
+- **Backend Dependencies**: Updated core Python dependencies including `starlette` (1.3.1), `pydantic-core` (2.47.0), and `ruff` (0.15.17).
 
 ## [0.7.1] — 2026-06-11
 
