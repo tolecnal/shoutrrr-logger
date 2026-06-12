@@ -134,6 +134,7 @@ All variables are read from `.env` (or from the process environment). The `.env.
 | `DB_POOL_SIZE` | no | `5` | SQLAlchemy connection pool size, *per worker*. Total connections ≈ `WORKERS * (DB_POOL_SIZE + DB_MAX_OVERFLOW)` — keep this under PostgreSQL's `max_connections` (default 100). |
 | `DB_MAX_OVERFLOW` | no | `5` | Extra burst connections allowed beyond `DB_POOL_SIZE`, per worker. |
 | `BACKEND_URL` | no | `http://localhost:9000` | Internal URL the Next.js server uses to reach FastAPI. Only change this if you run the two as separate services. |
+| `SSRF_ALLOWED_HOSTNAMES` | no | _(empty)_ | Comma-separated list of hostnames or IPs explicitly permitted to bypass SSRF IP restriction. Useful for internal webhooks. |
 
 ---
 
@@ -670,6 +671,9 @@ All outbound plugin integrations that require HTTP connections (e.g., Slack webh
 - The target hostname is resolved via `socket.getaddrinfo`.
 - The resolved IP address is verified against a strict denylist, immediately rejecting connections to private (RFC 1918), loopback, link-local, multicast, or reserved IP ranges.
 - This ensures users cannot abuse the plugin system to blindly scan or attack services on the internal network or the Docker host.
+
+If you are self-hosting and need to route webhooks to an internal service (e.g. an internal Splunk instance on your LAN), you can whitelist specific hostnames or IP addresses by setting the `SSRF_ALLOWED_HOSTNAMES` environment variable to a comma-separated list.
+Example: `SSRF_ALLOWED_HOSTNAMES=vm-splunk01.xiro.net,192.168.1.1`
 
 To build a custom plugin, see **[PLUGINS.md](PLUGINS.md)**.
 

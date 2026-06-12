@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **SSRF Whitelist**: Added a new `SSRF_ALLOWED_HOSTNAMES` environment variable. This accepts a comma-separated list of hostnames or IPs that are explicitly permitted for outbound plugin requests (like Webhooks or Splunk), even if they resolve to a private, loopback, or reserved IP address. This is critical for self-hosted instances that need to route notifications to internal services on the same LAN without completely disabling SSRF protection.
+
 ## [0.7.1] — 2026-06-11
 
 ### Added

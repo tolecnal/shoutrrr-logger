@@ -46,6 +46,18 @@ def test_public_ip_url_allowed(ssrf_enabled):
     validate_url_for_ssrf("http://8.8.8.8/webhook")
 
 
+def test_whitelisted_hostname_allowed(ssrf_enabled, monkeypatch):
+    monkeypatch.setattr(settings, "ssrf_allowed_hostnames", "internal.corp,vm-splunk01.xiro.net")
+    # Even if it resolves to loopback/private, validation passes
+    monkeypatch.setattr("utils.ssrf.socket.getaddrinfo", _fake_getaddrinfo("192.168.1.1"))
+    validate_url_for_ssrf("http://vm-splunk01.xiro.net/webhook")
+
+
+def test_whitelisted_ip_allowed(ssrf_enabled, monkeypatch):
+    monkeypatch.setattr(settings, "ssrf_allowed_hostnames", "10.0.0.5")
+    validate_url_for_ssrf("http://10.0.0.5/webhook")
+
+
 def test_disabled_flag_skips_validation(monkeypatch, caplog):
     monkeypatch.setattr(settings, "ssrf_validation_disabled", True)
     with caplog.at_level("WARNING"):
@@ -79,6 +91,11 @@ class TestResolveAndPin:
         monkeypatch.setattr("utils.ssrf.socket.getaddrinfo", _fake_getaddrinfo("127.0.0.1"))
         with pytest.raises(httpcore.ConnectError, match="restricted IP address"):
             _resolve_and_pin("attacker.example.com")
+
+    def test_whitelisted_host_is_pinned_even_if_restricted(self, ssrf_enabled, monkeypatch):
+        monkeypatch.setattr(settings, "ssrf_allowed_hostnames", "splunk.local")
+        monkeypatch.setattr("utils.ssrf.socket.getaddrinfo", _fake_getaddrinfo("192.168.1.1"))
+        assert _resolve_and_pin("splunk.local") == "192.168.1.1"
 
     def test_resolution_failure_raises_connect_error(self, ssrf_enabled, monkeypatch):
         def _raise(host, port):

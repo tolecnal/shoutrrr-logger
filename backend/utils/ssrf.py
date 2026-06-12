@@ -61,6 +61,12 @@ def validate_url_for_ssrf(url: str) -> None:
     if not hostname:
         raise ValueError("Invalid URL: missing hostname")
 
+    allowed_hosts = [
+        h.strip().lower() for h in settings.ssrf_allowed_hostnames.split(",") if h.strip()
+    ]
+    if hostname.lower() in allowed_hosts:
+        return
+
     try:
         ip_strs = _resolve_addresses(hostname)
     except socket.gaierror as e:
@@ -86,8 +92,13 @@ def _resolve_and_pin(hostname: str) -> str:
     if not ip_strs:
         raise httpcore.ConnectError(f"Could not resolve hostname {hostname} to an IP address")
 
+    allowed_hosts = [
+        h.strip().lower() for h in settings.ssrf_allowed_hostnames.split(",") if h.strip()
+    ]
+    is_whitelisted = hostname.lower() in allowed_hosts
+
     for ip_str in ip_strs:
-        if _is_restricted_ip(ipaddress.ip_address(ip_str)):
+        if not is_whitelisted and _is_restricted_ip(ipaddress.ip_address(ip_str)):
             raise httpcore.ConnectError(
                 f"Connection to {hostname} blocked by SSRF policy: "
                 f"resolves to restricted IP address {ip_str}"

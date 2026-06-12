@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # deployment does not also disable SSRF protection.
     ssrf_validation_disabled: bool = False
 
+    # Comma-separated list of hostnames or IPs that are explicitly permitted
+    # to be routed to, even if they resolve to a private/loopback/reserved IP.
+    # Useful for integrating with self-hosted instances (like an internal Splunk).
+    ssrf_allowed_hostnames: str = ""
+
     @model_validator(mode="after")
     def validate_secrets(self) -> "Settings":
         if self.environment.lower() == "production":
