@@ -3,12 +3,11 @@ Tests for the post-login redirect target validation used by
 `/api/auth/login` (`redirect_after`) and `/api/auth/callback`.
 
 `/api/auth/login` validates `redirect_after` against
-`_SAFE_REDIRECT_PATH_RE` and stores it in a short-lived `oidc_redirect`
-cookie (falling back to "/log" for anything unsafe). The OIDC `state`
-param is an opaque CSRF nonce, decoupled from user-controlled input.
+`_SAFE_REDIRECT_PATH_RE` and stores it in the OIDC `state` param as a base64
+JSON payload alongside a CSRF nonce.
 
-`/api/auth/callback` reads that cookie, re-validates it the same way, and
-redirects there after completing the login — clearing the cookie.
+`/api/auth/callback` reads that `state` param, decodes it, re-validates the
+redirect target, and redirects there after completing the login.
 """
 
 import urllib.parse
@@ -62,7 +61,7 @@ class TestSafeRedirectPathRegex:
 
 
 # ---------------------------------------------------------------------------
-# /api/auth/login — redirect_after is stored in the oidc_redirect cookie
+# /api/auth/login — redirect_after is stored in the OIDC state param
 # ---------------------------------------------------------------------------
 
 
@@ -84,36 +83,42 @@ class TestOidcLoginRedirectAfter:
             },
         )
 
-    def _redirect_cookie(self, resp) -> str:
-        # The cookie value is percent-encoded; SimpleCookie may also quote it.
-        raw = (resp.cookies.get("oidc_redirect") or "").strip('"')
-        return urllib.parse.unquote(raw)
+    def _redirect_from_state(self, resp) -> str:
+        import base64
+        import json
 
-    async def test_safe_redirect_after_is_stored_in_cookie(self, client):
+        url = resp.headers["location"]
+        query = urllib.parse.urlparse(url).query
+        params = urllib.parse.parse_qs(query)
+        state_b64 = params["state"][0]
+        state_payload = json.loads(base64.urlsafe_b64decode(state_b64).decode())
+        return state_payload.get("redirect", "/log")
+
+    async def test_safe_redirect_after_is_stored_in_state(self, client):
         resp = await client.get(
             "/api/auth/login", params={"redirect_after": "/admin/users"}, follow_redirects=False
         )
-        assert self._redirect_cookie(resp) == "/admin/users"
+        assert self._redirect_from_state(resp) == "/admin/users"
 
     async def test_protocol_relative_redirect_after_falls_back_to_log(self, client):
         resp = await client.get(
             "/api/auth/login", params={"redirect_after": "//evil.com"}, follow_redirects=False
         )
-        assert self._redirect_cookie(resp) == "/log"
+        assert self._redirect_from_state(resp) == "/log"
 
     async def test_tab_smuggled_redirect_after_falls_back_to_log(self, client):
         resp = await client.get(
             "/api/auth/login", params={"redirect_after": "/\t/evil.com"}, follow_redirects=False
         )
-        assert self._redirect_cookie(resp) == "/log"
+        assert self._redirect_from_state(resp) == "/log"
 
 
 # ---------------------------------------------------------------------------
-# /api/auth/callback — redirects based on the oidc_redirect cookie
+# /api/auth/callback — redirects based on the OIDC state param
 # ---------------------------------------------------------------------------
 
 
-class TestOidcCallbackRedirectCookie:
+class TestOidcCallbackRedirectState:
     @pytest.fixture(autouse=True)
     def _mock_oidc_exchange(self, monkeypatch):
         import main as main_module
@@ -136,27 +141,32 @@ class TestOidcCallbackRedirectCookie:
         monkeypatch.setattr(main_module, "get_userinfo", fake_get_userinfo)
         monkeypatch.setattr(main_module, "verify_oidc_jwt", fake_verify_oidc_jwt)
 
-    async def test_redirect_cookie_is_honored_and_cleared(self, client):
+    def _create_state(self, redirect_after: str) -> str:
+        import base64
+        import json
+
+        state_payload = {"nonce": "dummy", "redirect": redirect_after}
+        return base64.urlsafe_b64encode(json.dumps(state_payload).encode()).decode()
+
+    async def test_redirect_state_is_honored(self, client):
+        state = self._create_state("/admin/users")
         resp = await client.get(
             "/api/auth/callback",
-            params={"code": "abc123"},
-            cookies={"oidc_redirect": urllib.parse.quote("/admin/users", safe="")},
+            params={"code": "abc123", "state": state},
             follow_redirects=False,
         )
         assert resp.headers["location"] == "/admin/users"
-        cleared = [h for h in resp.headers.get_list("set-cookie") if h.startswith("oidc_redirect=")]
-        assert cleared and "Max-Age=0" in cleared[0]
 
-    async def test_protocol_relative_redirect_cookie_falls_back_to_log(self, client):
+    async def test_protocol_relative_redirect_state_falls_back_to_log(self, client):
+        state = self._create_state("//evil.com")
         resp = await client.get(
             "/api/auth/callback",
-            params={"code": "abc123"},
-            cookies={"oidc_redirect": urllib.parse.quote("//evil.com", safe="")},
+            params={"code": "abc123", "state": state},
             follow_redirects=False,
         )
         assert resp.headers["location"] == "/log"
 
-    async def test_missing_redirect_cookie_falls_back_to_log(self, client):
+    async def test_missing_redirect_state_falls_back_to_log(self, client):
         resp = await client.get(
             "/api/auth/callback",
             params={"code": "abc123"},
