@@ -613,5 +613,19 @@ async def version_info() -> dict[str, str]:
 # Metrics
 # ---------------------------------------------------------------------------
 @app.get("/metrics", tags=["metrics"], summary="Prometheus metrics")
-async def metrics() -> Response:
+async def metrics(request: Request) -> Response:
+    """Prometheus exposition endpoint.
+
+    In the bundled docker-compose deployment this is unreachable from
+    outside (nginx only proxies /api/* to the backend). If the backend port
+    is exposed directly, set METRICS_TOKEN to require
+    ``Authorization: Bearer <token>`` from the scraper.
+    """
+    if settings.metrics_token:
+        auth = request.headers.get("Authorization", "")
+        supplied = auth[len("Bearer ") :] if auth.startswith("Bearer ") else ""
+        if not secrets.compare_digest(supplied, settings.metrics_token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid metrics token"
+            )
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)

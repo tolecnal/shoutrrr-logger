@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     oidc_verify_audience: bool = False
     oidc_audience: str = ""
 
+    # Optional bearer token protecting GET /metrics (Prometheus). Empty =
+    # unauthenticated, which is safe in the bundled compose deployment where
+    # nginx never routes /metrics to the backend; set it if the backend port
+    # is exposed directly.
+    metrics_token: str = ""
+
     environment: str = "production"
 
     # Disables outbound SSRF validation (utils.ssrf.validate_url_for_ssrf).
