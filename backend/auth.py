@@ -94,7 +94,7 @@ async def get_oidc_config() -> dict:
     return _oidc_config
 
 
-async def exchange_code_for_tokens(code: str, redirect_uri: str) -> dict:
+async def exchange_code_for_tokens(code: str, redirect_uri: str, code_verifier: str) -> dict:
     config = await get_oidc_config()
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -105,6 +105,7 @@ async def exchange_code_for_tokens(code: str, redirect_uri: str) -> dict:
                 "redirect_uri": redirect_uri,
                 "client_id": settings.oidc_client_id,
                 "client_secret": settings.oidc_client_secret,
+                "code_verifier": code_verifier,
             },
             timeout=15,
         )

@@ -6,12 +6,15 @@ Production:    gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4
 """
 
 import asyncio
+import base64
+import hashlib
 import logging
 import re
 import secrets
 import urllib.parse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -292,6 +295,30 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 # otherwise be interpreted by the browser as "//evil.com".
 _SAFE_REDIRECT_PATH_RE = re.compile(r"/(?![/\\])[^\x00-\x1f\x7f]*")
 
+# Short-lived httponly cookies that bind the OIDC login flow to the browser
+# that initiated it:
+#   - oidc_nonce: random nonce, also embedded in the signed `state` JWT. The
+#     callback rejects any state whose nonce doesn't match this cookie, so an
+#     attacker cannot complete a login in a victim's browser with a code/state
+#     obtained from their own session (login CSRF / session fixation).
+#   - oidc_pkce_verifier: PKCE code_verifier (RFC 7636). Only its SHA-256
+#     challenge is sent to the IdP; an intercepted authorization code cannot
+#     be redeemed without this browser-bound verifier.
+_NONCE_COOKIE_NAME = "oidc_nonce"
+_PKCE_COOKIE_NAME = "oidc_pkce_verifier"
+_OIDC_FLOW_TTL_SECONDS = 600  # 10 minutes — generous for an OIDC login round trip
+
+
+def _set_oidc_flow_cookie(response: RedirectResponse, key: str, value: str) -> None:
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        samesite="lax",
+        secure=settings.app_base_url.startswith("https"),
+        max_age=_OIDC_FLOW_TTL_SECONDS,
+    )
+
 
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
@@ -311,8 +338,17 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
 
     import jwt
 
-    state_payload = {"nonce": secrets.token_urlsafe(16), "redirect": safe_redirect}
+    nonce = secrets.token_urlsafe(24)
+    expires_at = datetime.now(UTC) + timedelta(seconds=_OIDC_FLOW_TTL_SECONDS)
+    state_payload = {"nonce": nonce, "redirect": safe_redirect, "exp": expires_at}
     state_b64 = jwt.encode(state_payload, settings.secret_key, algorithm="HS256")
+
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
+        .rstrip(b"=")
+        .decode()
+    )
 
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
@@ -322,9 +358,14 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
             "redirect_uri": f"{settings.app_base_url}/api/auth/callback",
             "scope": settings.oidc_scopes,
             "state": state_b64,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
         }
     )
-    return RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
+    response = RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
+    _set_oidc_flow_cookie(response, _NONCE_COOKIE_NAME, nonce)
+    _set_oidc_flow_cookie(response, _PKCE_COOKIE_NAME, code_verifier)
+    return response
 
 
 def _resolve_claim_path(userinfo: dict, dotted_path: str) -> object:
@@ -422,8 +463,39 @@ async def oidc_callback(
     refused with 403 — deactivate or remove roles in your SSO provider to
     revoke access.
     """
+    import jwt
+
+    # Verify the signed state and bind the callback to the browser that
+    # initiated the login: the nonce inside the state JWT must match the
+    # httponly cookie set by /api/auth/login. Without this check an attacker
+    # could complete a login in a victim's browser using a code/state pair
+    # from the attacker's own session (login CSRF).
+    try:
+        state_payload: dict = jwt.decode(state, settings.secret_key, algorithms=["HS256"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OIDC state parameter",
+        ) from exc
+
+    nonce_cookie = request.cookies.get(_NONCE_COOKIE_NAME, "")
+    if not nonce_cookie or not secrets.compare_digest(
+        str(state_payload.get("nonce", "")), nonce_cookie
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OIDC state does not match this browser session",
+        )
+
+    code_verifier = request.cookies.get(_PKCE_COOKIE_NAME, "")
+    if not code_verifier:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing PKCE verifier; restart the login flow",
+        )
+
     redirect_uri = f"{settings.app_base_url}/api/auth/callback"
-    token_response = await exchange_code_for_tokens(code, redirect_uri)
+    token_response = await exchange_code_for_tokens(code, redirect_uri, code_verifier)
     access_token: str = token_response["access_token"]
 
     # Fetch profile claims from the UserInfo endpoint.
@@ -464,15 +536,9 @@ async def oidc_callback(
 
     session_token = create_session_jwt(str(user.id), user.role.value)
 
-    # Redirect to frontend with session cookie set
-    redirect_after = "/log"
-    try:
-        import jwt
-
-        state_payload = jwt.decode(state, settings.secret_key, algorithms=["HS256"])
-        redirect_after = state_payload.get("redirect", "/log")
-    except Exception:
-        pass
+    # Redirect to frontend with session cookie set. The redirect target comes
+    # from the state JWT already verified above.
+    redirect_after = state_payload.get("redirect", "/log")
 
     if (
         isinstance(redirect_after, str)
@@ -488,6 +554,8 @@ async def oidc_callback(
         safe_redirect = "/log"
 
     response = RedirectResponse(url=safe_redirect, status_code=status.HTTP_302_FOUND)
+    response.delete_cookie(_NONCE_COOKIE_NAME)
+    response.delete_cookie(_PKCE_COOKIE_NAME)
     response.set_cookie(
         key="session",
         value=session_token,
