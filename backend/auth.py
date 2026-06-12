@@ -32,14 +32,18 @@ from services.settings import settings_service
 # ---------------------------------------------------------------------------
 # Token hashing
 # ---------------------------------------------------------------------------
-# Access tokens are high-entropy random strings (384 bits), so bcrypt's slow
-# KDF adds nothing — a plain SHA-256 HMAC keyed with SECRET_KEY is sufficient,
-# has no length limit, and is orders of magnitude faster under load.
+# Access tokens are high-entropy random strings (384 bits), so a slow KDF
+# like bcrypt adds nothing: brute-forcing a 384-bit value is infeasible
+# regardless of hash speed. A plain (unkeyed) SHA-256 digest is sufficient,
+# has no input length limit, is orders of magnitude faster under load, and
+# doubles as a deterministic lookup key (unique index on token_hash).
+# NOTE: this is NOT keyed with SECRET_KEY — do not reuse this scheme for
+# low-entropy secrets such as user-chosen passwords.
 # ---------------------------------------------------------------------------
 
 
 def hash_token(raw: str) -> str:
-    """Return a hex-encoded HMAC-SHA256 of the raw token."""
+    """Return the hex-encoded SHA-256 digest of the raw token."""
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
