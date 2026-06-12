@@ -24,6 +24,7 @@ from schemas import NotificationOut
 from services.notifications import notification_service
 from services.rate_limit import rate_limit_service
 from services.trigger_engine import run_trigger_engine
+from utils.request_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +109,7 @@ async def receive_notification(
     sender_name = token.name if token.name else (token.user.username if token.user else None)
 
     raw_payload = json.dumps(extra) if extra else None
-    source_ip = request.headers.get(
-        "X-Forwarded-For", request.client.host if request.client else None
-    )
+    source_ip = get_client_ip(request)
 
     # Extract advanced fields from extra
     severity = str(extra.pop("severity", None) or extra.pop("level", "info"))

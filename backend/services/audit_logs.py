@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models import AuditLog, User
 from repositories.audit_logs import AuditLogRepository, audit_log_repository
 from schemas import AuditLogOut, CursorPage
+from utils.request_ip import get_client_ip
 
 
 class AuditAction:
@@ -75,9 +76,7 @@ class AuditLogService:
     ) -> AuditLog:
         ip_address: str | None = None
         if request is not None:
-            ip_address = request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else None
-            )
+            ip_address = get_client_ip(request)
 
         entry = AuditLog(
             actor_user_id=actor.id,
