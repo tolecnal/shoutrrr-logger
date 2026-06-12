@@ -52,7 +52,10 @@ export function WebhookConfigPanel({
 
   let renderedPayload = payloadTemplate;
   for (const [key, value] of Object.entries(previewData)) {
-    const escapedValue = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, "\\n");
+    // JSON.stringify handles all JSON escape sequences (backslashes, quotes,
+    // newlines, control characters, ...); slice off the surrounding quotes
+    // since the value is substituted inside an existing template string.
+    const escapedValue = JSON.stringify(String(value)).slice(1, -1);
     renderedPayload = renderedPayload.replaceAll(`{${key}}`, escapedValue);
   }
 
