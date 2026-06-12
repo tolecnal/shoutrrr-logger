@@ -292,17 +292,11 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 _SAFE_REDIRECT_PATH_RE = re.compile(r"/(?![/\\])[^\x00-\x1f\x7f]*")
 
 
-def _safe_redirect_path(path: str, default: str = "/log") -> str:
-    """Validate that ``path`` is a safe same-origin redirect target."""
-    if _SAFE_REDIRECT_PATH_RE.fullmatch(path):
-        return path
-    return default
-
-
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     """Redirects the browser to the OIDC provider's authorization endpoint."""
-    redirect_after = _safe_redirect_path(redirect_after)
+    if not _SAFE_REDIRECT_PATH_RE.fullmatch(redirect_after):
+        redirect_after = "/log"
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
         {
@@ -453,7 +447,10 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    destination = _safe_redirect_path(state)
+    if _SAFE_REDIRECT_PATH_RE.fullmatch(state):
+        destination = state
+    else:
+        destination = "/log"
     response = RedirectResponse(url=destination, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="session",
