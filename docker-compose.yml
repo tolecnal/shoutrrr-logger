@@ -48,11 +48,11 @@ services:
       NGINX_SERVER_NAME: "${NGINX_SERVER_NAME:?NGINX_SERVER_NAME is required}"
     volumes:
       - ./nginx-config/templates:/etc/nginx/templates:ro
-      # TLS certificate/key are expected to already exist on the host:
-      #   /etc/ssl/certs/<NGINX_SERVER_NAME>.crt
-      #   /etc/ssl/private/<NGINX_SERVER_NAME>.key
-      - /etc/ssl/certs:/etc/ssl/certs:ro
-      - /etc/ssl/private:/etc/ssl/private:ro
+      # TLS certificate/key are expected to already exist on the host.
+      # Mount only this site's files — not all of /etc/ssl/private, which
+      # would hand the container every private key on the host.
+      - /etc/ssl/certs/${NGINX_SERVER_NAME}.crt:/etc/ssl/certs/${NGINX_SERVER_NAME}.crt:ro
+      - /etc/ssl/private/${NGINX_SERVER_NAME}.key:/etc/ssl/private/${NGINX_SERVER_NAME}.key:ro
     depends_on:
       app:
         condition: service_healthy
