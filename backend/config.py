@@ -67,6 +67,14 @@ class Settings(BaseSettings):
         if self.environment.lower() == "production":
             if self.secret_key == "change-me-in-production":
                 raise ValueError("SECRET_KEY must be changed from the default in production")
+            # SECRET_KEY signs session JWTs with HMAC-SHA256; RFC 7518 §3.2
+            # requires keys of at least the hash size (32 bytes). The README
+            # recommends `openssl rand -hex 32` (64 chars).
+            if len(self.secret_key) < 32:
+                raise ValueError(
+                    "SECRET_KEY must be at least 32 characters in production "
+                    "(generate one with: openssl rand -hex 32)"
+                )
             if not self.oidc_client_secret:
                 raise ValueError("OIDC_CLIENT_SECRET must be set in production")
         return self
