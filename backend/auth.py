@@ -147,11 +147,13 @@ def _find_rsa_key(jwks: dict, kid: str | None) -> dict | None:
 async def verify_oidc_jwt(token: str) -> dict:
     """Verifies the JWT signature, issuer, and expiration using the provider's JWKS.
 
-    Audience is intentionally not validated here: Keycloak access tokens are
-    typically issued with ``aud: "account"`` rather than this client's
-    ``client_id`` unless a custom audience mapper is configured, and this
-    token is only used to read supplemental role claims, not as a bearer
-    credential against our own API.
+    Audience validation is opt-in via ``OIDC_VERIFY_AUDIENCE`` (expected
+    value: ``OIDC_AUDIENCE``, falling back to ``OIDC_CLIENT_ID``). It is off
+    by default because Keycloak access tokens are typically issued with
+    ``aud: "account"`` rather than this client's ``client_id`` unless a
+    custom audience mapper is configured, and this token is only used to
+    read supplemental role claims, not as a bearer credential against our
+    own API.
     """
     unverified_header = jwt.get_unverified_header(token)
     kid = unverified_header.get("kid")
@@ -172,7 +174,10 @@ async def verify_oidc_jwt(token: str) -> dict:
         jwt.algorithms.RSAAlgorithm.from_jwk(rsa_key),
         algorithms=["RS256"],
         issuer=config["issuer"],
-        options={"verify_aud": False},
+        audience=(settings.oidc_audience or settings.oidc_client_id)
+        if settings.oidc_verify_audience
+        else None,
+        options={"verify_aud": settings.oidc_verify_audience},
     )
 
 

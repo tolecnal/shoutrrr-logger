@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     oidc_role_viewer: str = "viewer"
     oidc_role_admin: str = "admin"
 
+    # Validate the `aud` claim of OIDC access tokens. Off by default because
+    # Keycloak issues access tokens with aud="account" unless an audience
+    # mapper is configured for this client. When enabled, the expected
+    # audience is OIDC_AUDIENCE, falling back to OIDC_CLIENT_ID.
+    oidc_verify_audience: bool = False
+    oidc_audience: str = ""
+
     environment: str = "production"
 
     # Disables outbound SSRF validation (utils.ssrf.validate_url_for_ssrf).

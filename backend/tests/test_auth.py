@@ -227,9 +227,10 @@ class TestVerifyOidcJwt:
         claims = await verify_oidc_jwt(token)
         assert claims["sub"] == "user-1"
 
-    async def test_audience_is_not_validated(self, httpx_mock, discovery_response):
+    async def test_audience_is_not_validated_by_default(self, httpx_mock, discovery_response):
         """Keycloak access tokens commonly carry `aud: account` rather than
-        this client's client_id; the token must still verify."""
+        this client's client_id; with OIDC_VERIFY_AUDIENCE off (default) the
+        token must still verify."""
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
 
@@ -242,3 +243,39 @@ class TestVerifyOidcJwt:
 
         claims = await verify_oidc_jwt(token)
         assert claims["aud"] == "account"
+
+    async def test_wrong_audience_rejected_when_verification_enabled(
+        self, httpx_mock, discovery_response, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "oidc_verify_audience", True)
+        monkeypatch.setattr(settings, "oidc_audience", "")  # falls back to client_id
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        token = jwt.encode(
+            {"sub": "user-1", "iss": _ISSUER, "aud": "account", "exp": time.time() + 3600},
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        with pytest.raises(jwt.InvalidAudienceError):
+            await verify_oidc_jwt(token)
+
+    async def test_matching_audience_accepted_when_verification_enabled(
+        self, httpx_mock, discovery_response, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "oidc_verify_audience", True)
+        monkeypatch.setattr(settings, "oidc_audience", "my-audience")
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        httpx_mock.add_response(url=_JWKS_URL, json={"keys": [_jwk_from_key(key, "key-1")]})
+
+        token = jwt.encode(
+            {"sub": "user-1", "iss": _ISSUER, "aud": "my-audience", "exp": time.time() + 3600},
+            key,
+            algorithm="RS256",
+            headers={"kid": "key-1"},
+        )
+
+        claims = await verify_oidc_jwt(token)
+        assert claims["aud"] == "my-audience"
