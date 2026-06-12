@@ -135,26 +135,32 @@ describe("updateToken", () => {
     global.fetch = originalFetch;
   });
 
-  it("sets rate_limit_override as a query param", async () => {
+  const lastRequest = (): { url: string; body: Record<string, unknown> } => {
+    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    return { url, body: JSON.parse(init.body as string) as Record<string, unknown> };
+  };
+
+  it("sends rate_limit_override in the JSON body", async () => {
     await updateToken("tok-1", { rate_limit_override: 10 });
-    const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(url).toContain("rate_limit_override=10");
-    expect(url).not.toContain("clear_rate_limit_override");
+    const { url, body } = lastRequest();
+    expect(url).toBe("/api/v1/admin/tokens/tok-1");
+    expect(body).toEqual({ rate_limit_override: 10 });
   });
 
-  it("sets clear_rate_limit_override as a query param", async () => {
+  it("sends clear_rate_limit_override in the JSON body", async () => {
     await updateToken("tok-1", { clear_rate_limit_override: true });
-    const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(url).toContain("clear_rate_limit_override=true");
-    expect(url).not.toMatch(/[^_]rate_limit_override=/);
+    const { body } = lastRequest();
+    expect(body).toEqual({ clear_rate_limit_override: true });
   });
 
-  it("omits rate-limit params when not provided", async () => {
+  it("omits rate-limit fields when not provided", async () => {
     await updateToken("tok-1", { name: "renamed" });
-    const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-    expect(url).toContain("name=renamed");
-    expect(url).not.toContain("rate_limit_override");
-    expect(url).not.toContain("clear_rate_limit_override");
+    const { url, body } = lastRequest();
+    expect(url).not.toContain("renamed"); // nothing leaks into the URL
+    expect(body).toEqual({ name: "renamed" });
   });
 });
 
