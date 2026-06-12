@@ -4,13 +4,13 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_admin
 from database import get_db
 from models import AccessToken, User
-from schemas import AccessTokenCreate, AccessTokenCreated, AccessTokenOut
+from schemas import AccessTokenCreate, AccessTokenCreated, AccessTokenOut, AccessTokenUpdate
 from services.audit_logs import AuditAction, audit_log_service
 from services.tokens import access_token_service
 
@@ -72,31 +72,28 @@ async def create_token(
 )
 async def update_token(
     token_id: uuid.UUID,
+    body: AccessTokenUpdate,
     request: Request,
-    name: str | None = None,
-    is_active: bool | None = None,
-    rate_limit_override: int | None = Query(None, ge=0),
-    clear_rate_limit_override: bool = Query(False),
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AccessTokenOut:
     token = await access_token_service.update_token(
         db,
         token_id,
-        name=name,
-        is_active=is_active,
-        rate_limit_override=rate_limit_override,
-        clear_rate_limit_override=clear_rate_limit_override,
+        name=body.name,
+        is_active=body.is_active,
+        rate_limit_override=body.rate_limit_override,
+        clear_rate_limit_override=body.clear_rate_limit_override,
     )
     details: dict = {}
-    if name is not None:
-        details["name"] = name
-    if is_active is not None:
-        details["is_active"] = is_active
-    if clear_rate_limit_override:
+    if body.name is not None:
+        details["name"] = body.name
+    if body.is_active is not None:
+        details["is_active"] = body.is_active
+    if body.clear_rate_limit_override:
         details["rate_limit_override"] = None
-    elif rate_limit_override is not None:
-        details["rate_limit_override"] = rate_limit_override
+    elif body.rate_limit_override is not None:
+        details["rate_limit_override"] = body.rate_limit_override
     await audit_log_service.log(
         db,
         actor=admin,

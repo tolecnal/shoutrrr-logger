@@ -171,22 +171,17 @@ export const createToken = (body: {
 
 export const updateToken = (
   id: string,
-  params: {
+  body: {
     name?: string;
     is_active?: boolean;
     rate_limit_override?: number;
     clear_rate_limit_override?: boolean;
   }
-) => {
-  const sp = new URLSearchParams();
-  if (params.name !== undefined) sp.set("name", params.name);
-  if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
-  if (params.rate_limit_override !== undefined)
-    sp.set("rate_limit_override", String(params.rate_limit_override));
-  if (params.clear_rate_limit_override !== undefined)
-    sp.set("clear_rate_limit_override", String(params.clear_rate_limit_override));
-  return apiFetch<AccessTokenOut>(`/admin/tokens/${id}?${sp}`, { method: "PATCH" });
-};
+): Promise<AccessTokenOut> =>
+  apiFetch<AccessTokenOut>(`/admin/tokens/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 
 export const deleteToken = (id: string) =>
   apiFetch<void>(`/admin/tokens/${id}`, { method: "DELETE" });

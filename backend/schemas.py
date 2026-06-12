@@ -159,6 +159,17 @@ class AccessTokenCreate(BaseModel):
     rate_limit_override: int | None = Field(None, ge=0)
 
 
+class AccessTokenUpdate(BaseModel):
+    """Partial token update; omitted fields are left unchanged."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    is_active: bool | None = None
+    # New override value (notifications/minute); see AccessTokenCreate.
+    rate_limit_override: int | None = Field(None, ge=0)
+    # When true, resets rate_limit_override to "inherit the global setting".
+    clear_rate_limit_override: bool = False
+
+
 class PersonalTokenCreate(BaseModel):
     """Payload for a user creating their own private token."""
 

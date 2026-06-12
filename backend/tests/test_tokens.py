@@ -167,14 +167,14 @@ class TestAdminCreateToken:
 class TestAdminUpdateToken:
     async def test_requires_auth(self, client, access_token):
         _, tok = access_token
-        resp = await client.patch(f"/api/v1/admin/tokens/{tok.id}", params={"name": "x"})
+        resp = await client.patch(f"/api/v1/admin/tokens/{tok.id}", json={"name": "x"})
         assert resp.status_code == 401
 
     async def test_viewer_is_forbidden(self, client, viewer_session_headers, access_token):
         _, tok = access_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"is_active": "false"},
+            json={"is_active": False},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 403
@@ -183,7 +183,7 @@ class TestAdminUpdateToken:
         _, tok = extra_global_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"name": "renamed"},
+            json={"name": "renamed"},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
@@ -193,7 +193,7 @@ class TestAdminUpdateToken:
         _, tok = extra_global_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"is_active": "false"},
+            json={"is_active": False},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
@@ -202,7 +202,7 @@ class TestAdminUpdateToken:
     async def test_nonexistent_returns_404(self, client, admin_session_headers):
         resp = await client.patch(
             "/api/v1/admin/tokens/00000000-0000-0000-0000-000000000000",
-            params={"name": "x"},
+            json={"name": "x"},
             headers=admin_session_headers,
         )
         assert resp.status_code == 404
@@ -211,7 +211,7 @@ class TestAdminUpdateToken:
         _, tok = extra_global_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"rate_limit_override": 7},
+            json={"rate_limit_override": 7},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
@@ -224,7 +224,7 @@ class TestAdminUpdateToken:
         # First set an override...
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"rate_limit_override": 7},
+            json={"rate_limit_override": 7},
             headers=admin_session_headers,
         )
         assert resp.json()["rate_limit_override"] == 7
@@ -232,7 +232,7 @@ class TestAdminUpdateToken:
         # ...then clear it back to "inherit global default".
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"clear_rate_limit_override": "true"},
+            json={"clear_rate_limit_override": True},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
@@ -244,7 +244,7 @@ class TestAdminUpdateToken:
         _, tok = extra_global_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"rate_limit_override": -1},
+            json={"rate_limit_override": -1},
             headers=admin_session_headers,
         )
         assert resp.status_code == 422

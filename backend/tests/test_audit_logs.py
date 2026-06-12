@@ -132,7 +132,7 @@ class TestTokenAuditLogs:
         _, tok = extra_global_token
         resp = await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"name": "renamed-audited", "rate_limit_override": 10},
+            json={"name": "renamed-audited", "rate_limit_override": 10},
             headers=admin_session_headers,
         )
         assert resp.status_code == 200
@@ -334,7 +334,7 @@ class TestListAuditLogs:
         _, tok = extra_global_token
         await client.patch(
             f"/api/v1/admin/tokens/{tok.id}",
-            params={"name": "filter-check"},
+            json={"name": "filter-check"},
             headers=admin_session_headers,
         )
 
