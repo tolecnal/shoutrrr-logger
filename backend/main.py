@@ -435,7 +435,10 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    destination = state if state.startswith("/") else "/log"
+    if state.startswith("/") and not state.startswith("//") and not state.startswith("/\\"):
+        destination = state
+    else:
+        destination = "/log"
     response = RedirectResponse(url=destination, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="session",
