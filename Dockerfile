@@ -55,25 +55,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY backend/pyproject.toml ./
 
-# Build wheels into a dedicated directory for clean copying. The cache mount
+# Build wheels into a dedicated directory for clean copying. The dependency
+# list is read from pyproject.toml's [project] dependencies — the single
+# source of truth — instead of being duplicated here. The cache mount
 # persists pip's download/build cache across builds so unchanged dependencies
 # don't get re-downloaded and re-compiled every time.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip \
-    && pip wheel --wheel-dir=/wheels \
-        "fastapi[standard]>=0.115.0" \
-        "uvicorn[standard]>=0.32.0" \
-        "gunicorn>=23.0.0" \
-        "asyncpg>=0.30.0" \
-        "sqlalchemy[asyncio]>=2.0.0" \
-        "alembic>=1.14.0" \
-        "pyjwt[crypto]>=2.10.0" \
-        "httpx>=0.28.0" \
-        "python-multipart>=0.0.20" \
-        "pydantic-settings>=2.7.0" \
-        "markdown>=3.7.0" \
-        "nh3>=0.3.5" \
-        "prometheus-client>=0.21.0"
+    && python -c 'import tomllib, pathlib; deps = tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]; pathlib.Path("requirements.txt").write_text("\n".join(deps))' \
+    && echo "==> runtime dependencies:" && cat requirements.txt \
+    && pip wheel --wheel-dir=/wheels -r requirements.txt
 
 # ============================================================
 # Stage 3 – Final runtime image
