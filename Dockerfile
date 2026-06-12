@@ -3,7 +3,7 @@
 # ============================================================
 # Stage 1 – Build the Next.js frontend
 # ============================================================
-FROM node:22-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 # `frontend/` is a member of the pnpm workspace rooted here — install MUST
 # run from the workspace root. Installing from frontend/ alone makes pnpm

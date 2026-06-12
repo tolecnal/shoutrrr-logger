@@ -51,7 +51,7 @@ lint:backend:
 # ---------------------------------------------------------------------------
 lint:frontend:
   stage: lint
-  image: node:22-alpine
+  image: node:24-alpine
   services: []
   before_script:
     - corepack enable
@@ -116,7 +116,7 @@ test:alembic:
 # ---------------------------------------------------------------------------
 test:frontend:
   stage: test
-  image: node:22-alpine
+  image: node:24-alpine
   services: []
   before_script:
     - corepack enable
