@@ -7,6 +7,7 @@ Production:    gunicorn main:app -k uvicorn.workers.UvicornWorker -w 4
 
 import asyncio
 import logging
+import re
 import urllib.parse
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -282,15 +283,33 @@ app.include_router(admin_monitoring_tokens.router, prefix=f"{_V1}/admin/monitori
 # ---------------------------------------------------------------------------
 # Auth endpoints
 # ---------------------------------------------------------------------------
+_UNSAFE_REDIRECT_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _safe_redirect_path(path: str, default: str = "/log") -> str:
+    """Validate that ``path`` is a safe same-origin redirect target.
+
+    Rejects absolute/protocol-relative URLs (``//...``) and backslash
+    variants (``/\\...``, which some browsers normalise to ``//...``).
+    Also rejects any ASCII control characters (tab, CR, LF, ...): the
+    WHATWG URL spec strips these during parsing, so a value such as
+    ``"/\\t/evil.com"`` would otherwise pass the leading-slash check here
+    but be interpreted by the browser as ``"//evil.com"``.
+    """
+    if (
+        path.startswith("/")
+        and not path.startswith("//")
+        and not path.startswith("/\\")
+        and _UNSAFE_REDIRECT_CHARS.search(path) is None
+    ):
+        return path
+    return default
+
+
 @app.get("/api/auth/login", summary="Initiate OIDC login", tags=["auth"])
 async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     """Redirects the browser to the OIDC provider's authorization endpoint."""
-    if not (
-        redirect_after.startswith("/")
-        and not redirect_after.startswith("//")
-        and not redirect_after.startswith("/\\")
-    ):
-        redirect_after = "/log"
+    redirect_after = _safe_redirect_path(redirect_after)
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
         {
@@ -441,10 +460,7 @@ async def oidc_callback(
     session_token = create_session_jwt(str(user.id), user.role.value)
 
     # Redirect to frontend with session cookie set
-    if state.startswith("/") and not state.startswith("//") and not state.startswith("/\\"):
-        destination = state
-    else:
-        destination = "/log"
+    destination = _safe_redirect_path(state)
     response = RedirectResponse(url=destination, status_code=status.HTTP_302_FOUND)
     response.set_cookie(
         key="session",
