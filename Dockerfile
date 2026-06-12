@@ -88,6 +88,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Non-root runtime user. Both servers bind unprivileged ports (4000/9000)
+# and only log to stdout, so nothing needs root at runtime.
+RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
+
 # Install Python packages from pre-built wheels (no compiler needed)
 COPY --from=python-deps /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
@@ -113,13 +117,14 @@ LABEL org.opencontainers.image.title="shoutrrr-logger" \
 
 # ---- Backend ----
 WORKDIR /app/backend
-COPY backend/ ./
+COPY --chown=app:app backend/ ./
 
 # Generate _version_meta.py so version.py can import it at runtime.
 RUN RESOLVED_HASH="${GIT_HASH:-dev}" \
     && BUILD_TIME_VAL="${BUILD_TIME:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}" \
     && printf 'BUILD_GIT_HASH = "%s"\nBUILD_TIME = "%s"\n' "${RESOLVED_HASH}" "${BUILD_TIME_VAL}" \
        > _version_meta.py \
+    && chown app:app _version_meta.py \
     && echo "==> version metadata:" && cat _version_meta.py
 
 # ---- Frontend (Next.js standalone) ----
@@ -130,11 +135,16 @@ RUN RESOLVED_HASH="${GIT_HASH:-dev}" \
 # tree into /app so that relative structure (and Node's module resolution
 # walk-up) is preserved, landing server.js at /app/frontend/server.js.
 WORKDIR /app
-COPY --from=frontend-builder /build/frontend/.next/standalone ./
-COPY --from=frontend-builder /build/frontend/.next/static ./frontend/.next/static
+COPY --from=frontend-builder --chown=app:app /build/frontend/.next/standalone ./
+COPY --from=frontend-builder --chown=app:app /build/frontend/.next/static ./frontend/.next/static
 # Trailing slash on source turns this into a "copy contents if dir exists" –
 # Docker will not error if public/ is empty, but the .gitkeep ensures it exists.
-COPY --from=frontend-builder /build/frontend/public/ ./frontend/public/
+COPY --from=frontend-builder --chown=app:app /build/frontend/public/ ./frontend/public/
+
+# Next.js writes its image-optimization/ISR cache here at runtime, and
+# gunicorn's control server creates /app/.gunicorn (app's home directory).
+RUN mkdir -p /app/frontend/.next/cache \
+    && chown app:app /app /app/frontend/.next/cache
 
 # ---- Entrypoint ----
 COPY docker-entrypoint.sh ./
@@ -145,5 +155,7 @@ EXPOSE 4000 9000
 ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+USER app
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
