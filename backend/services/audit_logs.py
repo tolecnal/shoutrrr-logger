@@ -26,6 +26,9 @@ class AuditAction:
     TOKEN_DELETE = "token.delete"
     SETTINGS_UPDATE = "settings.update"
     PLUGIN_UPDATE = "plugin.update"
+    PLUGIN_PROFILE_CREATE = "plugin_profile.create"
+    PLUGIN_PROFILE_UPDATE = "plugin_profile.update"
+    PLUGIN_PROFILE_DELETE = "plugin_profile.delete"
     NOTIFICATION_BULK_DELETE = "notification.bulk_delete"
 
 

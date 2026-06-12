@@ -7,6 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Plugin Configuration Profiles**: Users can now create multiple named configuration profiles per plugin (e.g. several Slack channels), presented as tabs under Preferences → My Plugins. Each profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently through the routing engine. Profiles can be renamed, duplicated, deleted, and test-fired individually. A new *Max plugin profiles per user* admin setting caps profiles per plugin (default 5, 0 = unlimited; admins exempt). Ships with an Alembic migration that turns existing user configs into a "Default" profile.
+
+### Fixed
+
+- **User Plugin Test Button**: "Send test notification" in Preferences → My Plugins called the admin-only test endpoint, so it always failed with 403 for viewers — and tested the global config rather than the user's own. Tests now run through the user's selected profile via `POST /api/v1/user-plugins/{plugin}/profiles/{id}/test`.
+
+### Changed
+
+- **User Plugins API**: `/api/v1/user-plugins` responses are now profile-based (plugin metadata + a `profiles` array), and per-profile CRUD lives under `/api/v1/user-plugins/{plugin}/profiles/...`. The old `PATCH /api/v1/user-plugins/{plugin}` endpoint is removed.
+
 ## [0.7.5] — 2026-06-12
 
 ### Added

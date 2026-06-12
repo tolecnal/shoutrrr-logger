@@ -659,6 +659,12 @@ Plugins are configured globally in **Admin → Plugins**. Click the plugin row t
 
 If enabled by the admin, users can manage their own plugin configurations under **Preferences → Plugins**. A user can set up their own Slack webhook, for example, to receive notifications directly to their channel.
 
+#### Configuration profiles
+
+Each plugin supports multiple **named configuration profiles** per user, shown as tabs in the plugin's panel. Every profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently — so you can, say, send `critical` notifications to one Slack channel and everything else to another. Profiles can be renamed, duplicated ("copy settings and rules from the current profile"), deleted, and test-fired individually.
+
+By default users may create up to **5 profiles per plugin** — adjustable via the *Max plugin profiles per user* setting in **Admin → Settings** (0 = unlimited). Admins are always exempt from the cap.
+
 ### Routing Rules
 
 Both global admin configurations and individual user plugin configurations support **Routing Rules**. By default, all notifications are routed to an enabled plugin. You can define routing rules to only forward notifications that match specific criteria:

@@ -65,6 +65,19 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         unit="days",
     ),
     SettingMeta(
+        key="user_plugin_profiles_max",
+        label="Max plugin profiles per user",
+        description=(
+            "Maximum number of configuration profiles a user may create per "
+            "plugin (Preferences → My Plugins). Admins are exempt. Set to 0 "
+            "for unlimited."
+        ),
+        default=5,
+        min_value=0,
+        max_value=100,
+        unit="profiles",
+    ),
+    SettingMeta(
         key="private_tokens_enabled",
         label="Allow private access tokens",
         description=(

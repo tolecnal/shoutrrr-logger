@@ -279,22 +279,41 @@ class PluginUpdate(BaseModel):
     rules: list[dict[str, Any]] | None = None
 
 
-class UserPluginOut(BaseModel):
+class UserPluginProfileOut(BaseModel):
+    """One named configuration profile of a plugin for the current user."""
+
     id: uuid.UUID
-    user_id: uuid.UUID
-    plugin_id: str
+    name: str
     enabled: bool
     config: dict[str, Any]
     rules: list[dict[str, Any]] = Field(default_factory=list)
 
-    # Plugin metadata (not stored in DB, injected by service)
-    name: str = ""
-    description: str = ""
-
     model_config = {"from_attributes": True}
 
 
-class UserPluginUpdate(BaseModel):
+class UserPluginOut(BaseModel):
+    """A plugin available for user configuration, with all of the user's profiles."""
+
+    plugin_id: str
+    name: str = ""
+    description: str = ""
+    profiles: list[UserPluginProfileOut] = Field(default_factory=list)
+    # Resolved cap for this user (0 = unlimited); the UI disables "add
+    # profile" when len(profiles) >= max_profiles and max_profiles != 0.
+    max_profiles: int = 0
+
+
+class UserPluginProfileCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    # Optionally seed the new profile by copying an existing one
+    # ("duplicate profile"); config/rules below win over the copied values.
+    copy_from: uuid.UUID | None = None
+    config: dict[str, Any] | None = None
+    rules: list[dict[str, Any]] | None = None
+
+
+class UserPluginProfileUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
     enabled: bool | None = None
     config: dict[str, Any] | None = None
     rules: list[dict[str, Any]] | None = None

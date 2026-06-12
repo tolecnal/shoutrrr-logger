@@ -198,7 +198,13 @@ class RoutingRule(Base):
 
 
 class UserPluginConfig(Base):
-    """Persists the enabled state and config dict for a plugin for a specific user."""
+    """One named configuration profile of a plugin for a specific user.
+
+    A user may have multiple profiles per plugin (e.g. several Slack
+    channels), each with its own config and routing rules; every enabled
+    profile is dispatched independently. The number of profiles per plugin
+    is capped by the "user_plugin_profiles_max" setting (admins exempt).
+    """
 
     __tablename__ = "user_plugin_configs"
 
@@ -207,6 +213,9 @@ class UserPluginConfig(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     plugin_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="Default", server_default="Default"
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     config: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     rules: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
@@ -216,7 +225,9 @@ class UserPluginConfig(Base):
     )
 
     __table_args__ = (
-        Index("ix_user_plugin_configs_user_plugin", "user_id", "plugin_id", unique=True),
+        Index(
+            "ix_user_plugin_configs_user_plugin_name", "user_id", "plugin_id", "name", unique=True
+        ),
     )
 
 

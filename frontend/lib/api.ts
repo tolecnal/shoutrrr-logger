@@ -276,13 +276,38 @@ export const updatePlugin = (id: string, updates: { enabled?: boolean; allow_use
 export const testPlugin = (id: string) =>
   apiFetch<{ detail: string }>(`/admin/plugins/${id}/test`, { method: "POST" });
 
-// ---- User Plugins ----
-export const fetchUserPlugins = () => apiFetch<import("./types").UserPluginOut[]>("/user-plugins");
+// ---- User Plugins (named configuration profiles) ----
+export const fetchUserPlugins = (): Promise<import("./types").UserPluginOut[]> =>
+  apiFetch<import("./types").UserPluginOut[]>("/user-plugins");
 
-export const updateUserPlugin = (id: string, updates: { enabled?: boolean; config?: Record<string, unknown>; rules?: any[] }) =>
-  apiFetch<import("./types").UserPluginOut>(`/user-plugins/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(updates),
+export const createUserPluginProfile = (
+  pluginId: string,
+  body: { name: string; copy_from?: string }
+): Promise<import("./types").UserPluginProfileOut> =>
+  apiFetch<import("./types").UserPluginProfileOut>(`/user-plugins/${pluginId}/profiles`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const updateUserPluginProfile = (
+  pluginId: string,
+  profileId: string,
+  updates: { name?: string; enabled?: boolean; config?: Record<string, unknown>; rules?: any[] }
+): Promise<import("./types").UserPluginProfileOut> =>
+  apiFetch<import("./types").UserPluginProfileOut>(
+    `/user-plugins/${pluginId}/profiles/${profileId}`,
+    { method: "PATCH", body: JSON.stringify(updates) }
+  );
+
+export const deleteUserPluginProfile = (pluginId: string, profileId: string): Promise<void> =>
+  apiFetch<void>(`/user-plugins/${pluginId}/profiles/${profileId}`, { method: "DELETE" });
+
+export const testUserPluginProfile = (
+  pluginId: string,
+  profileId: string
+): Promise<{ detail: string }> =>
+  apiFetch<{ detail: string }>(`/user-plugins/${pluginId}/profiles/${profileId}/test`, {
+    method: "POST",
   });
 
 // ---- Routing Rules ----

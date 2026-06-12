@@ -47,15 +47,21 @@ export interface PluginMeta {
   rules: any[];
 }
 
-export interface UserPluginOut {
+export interface UserPluginProfileOut {
   id: string;
-  user_id: string;
-  plugin_id: string;
+  name: string;
   enabled: boolean;
   config: Record<string, unknown>;
   rules: any[];
+}
+
+export interface UserPluginOut {
+  plugin_id: string;
   name: string;
   description: string;
+  profiles: UserPluginProfileOut[];
+  /** Max profiles per plugin for this user; 0 = unlimited (admins). */
+  max_profiles: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,10 +1,26 @@
-from fastapi import APIRouter, Depends, Request
+"""
+/user-plugins endpoints – per-user plugin configuration profiles.
+
+A user may have multiple named profiles per plugin, each with its own config
+and routing rules; every enabled profile is dispatched independently. The
+number of profiles per plugin is capped by the "user_plugin_profiles_max"
+admin setting (admins are exempt).
+"""
+
+import uuid
+
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth import require_viewer
 from database import get_db
 from models import User
-from schemas import UserPluginOut, UserPluginUpdate
+from schemas import (
+    UserPluginOut,
+    UserPluginProfileCreate,
+    UserPluginProfileOut,
+    UserPluginProfileUpdate,
+)
 from services.audit_logs import AuditAction, audit_log_service
 from services.plugins import plugin_service
 
@@ -16,7 +32,7 @@ async def list_user_plugins(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    return await plugin_service.list_user_plugins(db, current_user.id)
+    return await plugin_service.list_user_plugins(db, current_user)
 
 
 @router.get("/{plugin_id}", response_model=UserPluginOut)
@@ -25,25 +41,86 @@ async def get_user_plugin(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    return await plugin_service.get_user_plugin(db, current_user.id, plugin_id)
+    return await plugin_service.get_user_plugin(db, current_user, plugin_id)
 
 
-@router.patch("/{plugin_id}", response_model=UserPluginOut)
-async def update_user_plugin(
+@router.post(
+    "/{plugin_id}/profiles",
+    response_model=UserPluginProfileOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_user_plugin_profile(
     plugin_id: str,
-    body: UserPluginUpdate,
+    body: UserPluginProfileCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_viewer),
 ):
-    result = await plugin_service.update_user_plugin(db, current_user.id, plugin_id, body)
+    result = await plugin_service.create_user_profile(db, current_user, plugin_id, body)
     await audit_log_service.log(
         db,
         actor=current_user,
-        action=AuditAction.PLUGIN_UPDATE,
-        target_type="user_plugin",
-        target_id=f"{current_user.id}:{plugin_id}",
+        action=AuditAction.PLUGIN_PROFILE_CREATE,
+        target_type="user_plugin_profile",
+        target_id=f"{plugin_id}:{result.id}",
+        details={
+            "name": result.name,
+            "copied_from": str(body.copy_from) if body.copy_from else None,
+        },
+        request=request,
+    )
+    return result
+
+
+@router.patch("/{plugin_id}/profiles/{profile_id}", response_model=UserPluginProfileOut)
+async def update_user_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
+    body: UserPluginProfileUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_viewer),
+):
+    result = await plugin_service.update_user_profile(db, current_user, plugin_id, profile_id, body)
+    await audit_log_service.log(
+        db,
+        actor=current_user,
+        action=AuditAction.PLUGIN_PROFILE_UPDATE,
+        target_type="user_plugin_profile",
+        target_id=f"{plugin_id}:{profile_id}",
         details=body.model_dump(exclude_none=True, mode="json"),
         request=request,
     )
     return result
+
+
+@router.delete("/{plugin_id}/profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_viewer),
+):
+    deleted = await plugin_service.delete_user_profile(db, current_user, plugin_id, profile_id)
+    await audit_log_service.log(
+        db,
+        actor=current_user,
+        action=AuditAction.PLUGIN_PROFILE_DELETE,
+        target_type="user_plugin_profile",
+        target_id=f"{plugin_id}:{profile_id}",
+        details={"name": deleted.name},
+        request=request,
+    )
+
+
+@router.post("/{plugin_id}/profiles/{profile_id}/test", status_code=status.HTTP_202_ACCEPTED)
+async def test_user_plugin_profile(
+    plugin_id: str,
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_viewer),
+):
+    """Fire a synthetic test notification through this profile's saved config."""
+    await plugin_service.test_user_profile(db, current_user, plugin_id, profile_id)
+    return {"detail": "Test notification sent"}

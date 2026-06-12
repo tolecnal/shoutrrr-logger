@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { notificationsKey, auditLogsKey, updateToken, settingsToMap } from "@/lib/api";
+import {
+  notificationsKey,
+  auditLogsKey,
+  updateToken,
+  settingsToMap,
+  createUserPluginProfile,
+  updateUserPluginProfile,
+  deleteUserPluginProfile,
+  testUserPluginProfile,
+} from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // notificationsKey — URL shape
@@ -204,5 +213,69 @@ describe("apiFetch error handling", () => {
     const result = await fetchNotifications("/notifications?page_size=20");
     expect(result.total).toBe(0);
     expect(result.items).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// User plugin profiles — mock global fetch
+// ---------------------------------------------------------------------------
+
+describe("user plugin profile API", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({}),
+    } as unknown as Response);
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const lastRequest = (): { url: string; init: RequestInit } => {
+    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    return { url, init };
+  };
+
+  it("creates a profile with name and copy_from in the body", async () => {
+    await createUserPluginProfile("slack", { name: "Ops", copy_from: "abc-123" });
+    const { url, init } = lastRequest();
+    expect(url).toBe("/api/v1/user-plugins/slack/profiles");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ name: "Ops", copy_from: "abc-123" });
+  });
+
+  it("updates a profile via PATCH on the profile id", async () => {
+    await updateUserPluginProfile("slack", "p-1", { enabled: true, name: "Renamed" });
+    const { url, init } = lastRequest();
+    expect(url).toBe("/api/v1/user-plugins/slack/profiles/p-1");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ enabled: true, name: "Renamed" });
+  });
+
+  it("deletes a profile", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+    } as unknown as Response);
+    await deleteUserPluginProfile("slack", "p-1");
+    const { url, init } = lastRequest();
+    expect(url).toBe("/api/v1/user-plugins/slack/profiles/p-1");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("tests a profile through the user endpoint, not the admin one", async () => {
+    await testUserPluginProfile("slack", "p-1");
+    const { url, init } = lastRequest();
+    expect(url).toBe("/api/v1/user-plugins/slack/profiles/p-1/test");
+    expect(url).not.toContain("/admin/");
+    expect(init.method).toBe("POST");
   });
 });
