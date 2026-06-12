@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Annotated
 
@@ -24,6 +25,8 @@ from services.settings import settings_service
 from services.trigger_engine import send_email_async
 from utils.sanitize import sanitize_html
 from utils.templates import safe_format
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -166,11 +169,14 @@ async def test_email_alert(
             html_body=html_body,
             raise_errors=True,
         )
-    except Exception as e:
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        # Full traceback goes to the structured log; the response carries a
+        # concise summary for the admin debugging their SMTP settings.
+        logger.exception("Test email send failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to send test email: {type(exc).__name__}: {exc}",
+        ) from exc
 
     return {"detail": "Test email queued for sending via SMTP"}
 
