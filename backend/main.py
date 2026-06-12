@@ -309,11 +309,10 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
     if not _SAFE_REDIRECT_PATH_RE.fullmatch(safe_redirect):
         safe_redirect = "/log"
 
-    import base64
-    import json
+    import jwt
 
     state_payload = {"nonce": secrets.token_urlsafe(16), "redirect": safe_redirect}
-    state_b64 = base64.urlsafe_b64encode(json.dumps(state_payload).encode()).decode()
+    state_b64 = jwt.encode(state_payload, settings.secret_key, algorithm="HS256")
 
     config = await get_oidc_config()
     params = urllib.parse.urlencode(
@@ -468,10 +467,9 @@ async def oidc_callback(
     # Redirect to frontend with session cookie set
     redirect_after = "/log"
     try:
-        import base64
-        import json
+        import jwt
 
-        state_payload = json.loads(base64.urlsafe_b64decode(state).decode())
+        state_payload = jwt.decode(state, settings.secret_key, algorithms=["HS256"])
         redirect_after = state_payload.get("redirect", "/log")
     except Exception:
         pass

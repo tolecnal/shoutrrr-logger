@@ -84,14 +84,13 @@ class TestOidcLoginRedirectAfter:
         )
 
     def _redirect_from_state(self, resp) -> str:
-        import base64
-        import json
+        import jwt
 
         url = resp.headers["location"]
         query = urllib.parse.urlparse(url).query
         params = urllib.parse.parse_qs(query)
-        state_b64 = params["state"][0]
-        state_payload = json.loads(base64.urlsafe_b64decode(state_b64).decode())
+        state_jwt = params["state"][0]
+        state_payload = jwt.decode(state_jwt, settings.secret_key, algorithms=["HS256"])
         return state_payload.get("redirect", "/log")
 
     async def test_safe_redirect_after_is_stored_in_state(self, client):
@@ -142,11 +141,10 @@ class TestOidcCallbackRedirectState:
         monkeypatch.setattr(main_module, "verify_oidc_jwt", fake_verify_oidc_jwt)
 
     def _create_state(self, redirect_after: str) -> str:
-        import base64
-        import json
+        import jwt
 
         state_payload = {"nonce": "dummy", "redirect": redirect_after}
-        return base64.urlsafe_b64encode(json.dumps(state_payload).encode()).decode()
+        return jwt.encode(state_payload, settings.secret_key, algorithm="HS256")
 
     async def test_redirect_state_is_honored(self, client):
         state = self._create_state("/admin/users")
