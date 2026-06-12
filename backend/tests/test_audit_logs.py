@@ -347,3 +347,53 @@ class TestListAuditLogs:
         items = resp.json()["items"]
         assert len(items) >= 1
         assert all(e["action"] == "token.update" for e in items)
+
+
+# ---------------------------------------------------------------------------
+# Notification bulk delete
+# ---------------------------------------------------------------------------
+
+
+class TestBulkDeleteAuditLogs:
+    async def test_bulk_delete_logs_audit_entry(
+        self, client, admin_session_headers, sample_notification
+    ):
+        resp = await client.delete(
+            "/api/v1/notifications",
+            params={"q": "Watchtower"},
+            headers=admin_session_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 1
+
+        logs_resp = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "notification.bulk_delete"},
+            headers=admin_session_headers,
+        )
+        assert logs_resp.status_code == 200
+        items = logs_resp.json()["items"]
+        assert len(items) == 1
+        entry = items[0]
+        assert entry["target_type"] == "notification"
+        assert entry["details"]["deleted_count"] == 1
+        assert entry["details"]["query"] == "Watchtower"
+        assert entry["details"]["scope"] == "all"
+
+    async def test_viewer_bulk_delete_is_also_audited(
+        self, client, viewer_session_headers, admin_session_headers, sample_notification
+    ):
+        resp = await client.delete(
+            "/api/v1/notifications",
+            headers=viewer_session_headers,
+        )
+        assert resp.status_code == 200
+
+        logs_resp = await client.get(
+            "/api/v1/admin/audit-logs",
+            params={"action": "notification.bulk_delete"},
+            headers=admin_session_headers,
+        )
+        items = logs_resp.json()["items"]
+        assert len(items) == 1
+        assert items[0]["actor_username"] == "viewer"

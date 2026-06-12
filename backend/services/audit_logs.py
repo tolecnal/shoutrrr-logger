@@ -26,6 +26,7 @@ class AuditAction:
     TOKEN_DELETE = "token.delete"
     SETTINGS_UPDATE = "settings.update"
     PLUGIN_UPDATE = "plugin.update"
+    NOTIFICATION_BULK_DELETE = "notification.bulk_delete"
 
 
 # Keys matching this pattern are masked in stored `details` so secrets

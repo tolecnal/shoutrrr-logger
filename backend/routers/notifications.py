@@ -5,7 +5,7 @@ Requires at minimum viewer role.
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +19,7 @@ from schemas import (
     NotificationStateUpdate,
     NotificationStats,
 )
+from services.audit_logs import AuditAction, audit_log_service
 from services.notifications import notification_service
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -170,6 +171,7 @@ async def list_notifications(
     description="Deletes all notifications matching the provided search filters.",
 )
 async def bulk_delete_notifications(
+    request: Request,
     q: str | None = Query(None, description="Search query"),
     after: datetime | None = Query(None),
     before: datetime | None = Query(None),
@@ -188,6 +190,20 @@ async def bulk_delete_notifications(
         scope=scope,
         user_id=user.id,
         is_admin=(user.role == UserRole.admin),
+    )
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.NOTIFICATION_BULK_DELETE,
+        target_type="notification",
+        details={
+            "query": q,
+            "after": after.isoformat() if after else None,
+            "before": before.isoformat() if before else None,
+            "scope": scope,
+            "deleted_count": deleted_count,
+        },
+        request=request,
     )
     await db.commit()
     return {"deleted": deleted_count}
