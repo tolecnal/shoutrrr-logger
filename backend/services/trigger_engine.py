@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import smtplib
+import ssl
 import uuid
 from email.message import EmailMessage
 
@@ -106,7 +107,7 @@ async def send_email_async(
     raise_errors: bool = False,
     html_body: str | None = None,
 ):
-    def _send():
+    def _build_message() -> EmailMessage:
         msg = EmailMessage()
         msg.set_content(body)
         if html_body:
@@ -114,44 +115,47 @@ async def send_email_async(
         msg["Subject"] = subject
         msg["From"] = from_addr
         msg["To"] = to_addr
+        return msg
 
+    def _send():
+        msg = _build_message()
+        tls_context = ssl.create_default_context()
         try:
-            with smtplib.SMTP(host, port, timeout=10) as server:
-                if port == 587 or port == 25:
-                    try:
-                        server.starttls()
-                    except smtplib.SMTPException:
-                        pass
-                if user and password:
-                    server.login(user, password)
-                server.send_message(msg)
+            if port == 465:
+                # Implicit TLS with certificate validation.
+                with smtplib.SMTP_SSL(host, port, timeout=10, context=tls_context) as server:
+                    if user and password:
+                        server.login(user, password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(host, port, timeout=10) as server:
+                    server.ehlo()
+                    if server.has_extn("starttls"):
+                        server.starttls(context=tls_context)
+                        server.ehlo()
+                    elif user and password:
+                        # Never send credentials over an unencrypted
+                        # connection: a MITM stripping the STARTTLS
+                        # capability would otherwise capture them.
+                        raise smtplib.SMTPException(
+                            f"SMTP server {host}:{port} does not offer STARTTLS; "
+                            "refusing to send credentials over plaintext"
+                        )
+                    else:
+                        logger.warning(
+                            "Sending email to %s via %s:%s without TLS "
+                            "(server does not offer STARTTLS, no credentials configured)",
+                            to_addr,
+                            host,
+                            port,
+                        )
+                    if user and password:
+                        server.login(user, password)
+                    server.send_message(msg)
             logger.info(f"Email sent successfully to {to_addr}")
         except Exception as e:
             logger.error(f"Failed to send email to {to_addr}: {e}")
             if raise_errors:
                 raise
 
-    if port == 465:
-
-        def _send_ssl():
-            msg = EmailMessage()
-            msg.set_content(body)
-            if html_body:
-                msg.add_alternative(html_body, subtype="html")
-            msg["Subject"] = subject
-            msg["From"] = from_addr
-            msg["To"] = to_addr
-            try:
-                with smtplib.SMTP_SSL(host, port, timeout=10) as server:
-                    if user and password:
-                        server.login(user, password)
-                    server.send_message(msg)
-                logger.info(f"Email sent successfully to {to_addr}")
-            except Exception as e:
-                logger.error(f"Failed to send email to {to_addr}: {e}")
-                if raise_errors:
-                    raise
-
-        await asyncio.to_thread(_send_ssl)
-    else:
-        await asyncio.to_thread(_send)
+    await asyncio.to_thread(_send)
