@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -425,6 +426,7 @@ export function PreferencesDialog() {
   }, []);
 
   // Personal tokens state
+  const [creatingToken, setCreatingToken] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [tokenExpiry, setTokenExpiry] = useState("");
   const [tokenAllowPlugins, setTokenAllowPlugins] = useState(true);
@@ -452,9 +454,14 @@ export function PreferencesDialog() {
   const { data: settingsList } = useSWR(open ? "/settings" : null, fetchSettings, {
     revalidateOnFocus: false,
   });
-  const privateTokensEnabled = settingsList
-    ? settingsToMap(settingsList).private_tokens_enabled
-    : true;
+  const settingsMap = settingsList ? settingsToMap(settingsList) : null;
+  const privateTokensEnabled = settingsMap ? settingsMap.private_tokens_enabled : true;
+  // Admin master switch: when off, user tokens can't deliver externally, so we
+  // lock the per-token toggles in the personal create/edit dialogs.
+  const externalDeliveryEnabled = settingsMap ? settingsMap.user_external_delivery_enabled : true;
+  const deliveryNote = externalDeliveryEnabled
+    ? undefined
+    : "External delivery is currently disabled by your administrator.";
 
   const handleCreateToken = async () => {
     const name = tokenName.trim();
@@ -473,6 +480,7 @@ export function PreferencesDialog() {
       setTokenExpiry("");
       setTokenAllowPlugins(true);
       setTokenAllowEmail(true);
+      setCreatingToken(false);
       await mutateTokens();
     } catch (e) {
       setTokenError(e instanceof Error ? e.message : "Failed to create token");
@@ -805,55 +813,26 @@ export function PreferencesDialog() {
               </div>
             )}
 
-            {/* Create form */}
+            {/* Create */}
             {privateTokensEnabled ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Create personal token</p>
+              <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
                   Personal tokens are private — only notifications sent with them are visible to you.
                 </p>
-                <div className="flex gap-2">
-                  <Input
-                    id="personal-token-name"
-                    name="personal-token-name"
-                    className="h-8 flex-1 text-sm bg-input"
-                    placeholder="Token name"
-                    value={tokenName}
-                    onChange={(e) => setTokenName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
-                  />
-                  <Input
-                    id="personal-token-expiry"
-                    name="personal-token-expiry"
-                    type="date"
-                    className="h-8 w-36 text-sm bg-input"
-                    title="Optional expiry date"
-                    value={tokenExpiry}
-                    onChange={(e) => setTokenExpiry(e.target.value)}
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8 shrink-0"
-                    onClick={handleCreateToken}
-                    disabled={!tokenName.trim() || tokenCreating}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Create
-                  </Button>
-                </div>
-                <TokenDeliveryToggles
-                  idPrefix="personal-create"
-                  value={{
-                    allow_plugin_dispatch: tokenAllowPlugins,
-                    allow_email_alerts: tokenAllowEmail,
+                <Button
+                  size="sm"
+                  className="h-8 shrink-0 gap-1.5"
+                  onClick={() => {
+                    setTokenName("");
+                    setTokenExpiry("");
+                    setTokenAllowPlugins(true);
+                    setTokenAllowEmail(true);
+                    setTokenError(null);
+                    setCreatingToken(true);
                   }}
-                  onChange={(v) => {
-                    setTokenAllowPlugins(v.allow_plugin_dispatch);
-                    setTokenAllowEmail(v.allow_email_alerts);
-                  }}
-                />
-                {tokenError && (
-                  <p className="text-xs text-destructive">{tokenError}</p>
-                )}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Create token
+                </Button>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -943,6 +922,73 @@ export function PreferencesDialog() {
         </DialogContent>
       </Dialog>
 
+      {/* Personal token create dialog */}
+      <Dialog open={creatingToken} onOpenChange={(o) => !o && setCreatingToken(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Create personal token</DialogTitle>
+            <DialogDescription className="text-xs">
+              Private to you — only notifications sent with it are visible to you. The raw value
+              is shown once after creation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="create-personal-token-name">Token name</Label>
+              <Input
+                id="create-personal-token-name"
+                name="create-personal-token-name"
+                className="h-8 text-sm"
+                placeholder="e.g. laptop-watchtower"
+                value={tokenName}
+                onChange={(e) => setTokenName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="create-personal-token-expiry">
+                Expiration date <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Input
+                id="create-personal-token-expiry"
+                name="create-personal-token-expiry"
+                type="date"
+                className="h-8 text-sm"
+                value={tokenExpiry}
+                onChange={(e) => setTokenExpiry(e.target.value)}
+              />
+            </div>
+            <TokenDeliveryToggles
+              idPrefix="personal-create"
+              disabled={!externalDeliveryEnabled}
+              note={deliveryNote}
+              value={{
+                allow_plugin_dispatch: tokenAllowPlugins,
+                allow_email_alerts: tokenAllowEmail,
+              }}
+              onChange={(v) => {
+                setTokenAllowPlugins(v.allow_plugin_dispatch);
+                setTokenAllowEmail(v.allow_email_alerts);
+              }}
+            />
+            {tokenError && <p className="text-xs text-destructive">{tokenError}</p>}
+          </div>
+          <DialogFooter>
+            <Button size="sm" variant="secondary" onClick={() => setCreatingToken(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCreateToken}
+              disabled={tokenCreating || !tokenName.trim()}
+            >
+              {tokenCreating ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Personal token edit dialog */}
       <Dialog open={!!editingToken} onOpenChange={(o) => !o && setEditingToken(null)}>
         <DialogContent className="sm:max-w-md">
@@ -963,6 +1009,8 @@ export function PreferencesDialog() {
             </div>
             <TokenDeliveryToggles
               idPrefix="personal-edit"
+              disabled={!externalDeliveryEnabled}
+              note={deliveryNote}
               value={{
                 allow_plugin_dispatch: editTokenAllowPlugins,
                 allow_email_alerts: editTokenAllowEmail,

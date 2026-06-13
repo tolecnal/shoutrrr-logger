@@ -645,6 +645,8 @@ When creating or editing a token (global or personal), its creator controls whet
 
 Both flags are evaluated once, at ingestion time, and the decision is captured in the audit log. This lets you ingest sensitive notifications for in-app viewing while guaranteeing they are never relayed to an external service. The model is designed to grow: new external delivery channels can be added as further per-token toggles.
 
+**Admin master switch.** The **Allow external delivery for user tokens** [admin setting](#admin-settings) (Access tab) is a kill switch for abuse: when disabled, notifications sent with users' *private* tokens are never forwarded to plugins or emailed, regardless of each token's own toggles (in-app alerts are unaffected). Global (admin) tokens are not affected. While it's off, the per-token delivery toggles in **Preferences → My Tokens** are shown disabled with an explanatory note.
+
 ---
 
 ## Admin settings

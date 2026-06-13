@@ -78,6 +78,23 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         unit="profiles",
     ),
     SettingMeta(
+        key="user_external_delivery_enabled",
+        label="Allow external delivery for user tokens",
+        description=(
+            "Master switch for external delivery of notifications sent with "
+            "users' private tokens — forwarding to plugins and alert emails. "
+            "When disabled, those notifications are never delivered externally "
+            "regardless of each token's own toggles (in-app alerts are "
+            "unaffected). Use to stop abuse. Global (admin) tokens are not "
+            "affected."
+        ),
+        default=1,
+        min_value=0,
+        max_value=1,
+        unit="",
+        value_type="bool",
+    ),
+    SettingMeta(
         key="private_tokens_enabled",
         label="Allow private access tokens",
         description=(

@@ -23,6 +23,7 @@ from models import AccessToken
 from schemas import NotificationOut
 from services.notifications import notification_service
 from services.rate_limit import rate_limit_service
+from services.settings import settings_service
 from services.trigger_engine import run_trigger_engine
 from utils.request_ip import get_client_ip
 
@@ -162,7 +163,12 @@ async def receive_notification(
     # the token disallows it (no plugin — global or user — handles it). The
     # email-alert gate lives in the trigger engine, since the in-app GUI alert
     # must still be created regardless.
-    if token.allow_plugin_dispatch:
+    allow_plugins = token.allow_plugin_dispatch
+    # Admin master switch: private tokens never deliver externally when the
+    # admin has disabled user external delivery (global tokens are exempt).
+    if allow_plugins and not token.is_global:
+        allow_plugins = await settings_service.get_bool(db, "user_external_delivery_enabled")
+    if allow_plugins:
         background_tasks.add_task(
             notification_service.dispatch_plugins,
             notification_dict,

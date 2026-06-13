@@ -111,6 +111,7 @@ export interface AppSettings {
   rate_limit_per_minute: number;
   private_tokens_enabled: boolean;
   alert_states_enabled: boolean;
+  user_external_delivery_enabled: boolean;
 }
 
 // ---------------------------------------------------------------------------

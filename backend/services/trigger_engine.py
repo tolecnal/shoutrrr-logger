@@ -32,6 +32,14 @@ async def run_trigger_engine(
         if not token:
             return
 
+        # Effective email-delivery permission: the token's own toggle, further
+        # gated by the admin master switch for non-global (user) tokens.
+        allow_email = token.allow_email_alerts
+        if allow_email and not token.is_global:
+            from services.settings import settings_service  # noqa: PLC0415
+
+            allow_email = await settings_service.get_bool(db, "user_external_delivery_enabled")
+
         combined_texts = []
         if title_text:
             combined_texts.append(title_text)
@@ -86,10 +94,10 @@ async def run_trigger_engine(
                         user_id=rule.user_id,
                         notification_id=notification.id,
                         rule_id=rule.id,
-                        email_sent=not token.allow_email_alerts,
+                        email_sent=not allow_email,
                     )
                 )
-                if rule.send_email and token.allow_email_alerts:
+                if rule.send_email and allow_email:
                     users_to_email.setdefault(rule.user_id, set()).add(rule.name)
 
         if alerts_to_create:

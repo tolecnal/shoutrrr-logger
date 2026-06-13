@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Admin Master Switch for User External Delivery**: A new *Allow external delivery for user tokens* admin setting (Settings → Access) acts as a kill switch — when disabled, notifications sent with users' private tokens are never forwarded to plugins or emailed regardless of each token's own toggles (in-app alerts unaffected; global/admin tokens unaffected). Enforced at ingestion; the per-token delivery toggles in Preferences → My Tokens show disabled with a note while it's off.
+
+### Changed
+
+- **Personal Token Creation UX**: Creating a personal token (Preferences → My Tokens) now uses a "+ Create token" button that opens a dialog — name, optional expiry, and delivery toggles — matching the admin token creation flow, instead of the previous inline form.
+
 ### Fixed
 
 - **Logout Didn't End the SSO Session (account switching)**: Logging out only cleared the app's own session cookie, leaving the identity provider's SSO session alive — so in a shared browser the next login was silently completed as the previous user (e.g. log out as Y, try to log in as X, end up as Y again). Logout now performs **RP-initiated logout** (redirects to the IdP's `end_session_endpoint` with `id_token_hint` when available, then back to the app), and login sends `prompt=login` so the IdP always re-authenticates instead of reusing an existing SSO session. Requires the app's post-logout redirect URI to be registered with the provider (already documented for Keycloak).

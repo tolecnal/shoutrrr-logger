@@ -281,3 +281,122 @@ class TestEmailAlertGate:
             .one()
         )
         assert alert.email_sent is False  # left for the digest worker to send
+
+
+class TestAdminMasterSwitch:
+    """The user_external_delivery_enabled admin master switch overrides each
+    private token's own toggles; global (admin) tokens are exempt."""
+
+    async def test_master_switch_blocks_private_token_plugins(
+        self, client, db, viewer_user, monkeypatch
+    ):
+        from services import notifications as notif_module
+        from services.settings import settings_service
+
+        await settings_service.update(db, {"user_external_delivery_enabled": 0})
+        await db.commit()
+
+        raw = generate_raw_token()
+        tok = AccessToken(
+            user_id=viewer_user.id,
+            name="priv",
+            token_hash=hash_token(raw),
+            is_global=False,
+            allow_plugin_dispatch=True,  # token allows, but master switch is off
+        )
+        db.add(tok)
+        await db.commit()
+
+        called = {"dispatch": False}
+
+        async def fake_dispatch(notification_dict, user_id_str):
+            called["dispatch"] = True
+
+        monkeypatch.setattr(notif_module.notification_service, "dispatch_plugins", fake_dispatch)
+
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=b"hello",
+            headers={"Authorization": f"Bearer {raw}", "Content-Type": "text/plain"},
+        )
+        assert resp.status_code == 202
+        assert called["dispatch"] is False
+
+    async def test_master_switch_does_not_affect_global_tokens(
+        self, client, db, admin_user, monkeypatch
+    ):
+        from services import notifications as notif_module
+        from services.settings import settings_service
+
+        await settings_service.update(db, {"user_external_delivery_enabled": 0})
+        await db.commit()
+
+        raw = generate_raw_token()
+        tok = AccessToken(
+            user_id=admin_user.id,
+            name="glob",
+            token_hash=hash_token(raw),
+            is_global=True,
+            allow_plugin_dispatch=True,
+        )
+        db.add(tok)
+        await db.commit()
+
+        called = {"dispatch": False}
+
+        async def fake_dispatch(notification_dict, user_id_str):
+            called["dispatch"] = True
+
+        monkeypatch.setattr(notif_module.notification_service, "dispatch_plugins", fake_dispatch)
+
+        resp = await client.post(
+            "/api/v1/shoutrrr",
+            content=b"hello",
+            headers={"Authorization": f"Bearer {raw}", "Content-Type": "text/plain"},
+        )
+        assert resp.status_code == 202
+        assert called["dispatch"] is True  # global token unaffected by the switch
+
+    async def test_master_switch_suppresses_private_token_email(self, app, db, viewer_user):
+        from services.settings import settings_service
+        from services.trigger_engine import run_trigger_engine
+
+        await settings_service.update(db, {"user_external_delivery_enabled": 0})
+        await db.commit()
+
+        raw = generate_raw_token()
+        tok = AccessToken(
+            user_id=viewer_user.id,
+            name="priv-email",
+            token_hash=hash_token(raw),
+            is_global=False,
+            allow_email_alerts=True,  # token allows, but master switch is off
+        )
+        db.add(tok)
+        await db.flush()
+        notif = Notification(
+            token_id=tok.id, sender_name="x", title="t", message="quorum", severity="critical"
+        )
+        db.add(notif)
+        rule = AlertRule(
+            user_id=viewer_user.id,
+            name="crit",
+            match_pattern="quorum",
+            match_type="contains",
+            match_target="all",
+            send_email=True,
+            notification_scope="personal_only",
+        )
+        db.add(rule)
+        await db.commit()
+
+        await run_trigger_engine(str(notif.id), str(tok.id), "quorum", "t")
+
+        from sqlalchemy import select
+
+        alert = (
+            (await db.execute(select(UserAlert).where(UserAlert.notification_id == notif.id)))
+            .scalars()
+            .one()
+        )
+        assert alert.email_sent is True  # GUI alert created, email suppressed

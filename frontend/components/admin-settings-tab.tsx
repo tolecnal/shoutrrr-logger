@@ -239,6 +239,7 @@ export function SettingsTab() {
           {renderSetting("max_private_tokens")}
           {renderSetting("rate_limit_per_minute")}
           {renderSetting("user_plugin_profiles_max")}
+          {renderSetting("user_external_delivery_enabled")}
         </TabsContent>
         <TabsContent value="alerts" className="space-y-4">
           {renderSetting("email_alerts_enabled")}

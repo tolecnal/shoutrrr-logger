@@ -241,6 +241,7 @@ export function settingsToMap(list: SettingOut[]): AppSettings {
     rate_limit_per_minute: map.rate_limit_per_minute ?? 0,
     private_tokens_enabled: (map.private_tokens_enabled ?? 1) !== 0,
     alert_states_enabled: (map.alert_states_enabled ?? 0) !== 0,
+    user_external_delivery_enabled: (map.user_external_delivery_enabled ?? 1) !== 0,
   };
 }
 
