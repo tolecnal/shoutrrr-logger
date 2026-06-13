@@ -460,9 +460,6 @@ export function PreferencesDialog() {
   // Admin master switch: when off, user tokens can't deliver externally, so we
   // lock the per-token toggles in the personal create/edit dialogs.
   const externalDeliveryEnabled = settingsMap ? settingsMap.user_external_delivery_enabled : true;
-  const deliveryNote = externalDeliveryEnabled
-    ? undefined
-    : "External delivery is currently disabled by your administrator.";
 
   const handleCreateToken = async () => {
     const name = tokenName.trim();
@@ -776,6 +773,10 @@ export function PreferencesDialog() {
 
           {/* ---- My Tokens tab ---- */}
           <TabsContent value="tokens" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4">
+            {!externalDeliveryEnabled && (
+              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — notifications sent with your personal tokens won't be forwarded to plugins or emailed until it's re-enabled." />
+            )}
+
             {/* Reveal-once raw token banner */}
             {newRawToken && (
               <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 space-y-2">
@@ -964,10 +965,12 @@ export function PreferencesDialog() {
                 onChange={(e) => setTokenExpiry(e.target.value)}
               />
             </div>
+            {!externalDeliveryEnabled && (
+              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled." />
+            )}
             <TokenDeliveryToggles
               idPrefix="personal-create"
               disabled={!externalDeliveryEnabled}
-              note={deliveryNote}
               value={{
                 allow_plugin_dispatch: tokenAllowPlugins,
                 allow_email_alerts: tokenAllowEmail,
@@ -1012,10 +1015,12 @@ export function PreferencesDialog() {
                 onKeyDown={(e) => e.key === "Enter" && handleSaveTokenEdit()}
               />
             </div>
+            {!externalDeliveryEnabled && (
+              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled." />
+            )}
             <TokenDeliveryToggles
               idPrefix="personal-edit"
               disabled={!externalDeliveryEnabled}
-              note={deliveryNote}
               value={{
                 allow_plugin_dispatch: editTokenAllowPlugins,
                 allow_email_alerts: editTokenAllowEmail,

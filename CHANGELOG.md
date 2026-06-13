@@ -9,7 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **Admin Master Switch for User External Delivery**: A new *Allow external delivery for user tokens* admin setting (Settings → Access) acts as a kill switch — when disabled, notifications sent with users' private tokens are never forwarded to plugins or emailed regardless of each token's own toggles (in-app alerts unaffected; global/admin tokens unaffected). Enforced at ingestion. While it's off, users get a consistent warning across Preferences: the per-token delivery toggles (My Tokens) are disabled with a note, and an amber banner appears under Alert Rules and My Plugins explaining that email alerts / plugin forwarding for their private tokens won't be delivered.
+- **Admin Master Switch for User External Delivery**: A new *Allow external delivery for user tokens* admin setting (Settings → Access) acts as a kill switch — when disabled, notifications sent with users' private tokens are never forwarded to plugins or emailed regardless of each token's own toggles (in-app alerts unaffected; global/admin tokens unaffected). Enforced at ingestion. While it's off, users get a consistent amber warning everywhere it's relevant in Preferences — the My Tokens tab, the token create/edit dialogs (where the delivery toggles are also disabled), Alert Rules, and My Plugins — so it's clear that email alerts / plugin forwarding for their private tokens won't be delivered until an admin re-enables it.
 
 ### Changed
 
