@@ -27,6 +27,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **i18n Coverage**: Localized the remaining hardcoded UI strings to meet the i18n guardrail — the NQL search-help dialog (fully translated, incl. rich-text operators), plus pagination/select-all/clear-filter aria-labels, the rate-limit and Markdown-template placeholders, the version-refresh control, the personal-token test tooltip, the preview-failed toast, and the Splunk field-mapping / Slack emoji labels. English and Norwegian catalogs are at full key parity.
 - **NQL Lexer**: Fixed a bug where autocomplete suggestions such as `sender:` would render incorrectly as `ender:` due to greedy whitespace character exclusions swallowing the letter 's'.
 - **NQL Lexer Editor**: Corrected cursor visual desynchronization that occurred while typing by perfectly matching the overlay text classes (especially monospace font configurations) with the active transparent input.
 - **NQL Strict Validation**: The search parser now throws an explicit syntax error for unexpected characters (e.g., unclosed regex patterns like `/https`) rather than silently ignoring them, fulfilling the strict Jira-like search constraints.

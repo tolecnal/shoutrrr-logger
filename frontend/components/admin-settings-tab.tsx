@@ -142,7 +142,7 @@ export function SettingsTab() {
               value={val}
               onChange={(e) => setDraft((prev) => ({ ...prev, [setting.key]: e.target.value }))}
               className={`min-h-[150px] font-mono text-sm ${changed ? "ring-2 ring-primary/50" : ""}`}
-              placeholder="Markdown template for alert emails..."
+              placeholder={t('templatePlaceholder')}
             />
             <Dialog>
               <DialogTrigger asChild>
@@ -155,7 +155,7 @@ export function SettingsTab() {
                       const res = await previewTemplate({ template: val });
                       setPreviewHtml(res.html);
                     } catch (err) {
-                      toast.error("Failed to generate preview");
+                      toast.error(t('previewFailed'));
                     } finally {
                       setPreviewing(false);
                     }

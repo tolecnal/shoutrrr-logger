@@ -58,7 +58,7 @@ export function VersionPage() {
         <button
           onClick={() => mutate()}
           className="text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Refresh version info"
+          aria-label={t('refreshVersion')}
         >
           <RefreshCw className="h-4 w-4" />
         </button>

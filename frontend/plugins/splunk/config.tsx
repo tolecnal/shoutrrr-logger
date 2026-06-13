@@ -116,6 +116,7 @@ function FieldMappingRow({
   onDrop: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }) {
+  const t = useTranslations("Plugin_splunk");
   const listId = `sf-list-${index}`;
   return (
     <div
@@ -134,7 +135,7 @@ function FieldMappingRow({
         id={`splunk-mapping-source-${index}`}
         name={`splunk-mapping-source-${index}`}
         value={mapping.source_field}
-        placeholder="Source field"
+        placeholder={t('sourceFieldPlaceholder')}
         list={listId}
         onChange={(e) => onUpdate({ ...mapping, source_field: e.target.value })}
         className="h-7 text-xs font-mono flex-1 min-w-0"
@@ -149,14 +150,14 @@ function FieldMappingRow({
         id={`splunk-mapping-output-${index}`}
         name={`splunk-mapping-output-${index}`}
         value={mapping.output_key}
-        placeholder="Output key"
+        placeholder={t('outputKeyPlaceholder')}
         onChange={(e) => onUpdate({ ...mapping, output_key: e.target.value })}
         className="h-7 text-xs font-mono flex-1 min-w-0"
       />
       <button
         onClick={onRemove}
         className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-        aria-label="Remove mapping"
+        aria-label={t('removeMapping')}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

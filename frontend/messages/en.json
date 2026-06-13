@@ -116,7 +116,9 @@
       "testingSmtp": "Testing SMTP...",
       "saveChanges": "Save changes",
       "saving": "Saving…",
-      "unsavedChanges": "Unsaved changes"
+      "unsavedChanges": "Unsaved changes",
+      "previewFailed": "Failed to generate preview",
+      "templatePlaceholder": "Markdown template for alert emails..."
     },
     "tokens": {
       "tokensCount": "tokens",
@@ -170,7 +172,8 @@
       "toastFailedUpdate": "Failed to update token.",
       "toastDeleted": "Token deleted.",
       "toastFailedDelete": "Failed to delete token.",
-      "toastUpdated": "Token updated."
+      "toastUpdated": "Token updated.",
+      "rateLimitPlaceholder": "per minute"
     },
     "users": {
       "usersCount": "users",
@@ -227,7 +230,8 @@
     "unknown": "unknown",
     "apiMismatchPrefix": "Frontend expects API ",
     "apiMismatchMid": " but backend is serving ",
-    "apiMismatchSuffix": ". The frontend and backend may be out of sync."
+    "apiMismatchSuffix": ". The frontend and backend may be out of sync.",
+    "refreshVersion": "Refresh version info"
   },
   "Stats": {
     "title": "Statistics",
@@ -351,6 +355,35 @@
       "24h": "Last 24 hours",
       "7d": "Last week",
       "custom": "Custom range…"
+    },
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "selectAllDeletable": "Select all deletable notifications on this page",
+    "clearTimeFilter": "Clear time filter",
+    "groupFieldPlaceholder": "Field…",
+    "searchHelp": {
+      "title": "Notification Query Language (NQL)",
+      "intro": "Shoutrrr Logger uses a powerful JQL-like query language for searching your notifications. Combine operators, specific fields, and regular expressions to find exactly what you're looking for.",
+      "booleanHeading": "Boolean Logic & Grouping",
+      "booleanDesc": "Combine multiple clauses using <code>AND</code>, <code>OR</code>, and <code>NOT</code> (or <code>-</code>). You can also use parentheses <code>()</code> to group clauses.",
+      "fieldsHeading": "Targeted Fields",
+      "fieldTitleDesc": "Search in notification titles",
+      "fieldMessageDesc": "Search in the notification body",
+      "fieldSenderDesc": "Filter by sender name",
+      "fieldSeverityDesc": "Filter by severity level",
+      "fieldTagDesc": "Match specific tags",
+      "fieldTimeDesc": "Time range filters (e.g., 1h, 2d)",
+      "noFieldNote": "If no field is specified, the search applies globally across titles, messages, and senders.",
+      "matchingHeading": "Matching Rules",
+      "partialTitle": "Partial Match (ILIKE)",
+      "partialDesc": "Matches any part of the field, case-insensitive.",
+      "partialComment": "// matches \"github\", \"gitlab\"",
+      "exactTitle": "Exact Match",
+      "exactDesc": "Must match the entire field exactly.",
+      "exactComment": "// matches only \"github\"",
+      "regexTitle": "Regular Expressions",
+      "regexDesc": "Full POSIX regular expression support.",
+      "regexComment": "// matches either"
     }
   },
   "Theme": {
@@ -501,7 +534,6 @@
     "time24h": "24-hour (14:05:03)",
     "time12h": "12-hour (2:05:03 pm)",
     "localStoreNotice": "Preferences are stored locally in your browser and are not synced between devices.",
-    
     "labelRules": "Label rules",
     "labelRulesDesc": "Rules are applied in order. A notification can match multiple labels.",
     "addRule": "Add rule",
@@ -517,7 +549,6 @@
     "removePattern": "Remove pattern",
     "newPatternPlaceholder": "(?i)new pattern",
     "add": "Add",
-    
     "alertRules": "Alert rules",
     "alertRulesDesc": "Define which notifications should trigger a visual alert.",
     "noAlertRules": "No alert rules defined. Add one to receive notifications.",
@@ -549,7 +580,6 @@
     "noTitle": "No title",
     "sendTestEmailTitle": "Send test email with this notification",
     "andMore": "...and {count} more.",
-    
     "myTokens": "My Tokens",
     "tokenCreated": "Token created — copy it now, it will not be shown again.",
     "copyToken": "Copy token",
@@ -574,6 +604,7 @@
     "testRuleFail": "Failed to test rule",
     "externalDeliveryWarningAlerts": "External delivery is disabled by your administrator — rules with “Send email alert” enabled will still create in-app alerts, but no emails are sent for notifications from your private tokens until it's re-enabled.",
     "externalDeliveryWarningTokens": "External delivery is disabled by your administrator — notifications sent with your personal tokens won't be forwarded to plugins or emailed until it's re-enabled.",
-    "externalDeliveryWarningToggles": "External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled."
+    "externalDeliveryWarningToggles": "External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled.",
+    "testTokenTitle": "Test this token"
   }
 }

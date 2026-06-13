@@ -893,7 +893,7 @@ export function PreferencesDialog() {
                         size="sm"
                         variant="ghost"
                         className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
-                        title="Test this token"
+                        title={t('testTokenTitle')}
                       >
                         <span className="text-[10px] font-mono font-bold">{"{}"}</span>
                       </Button>

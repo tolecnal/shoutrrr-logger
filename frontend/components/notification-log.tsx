@@ -662,7 +662,7 @@ export function NotificationLog() {
                 className="h-7 w-7 p-0"
                 disabled={!canGoPrev}
                 onClick={handlePrev}
-                aria-label="Previous page"
+                aria-label={t('prevPage')}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
@@ -672,7 +672,7 @@ export function NotificationLog() {
                 className="h-7 w-7 p-0"
                 disabled={!canGoNext}
                 onClick={handleNext}
-                aria-label="Next page"
+                aria-label={t('nextPage')}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
@@ -899,7 +899,7 @@ export function NotificationLog() {
                               : false
                         }
                         onCheckedChange={toggleAllVisible}
-                        aria-label="Select all deletable notifications on this page"
+                        aria-label={t('selectAllDeletable')}
                       />
                     )}
                   </th>
@@ -1135,8 +1135,8 @@ function TimeRangeControl({
         <button
           onClick={handleClear}
           className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          title="Clear time filter"
-          aria-label="Clear time filter"
+          title={t('clearTimeFilter')}
+          aria-label={t('clearTimeFilter')}
         >
           <X className="h-3 w-3" />
         </button>
@@ -1197,7 +1197,7 @@ function GroupByControl({
             groupField ? "bg-primary/10 border-primary/40 text-foreground" : "bg-input"
           )}
         >
-          <SelectValue placeholder="Field…" />
+          <SelectValue placeholder={t('groupFieldPlaceholder')} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__none">{t('none')}</SelectItem>

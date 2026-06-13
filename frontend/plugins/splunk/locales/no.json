@@ -14,7 +14,7 @@
   "sourceField": "Kildefelt",
   "outputKey": "Utdatanøkkel",
   "add": "Legg til",
-  "removeMapping": "Fjern kartlegging",
+  "removeMapping": "Fjern tilordning",
   "noMappings": "Ingen kartlegging — alle varslingsfelt vil bli videresendt.",
   "preview": "Forhåndsvisning",
   "sampleData": "(eksempeldata — gjenspeiler gjeldende kartlegging og metadata)",
@@ -22,5 +22,7 @@
   "sending": "Sender…",
   "testSuccess": "Testhendelse sendt vellykket.",
   "testFailed": "Test feilet: ",
-  "unknownError": "Ukjent feil"
+  "unknownError": "Ukjent feil",
+  "sourceFieldPlaceholder": "Kildefelt",
+  "outputKeyPlaceholder": "Utdatanøkkel"
 }

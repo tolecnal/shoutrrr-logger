@@ -116,7 +116,9 @@
       "testingSmtp": "Tester SMTP...",
       "saveChanges": "Lagre endringer",
       "saving": "Lagrer…",
-      "unsavedChanges": "Ulagrede endringer"
+      "unsavedChanges": "Ulagrede endringer",
+      "previewFailed": "Kunne ikke generere forhåndsvisning",
+      "templatePlaceholder": "Markdown-mal for varsel-e-poster …"
     },
     "tokens": {
       "tokensCount": "tokens",
@@ -170,7 +172,8 @@
       "toastFailedUpdate": "Kunne ikke oppdatere token.",
       "toastDeleted": "Token slettet.",
       "toastFailedDelete": "Kunne ikke slette token.",
-      "toastUpdated": "Token oppdatert."
+      "toastUpdated": "Token oppdatert.",
+      "rateLimitPlaceholder": "per minutt"
     },
     "users": {
       "usersCount": "brukere",
@@ -227,7 +230,8 @@
     "unknown": "ukjent",
     "apiMismatchPrefix": "Frontend forventer API ",
     "apiMismatchMid": " men backend serverer ",
-    "apiMismatchSuffix": ". Frontend og backend kan være ute av synk."
+    "apiMismatchSuffix": ". Frontend og backend kan være ute av synk.",
+    "refreshVersion": "Oppdater versjonsinformasjon"
   },
   "Stats": {
     "title": "Statistikk",
@@ -351,6 +355,35 @@
       "24h": "Siste 24 timer",
       "7d": "Siste uke",
       "custom": "Tilpasset tidsrom…"
+    },
+    "prevPage": "Forrige side",
+    "nextPage": "Neste side",
+    "selectAllDeletable": "Velg alle slettbare varsler på denne siden",
+    "clearTimeFilter": "Fjern tidsfilter",
+    "groupFieldPlaceholder": "Felt …",
+    "searchHelp": {
+      "title": "Notification Query Language (NQL)",
+      "intro": "Shoutrrr Logger bruker et kraftig JQL-lignende spørrespråk for å søke i varslene dine. Kombiner operatorer, spesifikke felter og regulære uttrykk for å finne nøyaktig det du leter etter.",
+      "booleanHeading": "Boolsk logikk og gruppering",
+      "booleanDesc": "Kombiner flere uttrykk med <code>AND</code>, <code>OR</code> og <code>NOT</code> (eller <code>-</code>). Du kan også bruke parenteser <code>()</code> for å gruppere uttrykk.",
+      "fieldsHeading": "Målrettede felter",
+      "fieldTitleDesc": "Søk i varseltitler",
+      "fieldMessageDesc": "Søk i varselteksten",
+      "fieldSenderDesc": "Filtrer på avsendernavn",
+      "fieldSeverityDesc": "Filtrer på alvorlighetsgrad",
+      "fieldTagDesc": "Treff på bestemte etiketter",
+      "fieldTimeDesc": "Tidsromfiltre (f.eks. 1h, 2d)",
+      "noFieldNote": "Hvis ingen felt er angitt, søkes det globalt i titler, meldinger og avsendere.",
+      "matchingHeading": "Treffregler",
+      "partialTitle": "Delvis treff (ILIKE)",
+      "partialDesc": "Treffer hvor som helst i feltet, uavhengig av store og små bokstaver.",
+      "partialComment": "// treffer \"github\", \"gitlab\"",
+      "exactTitle": "Eksakt treff",
+      "exactDesc": "Må samsvare nøyaktig med hele feltet.",
+      "exactComment": "// treffer bare \"github\"",
+      "regexTitle": "Regulære uttrykk",
+      "regexDesc": "Full støtte for POSIX regulære uttrykk.",
+      "regexComment": "// treffer ett av dem"
     }
   },
   "Theme": {
@@ -501,7 +534,6 @@
     "time24h": "24-timers (14:05:03)",
     "time12h": "12-timers (2:05:03 pm)",
     "localStoreNotice": "Innstillinger lagres lokalt i nettleseren din og synkroniseres ikke mellom enheter.",
-    
     "labelRules": "Etikettregler",
     "labelRulesDesc": "Regler brukes i rekkefølge. Et varsel kan treffe flere etiketter.",
     "addRule": "Legg til regel",
@@ -517,7 +549,6 @@
     "removePattern": "Fjern mønster",
     "newPatternPlaceholder": "(?i)nytt mønster",
     "add": "Legg til",
-    
     "alertRules": "Varslingsregler",
     "alertRulesDesc": "Definer hvilke varsler som skal utløse en visuell alarm.",
     "noAlertRules": "Ingen varslingsregler definert. Legg til en for å motta varsler.",
@@ -549,7 +580,6 @@
     "noTitle": "Ingen tittel",
     "sendTestEmailTitle": "Send test-e-post med dette varselet",
     "andMore": "...og {count} mer.",
-    
     "myTokens": "Mine tokens",
     "tokenCreated": "Token opprettet — kopier det nå, det vil ikke bli vist igjen.",
     "copyToken": "Kopier token",
@@ -574,6 +604,7 @@
     "testRuleFail": "Kunne ikke teste regel",
     "externalDeliveryWarningAlerts": "Ekstern levering er deaktivert av administratoren din — regler med \"Send e-postvarsel\" aktivert vil fortsatt opprette appvarsler, men ingen e-post sendes for varsler fra dine private tokens før det er aktivert igjen.",
     "externalDeliveryWarningTokens": "Ekstern levering er deaktivert av administratoren din — varsler sendt med dine personlige tokens vil ikke bli videresendt til plugins eller sendt på e-post før det er aktivert igjen.",
-    "externalDeliveryWarningToggles": "Ekstern levering er deaktivert av administratoren din — disse knappene har ingen effekt før det er aktivert igjen."
+    "externalDeliveryWarningToggles": "Ekstern levering er deaktivert av administratoren din — disse knappene har ingen effekt før det er aktivert igjen.",
+    "testTokenTitle": "Test dette tokenet"
   }
 }

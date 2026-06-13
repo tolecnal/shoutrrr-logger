@@ -17,5 +17,6 @@
   "previewNotification": "Preview Notification",
   "previewBody": "This is what your message might look like in Slack.",
   "value": "Value",
-  "unknownError": "Unknown error"
+  "unknownError": "Unknown error",
+  "emojiTitle": "Emoji"
 }

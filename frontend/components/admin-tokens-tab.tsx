@@ -91,7 +91,7 @@ function RateLimitFields({
             className="h-7 w-24 text-xs"
             type="number"
             min={1}
-            placeholder="per minute"
+            placeholder={t('rateLimitPlaceholder')}
             value={value}
             disabled={mode !== "custom"}
             onChange={(e) => onValueChange(e.target.value)}

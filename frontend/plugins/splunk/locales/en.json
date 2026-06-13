@@ -22,5 +22,7 @@
   "sending": "Sending…",
   "testSuccess": "Test event sent successfully.",
   "testFailed": "Test failed: ",
-  "unknownError": "Unknown error"
+  "unknownError": "Unknown error",
+  "sourceFieldPlaceholder": "Source field",
+  "outputKeyPlaceholder": "Output key"
 }

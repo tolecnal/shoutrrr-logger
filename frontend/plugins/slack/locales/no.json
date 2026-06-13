@@ -17,5 +17,6 @@
   "previewNotification": "Forhåndsvisning av varsel",
   "previewBody": "Slik kan meldingen din se ut i Slack.",
   "value": "Verdi",
-  "unknownError": "Ukjent feil"
+  "unknownError": "Ukjent feil",
+  "emojiTitle": "Emoji"
 }

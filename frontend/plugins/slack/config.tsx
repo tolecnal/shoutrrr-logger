@@ -163,7 +163,7 @@ export function SlackConfigPanel({
           <p className="text-xs font-medium text-muted-foreground">{t('slackMessagePreview')}</p>
         </div>
         <div className="p-4 bg-background flex gap-3">
-          <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0 text-xl" title="Emoji">
+          <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0 text-xl" title={t('emojiTitle')}>
             🚨
           </div>
           <div className="flex-1 min-w-0">
