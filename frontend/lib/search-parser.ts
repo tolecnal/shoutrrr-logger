@@ -21,7 +21,7 @@ const TOKEN_REGEX_STR = [
   "(?<AND>\\bAND\\b)",
   "(?<OR>\\bOR\\b)",
   "(?<NOT>\\bNOT\\b|-)",
-  "(?<TERM_EXPR>(?<key>[a-zA-Z0-9_]+:)?(?:/(?<regex>(?:\\\\/|[^/])+)/|\"(?<dquote>(?:\\\\\"|[^\"])+)\"|'(?<squote>(?:\\\\'|[^'])+)'|(?<unquoted>[^\\s()]+)))",
+  "(?<TERM_EXPR>(?<key>[a-zA-Z0-9_]+:)?(?:/(?<regex>(?:\\\\/|[^/])+)/|\"(?<dquote>(?:\\\\\"|[^\"])+)\"|'(?<squote>(?:\\\\'|[^'])+)'|(?<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\\s()\\/\"'][^\\s()]*)))",
   "(?<WS>\\s+)"
 ].join("|");
 
@@ -30,11 +30,17 @@ const TOKEN_REGEX = new RegExp(TOKEN_REGEX_STR, "gi");
 export function tokenize(query: string): Token[] {
   const tokens: Token[] = [];
   let match;
+  let expectedIndex = 0;
   
   // reset regex state
   TOKEN_REGEX.lastIndex = 0;
 
   while ((match = TOKEN_REGEX.exec(query)) !== null) {
+    if (match.index > expectedIndex) {
+      throw { message: `Unexpected character '${query.slice(expectedIndex, match.index)}'`, position: expectedIndex };
+    }
+    expectedIndex = TOKEN_REGEX.lastIndex;
+
     if (!match.groups) continue;
     
     const start = match.index;
@@ -78,6 +84,10 @@ export function tokenize(query: string): Token[] {
 
       tokens.push({ type: 'TERM', value: termVal, field, exact, isRegex, start, end });
     }
+  }
+
+  if (expectedIndex < query.length) {
+    throw { message: `Unexpected character '${query.slice(expectedIndex)}'`, position: expectedIndex };
   }
 
   return tokens;

@@ -53,7 +53,7 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
 
   const getSuggestions = () => {
     const { word } = getActiveWordInfo();
-    if (!word) return KEYS; // show keys by default when empty word
+    if (!word) return []; // do not show keys by default when empty word to prevent intercepting Enter key
 
     const colonIndex = word.indexOf(":");
     if (colonIndex === -1) {

@@ -60,20 +60,25 @@ class Token:
 # Single quote: '...'
 # Unquoted: ...
 TOKEN_REGEX = re.compile(
-    r"(?P<LPAREN>\()"
-    r"|(?P<RPAREN>\))"
-    r"|(?P<AND>\bAND\b)"
-    r"|(?P<OR>\bOR\b)"
-    r"|(?P<NOT>\bNOT\b|-)"
-    r'|(?P<TERM_EXPR>(?P<key>[a-zA-Z0-9_]+:)?(?:/(?P<regex>(?:\\/|[^/])+)/|"(?P<dquote>(?:\\"|[^"])+)"|\'(?P<squote>(?:\\\'|[^\'])+)\'|(?P<unquoted>[^\s()]+)))'
-    r"|(?P<WS>\s+)",
+    r"(?P<LPAREN>\()|"
+    r"(?P<RPAREN>\))|"
+    r"(?P<AND>\bAND\b)|"
+    r"(?P<OR>\bOR\b)|"
+    r"(?P<NOT>\bNOT\b|-)|"
+    r"(?P<TERM_EXPR>(?P<key>[a-zA-Z0-9_]+:)?(?:/(?P<regex>(?:\\/|[^/])+)/|\"(?P<dquote>(?:\\\"|[^\"])+)\"|'(?P<squote>(?:\\'|[^'])+)'|(?P<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\s\(\)\/\"'][^\s\(\)]*)))|"
+    r"(?P<WS>\s+)",
     re.IGNORECASE,
 )
 
 
 def tokenize(query: str) -> list[Token]:
     tokens = []
+    expected_index = 0
     for match in TOKEN_REGEX.finditer(query):
+        if match.start() > expected_index:
+            raise ParseError(f"Unexpected character '{query[expected_index : match.start()]}'")
+        expected_index = match.end()
+
         kind = match.lastgroup
         if kind == "WS":
             continue
@@ -111,7 +116,11 @@ def tokenize(query: str) -> list[Token]:
             else:
                 continue
 
-            tokens.append(Token(T_TERM, val, field, exact, is_regex))
+            tokens.append(Token(T_TERM, val, field=field, exact=exact, is_regex=is_regex))
+
+    if expected_index < len(query):
+        raise ParseError(f"Unexpected character '{query[expected_index:]}'")
+
     return tokens
 
 
