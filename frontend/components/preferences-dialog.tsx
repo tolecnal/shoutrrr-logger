@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical, Mail } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical, Mail, Pencil } from "lucide-react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -56,6 +57,7 @@ import {
 } from "@/lib/use-label-rules";
 import { UserPluginsTab } from "@/components/user-plugins-tab";
 import { TokenDeliveryToggles } from "@/components/token-delivery-toggles";
+import type { AccessTokenOut } from "@/lib/types";
 
 const LABEL_COLORS: LabelColor[] = [
   "slate","blue","green","yellow","orange","red","purple","pink","teal",
@@ -433,6 +435,14 @@ export function PreferencesDialog() {
   const [copiedToken, setCopiedToken] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Personal token edit dialog state
+  const [editingToken, setEditingToken] = useState<AccessTokenOut | null>(null);
+  const [editTokenName, setEditTokenName] = useState("");
+  const [editTokenAllowPlugins, setEditTokenAllowPlugins] = useState(true);
+  const [editTokenAllowEmail, setEditTokenAllowEmail] = useState(true);
+  const [editTokenSaving, setEditTokenSaving] = useState(false);
+  const [editTokenError, setEditTokenError] = useState<string | null>(null);
+
   const { data: myTokens, mutate: mutateTokens } = useSWR(
     open ? "/me/tokens" : null,
     fetchMyTokens,
@@ -486,6 +496,43 @@ export function PreferencesDialog() {
     navigator.clipboard.writeText(newRawToken);
     setCopiedToken(true);
     setTimeout(() => setCopiedToken(false), 2000);
+  };
+
+  const openTokenEdit = (tok: AccessTokenOut) => {
+    setEditingToken(tok);
+    setEditTokenName(tok.name);
+    setEditTokenAllowPlugins(tok.allow_plugin_dispatch);
+    setEditTokenAllowEmail(tok.allow_email_alerts);
+    setEditTokenError(null);
+  };
+
+  const handleSaveTokenEdit = async () => {
+    if (!editingToken) return;
+    const name = editTokenName.trim();
+    if (!name) return;
+    setEditTokenSaving(true);
+    setEditTokenError(null);
+    try {
+      const patch: {
+        name?: string;
+        allow_plugin_dispatch?: boolean;
+        allow_email_alerts?: boolean;
+      } = {};
+      if (name !== editingToken.name) patch.name = name;
+      if (editTokenAllowPlugins !== editingToken.allow_plugin_dispatch)
+        patch.allow_plugin_dispatch = editTokenAllowPlugins;
+      if (editTokenAllowEmail !== editingToken.allow_email_alerts)
+        patch.allow_email_alerts = editTokenAllowEmail;
+      if (Object.keys(patch).length > 0) {
+        await updateMyToken(editingToken.id, patch);
+        await mutateTokens();
+      }
+      setEditingToken(null);
+    } catch (e) {
+      setEditTokenError(e instanceof Error ? e.message : "Failed to update token");
+    } finally {
+      setEditTokenSaving(false);
+    }
   };
 
 
@@ -562,6 +609,7 @@ export function PreferencesDialog() {
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
@@ -866,6 +914,16 @@ export function PreferencesDialog() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
+                    onClick={() => openTokenEdit(tok)}
+                    aria-label={`Edit ${tok.name}`}
+                    title="Edit token"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
                     onClick={() => handleDeleteToken(tok.id)}
                     disabled={deletingId === tok.id}
@@ -884,5 +942,52 @@ export function PreferencesDialog() {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Personal token edit dialog */}
+      <Dialog open={!!editingToken} onOpenChange={(o) => !o && setEditingToken(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Edit token</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor="edit-personal-token-name">Token name</Label>
+              <Input
+                id="edit-personal-token-name"
+                name="edit-personal-token-name"
+                className="h-8 text-sm"
+                value={editTokenName}
+                onChange={(e) => setEditTokenName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveTokenEdit()}
+              />
+            </div>
+            <TokenDeliveryToggles
+              idPrefix="personal-edit"
+              value={{
+                allow_plugin_dispatch: editTokenAllowPlugins,
+                allow_email_alerts: editTokenAllowEmail,
+              }}
+              onChange={(v) => {
+                setEditTokenAllowPlugins(v.allow_plugin_dispatch);
+                setEditTokenAllowEmail(v.allow_email_alerts);
+              }}
+            />
+            {editTokenError && <p className="text-xs text-destructive">{editTokenError}</p>}
+          </div>
+          <DialogFooter>
+            <Button size="sm" variant="secondary" onClick={() => setEditingToken(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveTokenEdit}
+              disabled={editTokenSaving || !editTokenName.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
