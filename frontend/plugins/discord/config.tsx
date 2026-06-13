@@ -186,7 +186,7 @@ export function DiscordConfigPanel({
       <div className="flex items-center gap-3">
         <Button
           size="sm"
-          variant="outline"
+          variant="secondary"
           onClick={handleTest}
           disabled={testState === "loading" || saving}
           className="h-7 text-xs gap-1.5"

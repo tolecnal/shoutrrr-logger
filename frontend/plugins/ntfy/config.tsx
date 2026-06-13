@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -134,20 +135,20 @@ export function NtfyConfigPanel({
         <p className="text-xs text-muted-foreground">{t('messageTemplateDesc')}</p>
       </div>
 
-      <div className="pt-2 border-t flex items-center justify-between">
-        <div className="text-sm">
-          {testError && <span className="text-destructive">{t('testFailed')}{testError}</span>}
-        </div>
+      <Separator />
+
+      <div className="flex items-center gap-3">
         <Button
-          variant="outline"
           size="sm"
+          variant="secondary"
           onClick={handleTest}
           disabled={testing || saving || !serverUrl || !topic}
-          className="gap-2"
+          className="h-7 text-xs gap-1.5"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-3 w-3" />
           {testing ? t('sending') : t('sendTestNotification')}
         </Button>
+        {testError && <span className="text-xs text-destructive">{t('testFailed')} {testError}</span>}
       </div>
     </div>
   );

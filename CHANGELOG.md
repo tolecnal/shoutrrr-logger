@@ -36,6 +36,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Graceful Locale Fallbacks**: Visiting URLs with an unsupported or missing language code (e.g., `/es/log`) now dynamically intercepts the route in `proxy.ts` and safely redirects users to the English default to prevent 404 crashes.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **i18n Missing Keys**: Fixed two `t()` references that pointed at undefined message keys (surfaced by `pnpm i18n:check`): the "invalid search query" toast title and the stats-chart tooltip noun. The tooltip count now uses a proper ICU plural (`one`/`other`) instead of appending an English-only `"s"`.
 - **i18n Coverage**: Localized the remaining hardcoded UI strings to meet the i18n guardrail — the NQL search-help dialog (fully translated, incl. rich-text operators), plus pagination/select-all/clear-filter aria-labels, the rate-limit and Markdown-template placeholders, the version-refresh control, the personal-token test tooltip, the preview-failed toast, and the Splunk field-mapping / Slack emoji labels. English and Norwegian catalogs are at full key parity.
@@ -69,6 +70,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Personal Token Creation UX**: Creating a personal token now uses a "+ Create token" button that opens a dialog (name, optional expiry, delivery toggles), matching the admin flow.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **Logout Didn't End the SSO Session (account switching)**: Logging out only cleared the app's own session cookie, leaving the IdP's SSO session alive — so in a shared browser the next login was silently completed as the previous user. Logout now performs **RP-initiated logout** (redirects to the IdP's `end_session_endpoint` with `id_token_hint`, then back to the app), and login sends `prompt=login` so the IdP always re-authenticates. Requires the app's post-logout redirect URI to be registered with the provider (documented for Keycloak).
 - **Unreachable Admin Settings**: Three registered settings were never wired into the Admin → Settings UI — *Max plugin profiles per user*, *Enable alert states (Ack/Resolve)*, and *Test rule preview limit* — and are now editable.
@@ -89,6 +91,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Metrics Write Optimization**: The per-request API metric insert now uses `SET LOCAL synchronous_commit TO off`, removing a WAL fsync from every API request. Scoped to the telemetry transaction only — notification, audit, and alert writes remain fully durable.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **Monitoring Token Dialog Overflow**: The "Token Created" dialog shown after creating a monitoring token was too narrow for its content — the usage example inlined the full raw token in a non-wrapping code element. The dialog now matches the access-token dialog width and references the token instead of duplicating it.
 
@@ -117,6 +120,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Docker Build**: The backend dependency wheel list is now derived from `backend/pyproject.toml` at build time instead of being hand-duplicated in the Dockerfile.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **Routing Rules Admin Check**: Admin detection in the routing-rules API compared the internal role enum against the *configurable OIDC role name*, silently demoting admins to per-user rule scope when `OIDC_ROLE_ADMIN` was customized. It now checks the internal role enum directly.
 - **Test-Email Diagnostics**: SMTP test failures are logged with full tracebacks through the structured logger (instead of `traceback.print_exc()` to stderr) and return a 502 with a concise error summary.
@@ -156,6 +160,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Syntax Highlighting**: Splunk HEC and Generic Webhook plugin live payload previews now feature full JSON syntax highlighting.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **Monitoring health counters**: `/api/v1/monitoring/health` always reported `alerts_unread` and `alerts_email_pending` as `0` due to a Python `not <Column>` expression being evaluated before query construction. Both counters now reflect actual data.
 - **Email alert digests**: the background email digest loop never sent any emails, for the same `not <Column>` reason — it could never find unsent alerts. Email digests now send correctly.
@@ -217,6 +222,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Settings API secret masking**: `GET /settings` and `GET /admin/settings` no longer return `smtp_password` in plaintext to any viewer or admin. The value is masked with a placeholder; submitting the placeholder back leaves the stored secret unchanged (an empty string still clears it), and "Test SMTP Settings" substitutes the real stored password when the placeholder is submitted.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - Corrected the packed-integer value of the retention-loop advisory lock key (`_RETENTION_LOCK_KEY`) so it matches its documented "sh_rt" encoding (cosmetic — the lock only needs to be a stable constant).
 
@@ -252,6 +258,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Notification log pagination moved to the toolbar**: "Page X of Y" and the Prev/Next controls now sit next to the total/visible count at the top of the notification log, so they stay visible regardless of table scroll position (previously shown only in a footer below the table).
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - **Preferences dialog**: the dialog no longer changes size when switching between the Display, Tag Rules, and My Tokens tabs (now a fixed height with internal scrolling per tab).
 - **Preferences dialog — Tag Rules**: rule rows now wrap onto multiple lines instead of clipping labels (tag name, "Exclude" toggle, color, pattern count) when there isn't enough horizontal space.
@@ -315,6 +322,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - **Version strings are now derived from package manifests** — no more duplicate hardcoded constants. `backend/version.py` reads `APP_VERSION` from `pyproject.toml` at import time via stdlib `tomllib`; `frontend/lib/version.ts` exports `FRONTEND_VERSION` from `NEXT_PUBLIC_APP_VERSION`, injected at Next.js build time by `next.config.mjs` from `package.json`. Bumping either manifest is now sufficient to update the About page.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 
 - Deprecated `HTTP_422_UNPROCESSABLE_ENTITY` constant replaced with `HTTP_422_UNPROCESSABLE_CONTENT` in `services/tokens.py`.
 
@@ -326,6 +334,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - Browser favicon and Apple touch icon using the app's bell icon (cyan `#22d3ee` on dark background), generated via Next.js `ImageResponse` — no static image files required.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 - HTML validation warning: search input in the notification log was missing `id` and `name` attributes.
 
 ---
@@ -350,6 +359,7 @@ This release centers on **plugin configuration profiles**, **per-token external 
 - Next.js bumped to **16.2.7**, nginx base image to **1.31.1-trixie**.
 
 ### Fixed
+- **Plugin UI Consistency**: Standardized the position, size, and style of "Test" buttons across all plugin configuration panels.
 - Splunk plugin `POST /admin/plugins/{id}/test` returned a `ResponseValidationError` because the endpoint declared `-> dict` but returned `None`. Now returns `{"detail": "..."}` as expected.
 - About page was displaying version `1.0.0` instead of the actual application version.
 
