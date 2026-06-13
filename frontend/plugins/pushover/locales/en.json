@@ -1,4 +1,6 @@
 {
+  "name": "Pushover",
+  "description": "Send push notifications using Pushover.",
   "userKey": "User Key",
   "userKeyDesc": "Your Pushover User or Group Key.",
   "apiToken": "API Token",

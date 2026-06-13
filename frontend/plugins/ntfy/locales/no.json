@@ -1,4 +1,6 @@
 {
+  "name": "ntfy",
+  "description": "Send push varsler ved å bruke ntfy.sh eller din egen instans.",
   "serverUrl": "Server URL",
   "serverUrlDesc": "URL til ntfy serveren (f.eks. https://ntfy.sh eller egen-driftet instans).",
   "topic": "Emne",
@@ -12,7 +14,7 @@
   "priorityMax": "Maks",
   "tags": "Merker",
   "tagsDesc": "Kommaseparerte merker (tags), f.eks. 'warning,skull'.",
-  "accessToken": "Tilgangstoken (Valgfritt)",
+  "accessToken": "Tilgangstoken",
   "accessTokenDesc": "Token for private emner.",
   "messageTemplate": "Meldingsmal",
   "messageTemplateDesc": "Tilgjengelige variabler: {title}, {message}, {severity}, {source_ip}, {fingerprint}, og {custom_fields.name}.",

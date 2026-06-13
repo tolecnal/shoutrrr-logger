@@ -68,8 +68,8 @@ function PluginCard({
     <div className="rounded-lg border border-border bg-card">
       <PluginCardHeader
         pluginId={plugin.id}
-        name={tPlugin.has(`Plugin_${plugin.id}.name`) ? tPlugin(`Plugin_${plugin.id}.name`) : plugin.name}
-        description={tPlugin.has(`Plugin_${plugin.id}.description`) ? tPlugin(`Plugin_${plugin.id}.description`) : plugin.description}
+        name={tPlugin.has(`Plugin_${plugin.id}.name` as any) ? tPlugin(`Plugin_${plugin.id}.name` as any) : plugin.name}
+        description={tPlugin.has(`Plugin_${plugin.id}.description` as any) ? tPlugin(`Plugin_${plugin.id}.description` as any) : plugin.description}
         enabledCount={enabledCount}
         expanded={expanded}
         onToggle={() => setExpanded((v) => !v)}
@@ -95,7 +95,7 @@ function PluginCard({
             <Separator />
             <PluginProfileTabs
               pluginId={plugin.id}
-              pluginName={tPlugin.has(`Plugin_${plugin.id}.name`) ? tPlugin(`Plugin_${plugin.id}.name`) : plugin.name}
+              pluginName={tPlugin.has(`Plugin_${plugin.id}.name` as any) ? tPlugin(`Plugin_${plugin.id}.name` as any) : plugin.name}
               profiles={plugin.profiles}
               maxProfiles={0}
               availableCustomFields={availableCustomFields}

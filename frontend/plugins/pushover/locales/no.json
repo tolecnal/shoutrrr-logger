@@ -1,4 +1,6 @@
 {
+  "name": "Pushover",
+  "description": "Send push varsler ved å bruke Pushover.",
   "userKey": "Brukernøkkel (User Key)",
   "userKeyDesc": "Din Pushover User eller Group Key.",
   "apiToken": "API Token",

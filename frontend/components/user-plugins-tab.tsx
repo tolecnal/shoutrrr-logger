@@ -46,8 +46,8 @@ function UserPluginCard({
     <div className="rounded-lg border border-border bg-card">
       <PluginCardHeader
         pluginId={userPlugin.plugin_id}
-        name={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name`) : userPlugin.name}
-        description={tPlugin.has(`Plugin_${userPlugin.plugin_id}.description`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.description`) : userPlugin.description}
+        name={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name` as any) : userPlugin.name}
+        description={tPlugin.has(`Plugin_${userPlugin.plugin_id}.description` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.description` as any) : userPlugin.description}
         enabledCount={enabledCount}
         expanded={expanded}
         onToggle={() => setExpanded((v) => !v)}
@@ -58,7 +58,7 @@ function UserPluginCard({
           <div className="px-4 py-4">
             <PluginProfileTabs
               pluginId={userPlugin.plugin_id}
-              pluginName={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name`) : userPlugin.name}
+              pluginName={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name` as any) : userPlugin.name}
               profiles={userPlugin.profiles}
               maxProfiles={userPlugin.max_profiles}
               availableCustomFields={availableCustomFields}

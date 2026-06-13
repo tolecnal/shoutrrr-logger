@@ -1,4 +1,6 @@
 {
+  "name": "ntfy",
+  "description": "Send push notifications using ntfy.sh or a self-hosted instance.",
   "serverUrl": "Server URL",
   "serverUrlDesc": "The ntfy server URL (e.g. https://ntfy.sh or a self-hosted instance).",
   "topic": "Topic",
@@ -12,7 +14,7 @@
   "priorityMax": "Max",
   "tags": "Tags",
   "tagsDesc": "Comma separated tags, e.g. 'warning,skull'.",
-  "accessToken": "Access Token (Optional)",
+  "accessToken": "Access Token",
   "accessTokenDesc": "Token for private topics.",
   "messageTemplate": "Message Template",
   "messageTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}.",
