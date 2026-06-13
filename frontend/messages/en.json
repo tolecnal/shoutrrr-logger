@@ -244,7 +244,8 @@
     "topSenders": "Top senders",
     "loading": "Loading…",
     "failedToLoad": "Failed to load stats",
-    "unknownSender": "(unknown)"
+    "unknownSender": "(unknown)",
+    "notificationCount": "{count, plural, one {notification} other {notifications}}"
   },
   "ApiPerformance": {
     "title": "API Performance",
@@ -345,6 +346,7 @@
     "noNotificationsFilter": "No notifications match the current filters.",
     "noNotificationsSearch": "No notifications match your search.",
     "searchFailed": "Search failed. Check your query syntax.",
+    "invalidSearch": "Invalid search query",
     "noNotifications": "No notifications yet.",
     "timePresets": {
       "all": "All time",

@@ -68,3 +68,35 @@ export default function MyComponent() {
 ```
 
 Please add any new keys to `frontend/messages/en.json` and optionally to other languages if you can.
+
+## 4. Coverage report (`pnpm i18n:check`)
+
+A dependency-free script (`frontend/scripts/i18n-report.mjs`) audits translation
+coverage. Run it from `frontend/`:
+
+```bash
+pnpm i18n:check             # deterministic checks (safe for CI)
+pnpm i18n:check --unused    # + list catalog keys never referenced in code
+pnpm i18n:check --hardcoded # + heuristic scan for un-translated UI strings
+pnpm i18n:check --all       # everything
+```
+
+It checks:
+
+1. **Catalog parity** *(fails the build)* — every non-`en` locale, in both
+   `messages/` and each `plugins/<id>/locales/`, must have exactly the same key
+   set as `en`. Missing/extra keys are listed per locale.
+2. **Used-but-undefined keys** *(fails the build)* — every statically resolvable
+   `t('key')` / `t.rich('key')` (combined with its `useTranslations("NS")`
+   namespace) must resolve to a key that exists in the `en` catalog. Catches
+   typos and keys referenced but never added.
+3. **Unused keys** *(advisory, `--unused`)* — catalog keys whose leaf name is
+   never referenced in code. Dynamic keys built with template literals
+   (e.g. ``t(`timePresets.${v}`)``) appear as false positives, so this never
+   fails the build — review before deleting.
+4. **Hardcoded strings** *(advisory, `--hardcoded`)* — heuristic scan for raw
+   prose in `placeholder` / `aria-label` / `title` attributes and `toast.*`
+   calls. Expect false positives; advisory only.
+
+The deterministic checks exit non-zero on failure, so `pnpm i18n:check` is safe
+to run in CI alongside `pnpm lint`.

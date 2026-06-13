@@ -17,6 +17,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Locale Switcher**: Added a top-bar component to easily toggle the UI language.
 - **UI Polish**: Added Lucide icons to all primary action buttons and application tabs (Admin Panel, Settings, User Preferences, Plugins) to ensure visual consistency and better UX.
 - **Audit Log Syntax Highlighting**: Audit Log JSON details now render with `react-syntax-highlighter` (vs2015 theme) for improved readability.
+- **i18n Coverage Report**: Added `pnpm i18n:check` (`frontend/scripts/i18n-report.mjs`), a dependency-free script that audits translation coverage. It fails on locale key-parity gaps (core messages + plugin locales) and on `t()` references to undefined keys, and offers advisory scans for unused keys (`--unused`) and hardcoded UI strings (`--hardcoded`). Safe to run in CI alongside `pnpm lint`. Documented in `TRANSLATING.md`.
 
 ### Changed
 
@@ -27,6 +28,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **i18n Missing Keys**: Fixed two `t()` references that pointed at undefined message keys (surfaced by `pnpm i18n:check`): the "invalid search query" toast title and the stats-chart tooltip noun. The tooltip count now uses a proper ICU plural (`one`/`other`) instead of appending an English-only `"s"`.
 - **i18n Coverage**: Localized the remaining hardcoded UI strings to meet the i18n guardrail — the NQL search-help dialog (fully translated, incl. rich-text operators), plus pagination/select-all/clear-filter aria-labels, the rate-limit and Markdown-template placeholders, the version-refresh control, the personal-token test tooltip, the preview-failed toast, and the Splunk field-mapping / Slack emoji labels. English and Norwegian catalogs are at full key parity.
 - **NQL Lexer**: Fixed a bug where autocomplete suggestions such as `sender:` would render incorrectly as `ender:` due to greedy whitespace character exclusions swallowing the letter 's'.
 - **NQL Lexer Editor**: Corrected cursor visual desynchronization that occurred while typing by perfectly matching the overlay text classes (especially monospace font configurations) with the active transparent input.

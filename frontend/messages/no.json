@@ -244,7 +244,8 @@
     "topSenders": "Topp avsendere",
     "loading": "Laster…",
     "failedToLoad": "Kunne ikke laste statistikk",
-    "unknownSender": "(ukjent)"
+    "unknownSender": "(ukjent)",
+    "notificationCount": "{count, plural, one {varsel} other {varsler}}"
   },
   "ApiPerformance": {
     "title": "API-ytelse",
@@ -345,6 +346,7 @@
     "noNotificationsFilter": "Ingen varsler samsvarer med de nåværende filtrene.",
     "noNotificationsSearch": "Ingen varsler samsvarer med søket ditt.",
     "searchFailed": "Søket feilet. Sjekk spørringssyntaksen.",
+    "invalidSearch": "Ugyldig søk",
     "noNotifications": "Ingen varsler enda.",
     "timePresets": {
       "all": "All tid",

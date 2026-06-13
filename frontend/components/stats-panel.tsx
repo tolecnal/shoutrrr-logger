@@ -77,7 +77,7 @@ function ChartTooltip({
         {format(parseISO(label), "EEE, MMM d")}
       </p>
       <p className="font-semibold text-foreground">
-        {payload[0].value.toLocaleString()} {t('notification')}{payload[0].value !== 1 ? "s" : ""}
+        {payload[0].value.toLocaleString()} {t('notificationCount', { count: payload[0].value })}
       </p>
     </div>
   );

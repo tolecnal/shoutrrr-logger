@@ -324,7 +324,10 @@ requirement for every change that adds or edits UI strings:
   `Plugin_<id>`.
 - This covers everything a user can read: labels, placeholders, button text,
   toasts, error messages, `aria-label`s, empty states, and dialog copy.
-- Verify locale key parity before committing.
+- Verify locale key parity before committing. Run `pnpm i18n:check` (from
+  `frontend/`) — it fails on parity gaps and on `t()` references to undefined
+  keys. `pnpm i18n:check --all` adds advisory unused-key and hardcoded-string
+  scans. See `TRANSLATING.md`.
 
 ---
 
