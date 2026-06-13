@@ -39,6 +39,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationDetail } from "@/components/notification-detail";
+import { SearchHelpDialog } from "@/components/search-help-dialog";
 import { SearchAutocomplete } from "./search-autocomplete";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -547,28 +548,7 @@ export function NotificationLog() {
               <Search className="h-3.5 w-3.5" />
               {t('search')}
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" title={t('searchSyntaxHelp')}>
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4 text-sm bg-card border-border shadow-md" align="start">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">{t('advancedSearch')}</h4>
-                  <p className="text-muted-foreground">{t('advancedSearchDesc')}</p>
-                  <ul className="space-y-1 mt-2 list-disc list-inside text-muted-foreground">
-                    <li><code className="text-foreground">title:"error"</code> - exact substring in title</li>
-                    <li><code className="text-foreground">message:/regex/</code> - regex search in message</li>
-                    <li><code className="text-foreground">tag:env:prod</code> - search in tags</li>
-                    <li><code className="text-foreground">sender:app*</code> - wildcard matching</li>
-                    <li><code className="text-foreground">severity:info</code> - search by severity</li>
-                    <li><code className="text-foreground">after:1h before:1d</code> - relative time filters</li>
-                  </ul>
-                  <p className="text-muted-foreground mt-2">Combine terms: <code className="text-foreground">severity:error tag:prod /timeout/</code></p>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <SearchHelpDialog />
             {query && (
               <Button
                 type="button"
