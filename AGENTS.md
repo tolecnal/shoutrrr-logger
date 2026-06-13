@@ -159,6 +159,7 @@ default=uuid4,
 - TypeScript Strictness: "strict": true is non-negotiable. Never inject any types. Provide explicit function return types. Treat interfaces as the standard for defining contract/DTO objects.
 - Data Access Layer: Direct fetch calls scattered through subcomponents are strictly forbidden. All data queries must go through a centralized client wrapper (lib/api.ts) managing centralized headers, errors, and silent token refresh logic.
 - Client Security: Use OIDC Authorization Code Flow with PKCE via safe libraries (openid-client, oidc-client-ts). Never store access/refresh tokens inside localStorage. Ensure silent token refresh runs securely over HTTPS with HTTP-only cookies protected against CSRF vulnerabilities.
+- Internationalization (i18n): All user-facing text is localized with next-intl. Never hardcode user-facing strings — resolve them via `useTranslations`/`getTranslations` and a message key. Every new key MUST be added to all locale files under `frontend/messages/` (currently `en.json` and `no.json`) at full key parity; `en.json` is the source of truth. Plugin strings live in `frontend/plugins/<id>/locales/<locale>.json`, namespaced `Plugin_<id>`. This applies to labels, placeholders, button text, toasts, errors, `aria-label`s, empty states, and dialog copy. Verify locale key parity before committing.
 
 ---
 
@@ -216,3 +217,4 @@ Follow these guidelines:
 - Use Conventional Commits formatting for messages (e.g., `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`).
 - Run relevant tests and verify that the build passes before committing.
 - You must execute `ruff check backend/` and `ruff format --check backend/ --exclude backend/build/` via the `.venv` to enforce CI linting compliance before every commit.
+- Clean up throwaway scratch/debug artifacts once they've served their purpose — one-off probe scripts, ad-hoc `test_*.py` / `test*.js` files at the repo root, REPL dumps, etc. They must never be committed or left behind in the working tree. Only real, committed tests belong under `backend/tests/` and `frontend/tests/`. Verify the working tree is free of such debris before finishing a task.

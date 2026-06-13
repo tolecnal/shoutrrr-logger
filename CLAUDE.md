@@ -308,6 +308,24 @@ Version: Next.js 16
 └── vitest.config.ts
 ```
 
+## Internationalization (i18n)
+
+All user-facing text is localized with **next-intl**. This is a hard
+requirement for every change that adds or edits UI strings:
+
+- Never hardcode user-facing strings in components. Use `useTranslations`
+  (client) or `getTranslations` (server) and reference a message key.
+- Add each new key to **every** locale file in `frontend/messages/`
+  (currently `en.json` and `no.json`). The catalogs must stay at full key
+  parity — no missing or extra keys between locales. `en.json` is the source
+  of truth; translate the others.
+- Plugin-specific strings live in that plugin's
+  `frontend/plugins/<id>/locales/<locale>.json` and are namespaced as
+  `Plugin_<id>`.
+- This covers everything a user can read: labels, placeholders, button text,
+  toasts, error messages, `aria-label`s, empty states, and dialog copy.
+- Verify locale key parity before committing.
+
 ---
 
 # Frontend Data Access
@@ -514,6 +532,8 @@ When generating frontend code:
 - Use App Router conventions
 - Use server components unless interaction is required
 - Use pnpm-compatible workflows
+- Localize every user-facing string via next-intl; add keys to all locale
+  files at full parity (see Internationalization)
 
 When generating authentication code:
 
@@ -538,3 +558,8 @@ When committing code, you must adhere to the following workflow:
 
 - Run relevant tests and verify that the build passes before committing.
 - You must execute `ruff check backend/` and `ruff format --check backend/ --exclude backend/build/` via the `.venv` to enforce CI linting compliance before every commit.
+- Clean up throwaway scratch/debug artifacts once they've served their
+  purpose — one-off probe scripts, ad-hoc `test_*.py` / `test*.js` files at
+  the repo root, REPL dumps, etc. They must never be committed or left
+  behind in the working tree. Only real, committed tests belong under
+  `backend/tests/` and `frontend/tests/`.
