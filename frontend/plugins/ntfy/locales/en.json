@@ -1,0 +1,22 @@
+{
+  "serverUrl": "Server URL",
+  "serverUrlDesc": "The ntfy server URL (e.g. https://ntfy.sh or a self-hosted instance).",
+  "topic": "Topic",
+  "topicDesc": "The ntfy topic to send notifications to.",
+  "priority": "Priority",
+  "priorityDesc": "The default priority of the push notifications.",
+  "priorityMin": "Min",
+  "priorityLow": "Low",
+  "priorityDefault": "Default",
+  "priorityHigh": "High",
+  "priorityMax": "Max",
+  "tags": "Tags",
+  "tagsDesc": "Comma separated tags, e.g. 'warning,skull'.",
+  "accessToken": "Access Token (Optional)",
+  "accessTokenDesc": "Token for private topics.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}.",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: "
+}

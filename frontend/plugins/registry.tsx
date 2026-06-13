@@ -25,4 +25,7 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   webhook: lazy(() =>
     import("./webhook/config").then((m) => ({ default: m.WebhookConfigPanel }))
   ),
+  ntfy: lazy(() =>
+    import("./ntfy/config").then((m) => ({ default: m.NtfyConfigPanel }))
+  ),
 };
