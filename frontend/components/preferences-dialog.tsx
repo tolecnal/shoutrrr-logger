@@ -58,6 +58,7 @@ import {
 } from "@/lib/use-label-rules";
 import { UserPluginsTab } from "@/components/user-plugins-tab";
 import { TokenDeliveryToggles } from "@/components/token-delivery-toggles";
+import { ExternalDeliveryWarning } from "@/components/external-delivery-warning";
 import type { AccessTokenOut } from "@/lib/types";
 
 const LABEL_COLORS: LabelColor[] = [
@@ -738,6 +739,10 @@ export function PreferencesDialog() {
               </Button>
             </div>
 
+            {!externalDeliveryEnabled && (
+              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — rules with “Send email alert” enabled will still create in-app alerts, but no emails are sent for notifications from your private tokens until it's re-enabled." />
+            )}
+
             {!alertRules && <p className="text-sm text-muted-foreground py-4">Loading rules...</p>}
             
             {alertRules?.length === 0 && (
@@ -916,7 +921,7 @@ export function PreferencesDialog() {
             </TabsContent>
 
             <TabsContent value="plugins" className="mt-0 h-full flex flex-col min-h-0">
-              <UserPluginsTab />
+              <UserPluginsTab externalDeliveryDisabled={!externalDeliveryEnabled} />
             </TabsContent>
           </Tabs>
         </DialogContent>

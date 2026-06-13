@@ -19,6 +19,7 @@ import {
   PluginProfileTabs,
   type ProfileApi,
 } from "@/components/plugin-profile-tabs";
+import { ExternalDeliveryWarning } from "@/components/external-delivery-warning";
 
 const userProfileApi: ProfileApi = {
   create: createUserPluginProfile,
@@ -68,7 +69,11 @@ function UserPluginCard({
   );
 }
 
-export function UserPluginsTab() {
+export function UserPluginsTab({
+  externalDeliveryDisabled = false,
+}: {
+  externalDeliveryDisabled?: boolean;
+}) {
   const { data: userPlugins, isLoading, mutate } = useSWR<UserPluginOut[]>(
     "/api/v1/user-plugins",
     fetchUserPlugins,
@@ -100,6 +105,9 @@ export function UserPluginsTab() {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto mt-4 pr-1 space-y-3">
+      {externalDeliveryDisabled && (
+        <ExternalDeliveryWarning message="External delivery is disabled by your administrator — your plugins won't forward notifications sent with your private tokens until it's re-enabled." />
+      )}
       {userPlugins.map((plugin) => (
         <UserPluginCard
           key={plugin.plugin_id}
