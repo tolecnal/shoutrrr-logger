@@ -31,4 +31,10 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   pushover: lazy(() =>
     import("./pushover/config").then((m) => ({ default: m.PushoverConfigPanel }))
   ),
+  discord: lazy(() =>
+    import("./discord/config").then((m) => ({ default: m.DiscordConfigPanel }))
+  ),
+  telegram: lazy(() =>
+    import("./telegram/config").then((m) => ({ default: m.TelegramConfigPanel }))
+  ),
 };
