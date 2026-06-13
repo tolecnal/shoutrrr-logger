@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Logout Didn't End the SSO Session (account switching)**: Logging out only cleared the app's own session cookie, leaving the identity provider's SSO session alive — so in a shared browser the next login was silently completed as the previous user (e.g. log out as Y, try to log in as X, end up as Y again). Logout now performs **RP-initiated logout** (redirects to the IdP's `end_session_endpoint` with `id_token_hint` when available, then back to the app), and login sends `prompt=login` so the IdP always re-authenticates instead of reusing an existing SSO session. Requires the app's post-logout redirect URI to be registered with the provider (already documented for Keycloak).
+
 ### Added
 
 - **Select & Delete Notifications**: The notification log now supports Gmail-style multi-select — per-row checkboxes plus a header "select all on page" — with a **Delete selected** action (`POST /api/v1/notifications/delete`), alongside the existing filter-based bulk delete. Selection persists across pages within the same filter.

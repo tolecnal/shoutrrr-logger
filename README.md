@@ -194,6 +194,16 @@ On the **Settings** tab that follows, set:
 
 For local development, add a second redirect URI: `http://localhost:4000/api/auth/callback`
 
+> **Logout requires the post-logout redirect URI.** On logout the app performs
+> **RP-initiated logout** — it redirects the browser to Keycloak's
+> `end_session_endpoint` so the IdP's SSO session is terminated too, then back
+> to `<APP_BASE_URL>/`. That return URL must match a **Valid post logout
+> redirect URI** above (`https://<your-domain>/*` covers it). If it isn't
+> registered, Keycloak shows an error after logout instead of returning to the
+> app. Login additionally sends `prompt=login`, so the IdP always asks for
+> credentials rather than silently reusing an existing SSO session — this is
+> what lets a shared browser switch between accounts.
+
 Click **Save**.
 
 #### Step 3 — Copy the client secret

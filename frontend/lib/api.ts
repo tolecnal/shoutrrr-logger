@@ -55,14 +55,23 @@ export const getMe = (url: string) =>
   });
 
 // Logout is POST-only on the backend (a state-changing GET would allow
-// cross-site forced logout via top-level navigation). Clear the session,
-// then do a full navigation so all client state is dropped.
+// cross-site forced logout via top-level navigation). The backend clears our
+// session and returns where to navigate next: an RP-initiated logout URL at
+// the IdP (so its SSO session ends too) when available, otherwise "/". We
+// navigate there with a full page load so all client state is dropped.
 export const logout = (): Promise<void> =>
   fetch(`${BASE_UNVERSIONED}/auth/logout`, {
     method: "POST",
     credentials: "include",
-  }).then(() => {
-    window.location.href = "/";
+  }).then(async (res) => {
+    let url = "/";
+    try {
+      const data = (await res.json()) as { logout_url?: string };
+      if (data?.logout_url) url = data.logout_url;
+    } catch {
+      // non-JSON / error — fall back to local redirect
+    }
+    window.location.href = url;
   });
 
 // ---- Version ----

@@ -308,6 +308,11 @@ _NONCE_COOKIE_NAME = "oidc_nonce"
 _PKCE_COOKIE_NAME = "oidc_pkce_verifier"
 _OIDC_FLOW_TTL_SECONDS = 600  # 10 minutes — generous for an OIDC login round trip
 
+# Stores the IdP's id_token for the duration of the app session so logout can
+# pass it as `id_token_hint` to the provider's end-session endpoint
+# (RP-initiated logout), terminating the IdP's SSO session too.
+_ID_TOKEN_COOKIE_NAME = "oidc_id_token"
+
 
 def _set_oidc_flow_cookie(response: RedirectResponse, key: str, value: str) -> None:
     response.set_cookie(
@@ -360,6 +365,12 @@ async def oidc_login(redirect_after: str = "/log") -> RedirectResponse:
             "state": state_b64,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
+            # Force the IdP to re-authenticate rather than silently reusing an
+            # existing SSO session. Without this, after logging out of this app
+            # (which clears only our session) the next login is silently
+            # completed as whoever still holds the IdP's SSO session — making
+            # it impossible to switch accounts in the same browser.
+            "prompt": "login",
         }
     )
     response = RedirectResponse(url=f"{config['authorization_endpoint']}?{params}")
@@ -564,23 +575,62 @@ async def oidc_callback(
         secure=settings.app_base_url.startswith("https"),
         max_age=60 * 60 * 8,
     )
+    # Stash the id_token so logout can do RP-initiated logout (id_token_hint).
+    id_token = token_response.get("id_token")
+    if id_token:
+        response.set_cookie(
+            key=_ID_TOKEN_COOKIE_NAME,
+            value=id_token,
+            httponly=True,
+            samesite="lax",
+            secure=settings.app_base_url.startswith("https"),
+            max_age=60 * 60 * 8,
+        )
     return response
 
 
 @app.post(
     "/api/auth/logout",
     tags=["auth"],
-    summary="Clear session cookie and redirect to home",
+    summary="Log out: clear the session and end the IdP SSO session",
 )
-async def logout() -> RedirectResponse:
-    """Clears the session cookie.
+async def logout(request: Request, response: Response) -> dict[str, str]:
+    """Clears our session cookies and returns the URL the browser should
+    navigate to next.
+
+    When the IdP advertises an ``end_session_endpoint`` we return an
+    RP-initiated logout URL (with ``id_token_hint`` when available) so the
+    IdP's SSO session is terminated too — otherwise logging out here leaves
+    the IdP session live, and the next login is silently completed as the
+    same user without a credential prompt. Falls back to ``/`` when no
+    end-session endpoint is configured.
 
     POST-only: a state-changing GET would let any site force-logout users
     via a top-level navigation (SameSite=Lax cookies are sent on those).
     """
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    id_token = request.cookies.get(_ID_TOKEN_COOKIE_NAME)
     response.delete_cookie("session")
-    return response
+    response.delete_cookie(_ID_TOKEN_COOKIE_NAME)
+
+    logout_url = "/"
+    try:
+        config = await get_oidc_config()
+        end_session = config.get("end_session_endpoint")
+        if end_session:
+            params: dict[str, str] = {"post_logout_redirect_uri": f"{settings.app_base_url}/"}
+            if id_token:
+                params["id_token_hint"] = id_token
+            else:
+                # Keycloak honors post_logout_redirect_uri with client_id when
+                # no id_token_hint is available.
+                params["client_id"] = settings.oidc_client_id
+            logout_url = f"{end_session}?{urllib.parse.urlencode(params)}"
+    except Exception as exc:
+        # Discovery failure must not block logout — we've already cleared our
+        # own session above; just fall back to a local redirect.
+        logger.warning(f"Could not build RP-initiated logout URL: {exc}")
+
+    return {"logout_url": logout_url}
 
 
 @app.get("/api/auth/me", response_model=UserOut, tags=["auth"], summary="Current user info")
