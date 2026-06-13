@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { X, Send } from "lucide-react";
 import type { PluginConfigProps } from "../types";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 export function SlackConfigPanel({
   config,
@@ -16,6 +17,7 @@ export function SlackConfigPanel({
   saving,
   availableCustomFields,
 }: PluginConfigProps) {
+  const t = useTranslations("Plugin_slack");
   const url = (config.webhook_url as string) ?? "";
   const messageTemplate = (config.message_template as string) ?? "*{title}*\n{message}";
   const includedFields = (config.included_fields as string[]) ?? ["received_at", "source_ip", "severity"];
@@ -55,7 +57,7 @@ export function SlackConfigPanel({
   return (
     <div className="space-y-5">
       <div className="space-y-1.5">
-        <Label htmlFor="slack-webhook-url">Webhook URL</Label>
+        <Label htmlFor="slack-webhook-url">{t('webhookUrl')}</Label>
         <Input
           id="slack-webhook-url"
           name="slack-webhook-url"
@@ -64,13 +66,13 @@ export function SlackConfigPanel({
           onChange={(e) => onChange({ ...config, webhook_url: e.target.value })}
         />
         <p className="text-xs text-muted-foreground">
-          The Incoming Webhook URL from your Slack App or Integration settings.
+          {t('webhookUrlDesc')}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="slack-message-template">Message Template</Label>
+          <Label htmlFor="slack-message-template">{t('messageTemplate')}</Label>
           <Textarea
             id="slack-message-template"
             name="slack-message-template"
@@ -80,14 +82,13 @@ export function SlackConfigPanel({
             className="font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Slack markdown supported. Use {"{title}"}, {"{message}"}, {"{severity}"}, etc. to inject notification fields.
-            For custom fields, use {"{custom_fields.your_key}"}.
+            {t('messageTemplateDesc')}
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="slack-emoji">Emoji Icon</Label>
+            <Label htmlFor="slack-emoji">{t('emojiIcon')}</Label>
             <Input
               id="slack-emoji"
               name="slack-emoji"
@@ -96,15 +97,15 @@ export function SlackConfigPanel({
               placeholder=":rotating_light:"
             />
             <p className="text-xs text-muted-foreground">
-              Optional Slack emoji code to use as the avatar (e.g., :rotating_light: or :warning:).
+              {t('emojiIconDesc')}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Included Fields (Attachments)</Label>
+            <Label>{t('includedFields')}</Label>
             <div className="flex flex-wrap gap-1 mb-1.5 min-h-[28px] p-2 border rounded-md bg-muted/20">
               {includedFields.length === 0 && (
-                <span className="text-xs text-muted-foreground italic px-1">No additional fields</span>
+                <span className="text-xs text-muted-foreground italic px-1">{t('noAdditionalFields')}</span>
               )}
               {includedFields.map((field) => (
                 <Badge key={field} variant="secondary" className="pr-1 text-xs font-normal">
@@ -121,7 +122,7 @@ export function SlackConfigPanel({
             <Input
               id="slack-included-field"
               name="slack-included-field"
-              placeholder="Add a field e.g. tags, source_ip (press Enter)"
+              placeholder={t('addFieldPlaceholder')}
               value={newField}
               onChange={(e) => setNewField(e.target.value)}
               onKeyDown={addField}
@@ -142,7 +143,7 @@ export function SlackConfigPanel({
 
       <div className="pt-2 border-t flex items-center justify-between">
         <div className="text-sm">
-          {testError && <span className="text-destructive">Test failed: {testError}</span>}
+          {testError && <span className="text-destructive">{t('testFailed')}{testError}</span>}
         </div>
         <Button
           variant="outline"
@@ -152,14 +153,14 @@ export function SlackConfigPanel({
           className="gap-2"
         >
           <Send className="h-4 w-4" />
-          {testing ? "Sending..." : "Send Test Notification"}
+          {testing ? t('sending') : t('sendTestNotification')}
         </Button>
       </div>
 
       {/* Preview box */}
       <div className="mt-6 border rounded-lg overflow-hidden">
         <div className="bg-muted px-4 py-2 border-b">
-          <p className="text-xs font-medium text-muted-foreground">Slack Message Preview</p>
+          <p className="text-xs font-medium text-muted-foreground">{t('slackMessagePreview')}</p>
         </div>
         <div className="p-4 bg-background flex gap-3">
           <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0 text-xl" title="Emoji">
@@ -171,16 +172,16 @@ export function SlackConfigPanel({
               <span className="text-xs text-muted-foreground">8:00 AM</span>
             </div>
             <div className="text-[15px] whitespace-pre-wrap">
-              <strong>Preview Notification</strong>
+              <strong>{t('previewNotification')}</strong>
               <br />
-              This is what your message might look like in Slack.
+              {t('previewBody')}
             </div>
             {includedFields.length > 0 && (
               <div className="mt-2 border-l-4 border-[#e3e4e6] pl-3 py-1 flex gap-x-8 gap-y-2 flex-wrap">
                 {includedFields.map((field) => (
                   <div key={field} className="text-sm">
                     <div className="font-bold text-muted-foreground mb-0.5">{field}</div>
-                    <div>Value</div>
+                    <div>{t('value')}</div>
                   </div>
                 ))}
               </div>

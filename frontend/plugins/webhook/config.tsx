@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Send } from "lucide-react";
 import type { PluginConfigProps } from "../types";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
 import jsonLang from "react-syntax-highlighter/dist/esm/languages/hljs/json";
 import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -21,6 +22,7 @@ export function WebhookConfigPanel({
   onTest,
   saving,
 }: PluginConfigProps) {
+  const t = useTranslations("Plugin_webhook");
   const url = (config.url as string) ?? "";
   const method = (config.method as string) ?? "POST";
   const headers = (config.headers as string) ?? '{"Content-Type": "application/json"}';
@@ -63,7 +65,7 @@ export function WebhookConfigPanel({
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-4">
         <div className="sm:col-span-3 space-y-1.5">
-          <Label htmlFor="webhook-url">Webhook URL</Label>
+          <Label htmlFor="webhook-url">{t('webhookUrl')}</Label>
           <Input
             id="webhook-url"
             name="webhook-url"
@@ -72,11 +74,11 @@ export function WebhookConfigPanel({
             onChange={(e) => onChange({ ...config, url: e.target.value })}
           />
           <p className="text-xs text-muted-foreground">
-            The destination URL for the HTTP request.
+            {t('webhookUrlDesc')}
           </p>
         </div>
         <div className="sm:col-span-1 space-y-1.5">
-          <Label>Method</Label>
+          <Label>{t('method')}</Label>
           <Select value={method} onValueChange={(value) => onChange({ ...config, method: value })}>
             <SelectTrigger>
               <SelectValue />
@@ -93,9 +95,9 @@ export function WebhookConfigPanel({
 
       <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-muted/20">
         <div className="space-y-0.5">
-          <Label>TLS Verification</Label>
+          <Label>{t('tlsVerification')}</Label>
           <p className="text-xs text-muted-foreground">
-            Verify the SSL/TLS certificate of the destination endpoint. Disable only for trusted internal networks.
+            {t('tlsVerificationDesc')}
           </p>
         </div>
         <Switch
@@ -105,7 +107,7 @@ export function WebhookConfigPanel({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="webhook-headers">Headers (JSON)</Label>
+        <Label htmlFor="webhook-headers">{t('headersJson')}</Label>
         <Textarea
           id="webhook-headers"
           name="webhook-headers"
@@ -115,13 +117,13 @@ export function WebhookConfigPanel({
           className="font-mono text-xs"
         />
         <p className="text-xs text-muted-foreground">
-          Custom HTTP headers defined as a JSON object.
+          {t('headersJsonDesc')}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="webhook-payload-template">Payload Template</Label>
+          <Label htmlFor="webhook-payload-template">{t('payloadTemplate')}</Label>
           <Textarea
             id="webhook-payload-template"
             name="webhook-payload-template"
@@ -131,13 +133,12 @@ export function WebhookConfigPanel({
             className="font-mono text-xs"
           />
           <p className="text-xs text-muted-foreground">
-            The payload sent in the request body. Variables like {"{title}"}, {"{message}"}, and {"{severity}"} will be replaced. 
-            Use {"{custom_fields.your_key}"} for custom fields. Values will be escaped for JSON injection if necessary.
+            {t('payloadTemplateDesc')}
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label>Payload Preview</Label>
+          <Label>{t('payloadPreview')}</Label>
           <div className="h-[212px] overflow-auto rounded-md border bg-[#1e1e1e] p-0 relative">
             <SyntaxHighlighter
               language="json"
@@ -150,14 +151,14 @@ export function WebhookConfigPanel({
             </SyntaxHighlighter>
           </div>
           <p className="text-xs text-muted-foreground">
-            Example payload generated from your template.
+            {t('payloadPreviewDesc')}
           </p>
         </div>
       </div>
 
       <div className="pt-2 border-t flex items-center justify-between">
         <div className="text-sm">
-          {testError && <span className="text-destructive">Test failed: {testError}</span>}
+          {testError && <span className="text-destructive">{t('testFailed')}{testError}</span>}
         </div>
         <Button
           variant="outline"
@@ -167,7 +168,7 @@ export function WebhookConfigPanel({
           className="gap-2"
         >
           <Send className="h-4 w-4" />
-          {testing ? "Sending..." : "Send Test Notification"}
+          {testing ? t('sending') : t('sendTestNotification')}
         </Button>
       </div>
     </div>

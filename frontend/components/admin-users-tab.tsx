@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, UserPlus, ToggleLeft, ToggleRight, Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { fetchUsers, updateUser, deleteUser, createUser } from "@/lib/api";
 import type { UserOut } from "@/lib/types";
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslations } from "next-intl";
 import {
   Select,
   SelectContent,
@@ -54,55 +55,35 @@ const emptyForm: UserForm = {
 };
 
 export function UsersTab() {
-  const { data: users, isLoading, mutate } = useSWR("/admin/users", fetchUsers);
-  const [editing, setEditing] = useState<UserOut | null>(null);
+  const t = useTranslations("AdminTabs.users");
+  const { data: users, isLoading, mutate } = useSWR<UserOut[]>("/admin/users", fetchUsers);
+  const [editing, setEditing] = useState<UserOut | null | any>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<UserForm>(emptyForm);
   const [pendingDelete, setPendingDelete] = useState<UserOut | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const openEdit = (u: UserOut) => {
-    setEditing(u);
-    setForm({
-      sub: u.sub,
-      email: u.email,
-      username: u.username,
-      full_name: u.full_name ?? "",
-      role: u.role,
-    });
-  };
-
-  const openCreate = () => {
-    setCreating(true);
-    setForm(emptyForm);
-  };
-
   const handleSave = async () => {
     setSaving(true);
+    const payload = {
+      sub: editing.sub,
+      email: editing.email,
+      username: editing.username,
+      full_name: editing.full_name || undefined,
+      role: editing.role,
+    };
     try {
-      if (editing) {
-        await updateUser(editing.id, {
-          email: form.email,
-          username: form.username,
-          full_name: form.full_name || undefined,
-          role: form.role,
-        });
-        toast.success("User updated.");
-        setEditing(null);
+      if (editing?.id) {
+        await updateUser(editing.id, payload);
+        toast.success(t('toastUpdated'));
       } else {
-        await createUser({
-          sub: form.sub,
-          email: form.email,
-          username: form.username,
-          full_name: form.full_name || undefined,
-          role: form.role,
-        });
-        toast.success("User created.");
-        setCreating(false);
+        await createUser(payload);
+        toast.success(t('toastCreated'));
       }
+      setEditing(null);
       await mutate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save user.");
+      toast.error(err instanceof Error ? err.message : t('toastFailedSave'));
     } finally {
       setSaving(false);
     }
@@ -112,33 +93,35 @@ export function UsersTab() {
     if (!pendingDelete) return;
     try {
       await deleteUser(pendingDelete.id);
-      toast.success("User deleted.");
+      toast.success(t('toastDeleted'));
       setPendingDelete(null);
       await mutate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete user.");
+      toast.error(err instanceof Error ? err.message : t('toastFailedDelete'));
     }
   };
 
-  const handleToggleActive = async (u: UserOut) => {
+  const handleToggle = async (u: UserOut) => {
     try {
       await updateUser(u.id, { is_active: !u.is_active });
-      toast.success(u.is_active ? "User deactivated." : "User activated.");
+      toast.success(u.is_active ? t('toastDeactivated') : t('toastActivated'));
       await mutate();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to update user.");
+      toast.error(err instanceof Error ? err.message : t('toastFailedUpdate'));
     }
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {users?.length ?? 0} user{users?.length !== 1 ? "s" : ""}
-        </p>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={openCreate}>
-          <Plus className="h-3.5 w-3.5" />
-          Add User
+        <div>
+          <p className="text-xs text-muted-foreground">
+            {users?.length ?? 0} {users?.length === 1 ? t('userCount') : t('usersCount')}
+          </p>
+        </div>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing({})}>
+          <UserPlus className="h-3.5 w-3.5" />
+          {t('addUser')}
         </Button>
       </div>
 
@@ -146,11 +129,11 @@ export function UsersTab() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Username</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Email</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Role</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Status</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Created</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colUsername')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colEmail')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colRole')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colStatus')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colCreated')}</th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
@@ -183,12 +166,9 @@ export function UsersTab() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={u.is_active ? "outline" : "destructive"}
-                        className="text-[11px]"
-                      >
-                        {u.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      {u.is_active
+                        ? <Badge variant="outline" className="text-[11px]">{t('active')}</Badge>
+                        : <Badge variant="destructive" className="text-[11px]">{t('inactive')}</Badge>}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
                       {format(new Date(u.created_at), "MMM d, yyyy")}
@@ -199,17 +179,17 @@ export function UsersTab() {
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleToggleActive(u)}
-                          title={u.is_active ? "Deactivate" : "Activate"}
+                          onClick={() => handleToggle(u)}
+                          title={u.is_active ? t('deactivate') : t('activate')}
                         >
-                          {u.is_active ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
+                          {u.is_active ? <ToggleRight className="h-3.5 w-3.5" /> : <ToggleLeft className="h-3.5 w-3.5" />}
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => openEdit(u)}
-                          title="Edit"
+                          onClick={() => setEditing(u)}
+                          title={t('edit')}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -218,7 +198,7 @@ export function UsersTab() {
                           variant="ghost"
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                           onClick={() => setPendingDelete(u)}
-                          title="Delete"
+                          title={t('delete')}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -230,116 +210,105 @@ export function UsersTab() {
         </table>
       </div>
 
-      {/* Edit / Create dialog */}
       <Dialog
-        open={!!editing || creating}
+        open={!!editing}
         onOpenChange={(open) => {
           if (!open) {
             setEditing(null);
-            setCreating(false);
           }
         }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">{editing ? "Edit User" : "Add User"}</DialogTitle>
+            <DialogTitle className="text-sm">
+              {editing?.id ? t('editTitle') : t('createTitle')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {!editing && (
-              <div className="space-y-1">
-                <Label className="text-xs" htmlFor="user-sub">OIDC Subject (sub)</Label>
-                <Input
-                  id="user-sub"
-                  name="user-sub"
-                  className="h-8 text-xs"
-                  value={form.sub}
-                  onChange={(e) => setForm({ ...form, sub: e.target.value })}
-                  placeholder="e.g. keycloak-user-uuid"
-                />
-              </div>
-            )}
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="edit-user-sub">{t('sub')}</Label>
+              <Input
+                id="edit-user-sub"
+                className="h-8 text-xs"
+                placeholder={t('subPlaceholder')}
+                value={editing?.sub || ""}
+                onChange={(e) => setEditing({ ...editing, sub: e.target.value })}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs" htmlFor="user-username">Username</Label>
+                <Label className="text-xs" htmlFor="edit-user-username">{t('username')}</Label>
                 <Input
-                  id="user-username"
-                  name="user-username"
+                  id="edit-user-username"
                   className="h-8 text-xs"
-                  value={form.username}
-                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  value={editing?.username || ""}
+                  onChange={(e) => setEditing({ ...editing, username: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs" htmlFor="user-full-name">Full name</Label>
+                <Label className="text-xs" htmlFor="edit-user-name">{t('fullName')}</Label>
                 <Input
-                  id="user-full-name"
-                  name="user-full-name"
+                  id="edit-user-name"
                   className="h-8 text-xs"
-                  value={form.full_name}
-                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  value={editing?.full_name || ""}
+                  onChange={(e) => setEditing({ ...editing, full_name: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs" htmlFor="user-email">Email</Label>
+              <Label className="text-xs" htmlFor="edit-user-email">{t('email')}</Label>
               <Input
-                id="user-email"
-                name="user-email"
-                className="h-8 text-xs"
+                id="edit-user-email"
                 type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="h-8 text-xs"
+                value={editing?.email || ""}
+                onChange={(e) => setEditing({ ...editing, email: e.target.value })}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Role</Label>
+              <Label className="text-xs">{t('role')}</Label>
               <Select
-                value={form.role}
-                onValueChange={(v) => setForm({ ...form, role: v as "viewer" | "admin" })}
+                value={editing?.role || "viewer"}
+                onValueChange={(v) => setEditing({ ...editing, role: v })}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="viewer" className="text-xs">Viewer</SelectItem>
-                  <SelectItem value="admin" className="text-xs">Admin</SelectItem>
+                  <SelectItem value="viewer">{t('viewer')}</SelectItem>
+                  <SelectItem value="admin">{t('admin')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => { setEditing(null); setCreating(false); }}
-            >
-              Cancel
+            <Button size="sm" variant="secondary" onClick={() => setEditing(null)}>
+              <X className="h-3.5 w-3.5 mr-1.5" />
+              {t('cancel')}
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              {editing ? "Save" : "Create"}
+            <Button size="sm" onClick={handleSave} disabled={saving || !editing?.sub || !editing?.username} className="gap-1.5">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {editing?.id ? t('save') : t('createBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Delete user?</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">{t('deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              This will permanently delete <strong>{pendingDelete?.username}</strong> and all their access tokens.
-              This action cannot be undone.
+              {t('deleteDesc', { username: pendingDelete?.username || "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-xs">{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="h-8 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 dark:bg-destructive/60"
               onClick={handleDelete}
             >
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

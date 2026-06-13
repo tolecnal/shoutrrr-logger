@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
-import { Save } from "lucide-react";
+import { Save, Send, Monitor, Database, Shield, Bell, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchAdminSettings, updateSettings, testSmtp } from "@/lib/api";
 import type { SettingOut } from "@/lib/types";
@@ -14,8 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { previewTemplate } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 export function SettingsTab() {
+  const t = useTranslations("AdminTabs.settings");
   const { data, isLoading, mutate } = useSWR<SettingOut[]>(
     "/admin/settings",
     fetchAdminSettings
@@ -48,9 +50,9 @@ export function SettingsTab() {
       // Invalidate the public /settings cache so stats panel and notification
       // log pick up the new values without a full page reload.
       await globalMutate("/settings");
-      toast.success("Settings saved");
+      toast.success(t('toastSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save settings");
+      toast.error(err instanceof Error ? err.message : t('toastFailedSave'));
     } finally {
       setSaving(false);
     }
@@ -66,9 +68,9 @@ export function SettingsTab() {
         smtp_password: draft.smtp_password || "",
         smtp_from_address: draft.smtp_from || "",
       });
-      toast.success("SMTP test email sent successfully!");
+      toast.success(t('toastSmtpSuccess'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send test email");
+      toast.error(err instanceof Error ? err.message : t('toastSmtpFailed'));
     } finally {
       setTestingSmtp(false);
     }
@@ -159,17 +161,19 @@ export function SettingsTab() {
                     }
                   }}
                   disabled={previewing}
+                  className="gap-1.5"
                 >
-                  {previewing ? "Generating Preview..." : "Preview Template"}
+                  {previewing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                  {previewing ? t('generatingPreview') : t('previewTemplate')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Email Template Preview</DialogTitle>
+                  <DialogTitle>{t('previewTitle')}</DialogTitle>
                 </DialogHeader>
                 <div 
                   className="prose dark:prose-invert max-w-none mt-4 p-4 border rounded-md bg-background"
-                  dangerouslySetInnerHTML={{ __html: previewHtml || "<i>No content</i>" }} 
+                  dangerouslySetInnerHTML={{ __html: previewHtml || `<i>${t('noContent')}</i>` }} 
                 />
               </DialogContent>
             </Dialog>
@@ -194,18 +198,17 @@ export function SettingsTab() {
         <p className="text-xs text-muted-foreground">{setting.description}</p>
         {setting.min_value === 0 && setting.key === "retention_days" && (
           <p className="text-xs text-muted-foreground/70 italic">
-            Current value: {val === 0 ? "disabled (keep forever)" : `${val} days`}
+            Current value: {val === 0 ? t('retentionDisabled') : t('retentionDays', { val })}
           </p>
         )}
         {setting.key === "auto_refresh_interval" && (
           <p className="text-xs text-muted-foreground/70 italic">
-            Current value: {val === 0 ? "disabled" : `every ${val}s`}
+            Current value: {val === 0 ? t('refreshDisabled') : t('refreshSeconds', { val })}
           </p>
         )}
         {setting.key === "stats_window_days" && (
           <p className="text-xs text-muted-foreground/70 italic">
-            Cannot exceed Retention period or API metrics retention (when either is
-            non-zero).
+            {t('statsWindowLimit')}
           </p>
         )}
       </div>
@@ -216,10 +219,10 @@ export function SettingsTab() {
     <div className="max-w-2xl space-y-6">
       <Tabs defaultValue="ui" className="w-full">
         <TabsList className="mb-4 flex-wrap">
-          <TabsTrigger value="ui">UI</TabsTrigger>
-          <TabsTrigger value="retention">Retention</TabsTrigger>
-          <TabsTrigger value="access">Access</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts & SMTP</TabsTrigger>
+          <TabsTrigger value="ui" className="gap-1.5"><Monitor className="h-3.5 w-3.5" />{t('tabUi')}</TabsTrigger>
+          <TabsTrigger value="retention" className="gap-1.5"><Database className="h-3.5 w-3.5" />{t('tabRetention')}</TabsTrigger>
+          <TabsTrigger value="access" className="gap-1.5"><Shield className="h-3.5 w-3.5" />{t('tabAccess')}</TabsTrigger>
+          <TabsTrigger value="alerts" className="gap-1.5"><Bell className="h-3.5 w-3.5" />{t('tabAlerts')}</TabsTrigger>
         </TabsList>
         <TabsContent value="ui" className="space-y-4">
           {renderSetting("page_size")}
@@ -245,8 +248,8 @@ export function SettingsTab() {
           {renderSetting("email_alerts_enabled")}
           {renderSetting("email_alert_template")}
           <div className="pt-2 pb-2">
-            <h4 className="text-sm font-semibold text-foreground border-b pb-1">SMTP Configuration</h4>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">Configure the SMTP server for dispatching email alerts.</p>
+            <h4 className="text-sm font-semibold text-foreground border-b pb-1">{t('smtpConfig')}</h4>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">{t('smtpConfigDesc')}</p>
           </div>
           {renderSetting("smtp_host")}
           {renderSetting("smtp_port")}
@@ -260,8 +263,10 @@ export function SettingsTab() {
               size="sm"
               onClick={handleTestSmtp}
               disabled={testingSmtp || !draft.smtp_host}
+              className="gap-1.5"
             >
-              {testingSmtp ? "Testing SMTP..." : "Test SMTP Settings"}
+              <Send className="h-3.5 w-3.5" />
+              {testingSmtp ? t('testingSmtp') : t('testSmtp')}
             </Button>
           </div>
         </TabsContent>
@@ -275,10 +280,10 @@ export function SettingsTab() {
           className="gap-1.5"
         >
           <Save className="h-3.5 w-3.5" />
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t('saving') : t('saveChanges')}
         </Button>
         {isDirty && (
-          <span className="text-xs text-muted-foreground">Unsaved changes</span>
+          <span className="text-xs text-muted-foreground">{t('unsavedChanges')}</span>
         )}
       </div>
     </div>

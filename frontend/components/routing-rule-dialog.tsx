@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { fetchAutocompleteTags, fetchAutocompleteCustomFields, fetchAutocompleteTokens, testRoutingRule } from "@/lib/api";
 import type { RoutingRuleOut, AccessTokenOut, NotificationOut } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 export function RoutingRuleDialog({
   rule,
@@ -20,6 +21,7 @@ export function RoutingRuleDialog({
   onClose: () => void;
   onSaved: (rule: any) => void;
 }) {
+  const t = useTranslations("RoutingRuleDialog");
   const [name, setName] = useState(rule?.name ?? "");
   const [severities, setSeverities] = useState<string[]>(rule?.severities ?? []);
   const [tags, setTags] = useState<string[]>(rule?.tags ?? []);
@@ -43,7 +45,7 @@ export function RoutingRuleDialog({
 
   const handleSave = () => {
     if (!name.trim()) {
-      setError("Name is required");
+      setError(t('nameRequired'));
       return;
     }
     setError(null);
@@ -85,17 +87,17 @@ export function RoutingRuleDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{rule ? "Edit Routing Rule" : "Create Routing Rule"}</DialogTitle>
+          <DialogTitle>{rule ? t('editTitle') : t('createTitle')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-1.5">
-            <Label htmlFor="rule-name">Rule Name</Label>
-            <Input id="rule-name" name="rule-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Production Errors" />
+            <Label htmlFor="rule-name">{t('ruleName')}</Label>
+            <Input id="rule-name" name="rule-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('namePlaceholder')} />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Severities</Label>
+            <Label>{t('severities')}</Label>
             <div className="flex flex-wrap gap-1 mb-1.5">
               {severities.map((s) => (
                 <Badge key={s} variant="secondary" className="pr-1 text-xs">
@@ -104,11 +106,11 @@ export function RoutingRuleDialog({
                 </Badge>
               ))}
             </div>
-            <Input id="rule-severity-input" name="rule-severity-input" value={sevInput} onChange={(e) => setSevInput(e.target.value)} onKeyDown={(e) => addItem(e, sevInput, setSevInput, severities, setSeverities)} placeholder="e.g. critical (press Enter)" />
+            <Input id="rule-severity-input" name="rule-severity-input" value={sevInput} onChange={(e) => setSevInput(e.target.value)} onKeyDown={(e) => addItem(e, sevInput, setSevInput, severities, setSeverities)} placeholder={t('sevPlaceholder')} />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tags</Label>
+            <Label>{t('tags')}</Label>
             <div className="flex flex-wrap gap-1 mb-1.5">
               {tags.map((t) => (
                 <Badge key={t} variant="secondary" className="pr-1 text-xs">
@@ -117,14 +119,14 @@ export function RoutingRuleDialog({
                 </Badge>
               ))}
             </div>
-            <Input id="rule-tag-input" name="rule-tag-input" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => addItem(e, tagInput, setTagInput, tags, setTags)} placeholder="e.g. prod (press Enter)" list="tag-suggestions" />
+            <Input id="rule-tag-input" name="rule-tag-input" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => addItem(e, tagInput, setTagInput, tags, setTags)} placeholder={t('tagPlaceholder')} list="tag-suggestions" />
             <datalist id="tag-suggestions">
               {tagSuggestions.map((t) => <option key={t} value={t} />)}
             </datalist>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Tokens</Label>
+            <Label>{t('tokens')}</Label>
             <div className="flex flex-wrap gap-1 mb-1.5">
               {tokens.map((t) => (
                 <Badge key={t} variant="secondary" className="pr-1 text-xs">
@@ -144,15 +146,15 @@ export function RoutingRuleDialog({
                 }
               }}
             >
-              <option value="" disabled>Select a token...</option>
-              {tokenSuggestions.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} {t.is_global ? "(Global)" : ""}</option>
+              <option value="" disabled>{t('selectToken')}</option>
+              {tokenSuggestions.map((tSugg) => (
+                <option key={tSugg.id} value={tSugg.id}>{tSugg.name} {tSugg.is_global ? t('global') : ""}</option>
               ))}
             </select>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Custom Fields</Label>
+            <Label>{t('customFields')}</Label>
             <div className="flex flex-col gap-1 mb-1.5">
               {Object.entries(customFields).map(([k, v]) => (
                 <div key={k} className="flex items-center gap-2 text-xs bg-secondary/50 rounded px-2 py-1">
@@ -167,12 +169,12 @@ export function RoutingRuleDialog({
               ))}
             </div>
             <div className="flex gap-2">
-              <Input id="rule-custom-field-key" name="rule-custom-field-key" className="flex-1" value={cfKeyInput} onChange={(e) => setCfKeyInput(e.target.value)} placeholder="Key" list="cf-suggestions" />
+              <Input id="rule-custom-field-key" name="rule-custom-field-key" className="flex-1" value={cfKeyInput} onChange={(e) => setCfKeyInput(e.target.value)} placeholder={t('key')} list="cf-suggestions" />
               <datalist id="cf-suggestions">
-                {cfSuggestions.map((t) => <option key={t} value={t} />)}
+                {cfSuggestions.map((sugg) => <option key={sugg} value={sugg} />)}
               </datalist>
-              <Input id="rule-custom-field-value" name="rule-custom-field-value" className="flex-1" value={cfValInput} onChange={(e) => setCfValInput(e.target.value)} placeholder="Value" onKeyDown={(e) => { if (e.key === "Enter") addCustomField(); }} />
-              <Button type="button" variant="outline" onClick={addCustomField}>Add</Button>
+              <Input id="rule-custom-field-value" name="rule-custom-field-value" className="flex-1" value={cfValInput} onChange={(e) => setCfValInput(e.target.value)} placeholder={t('value')} onKeyDown={(e) => { if (e.key === "Enter") addCustomField(); }} />
+              <Button type="button" variant="outline" onClick={addCustomField}>{t('add')}</Button>
             </div>
           </div>
 
@@ -180,14 +182,14 @@ export function RoutingRuleDialog({
           
           {testResults !== null && (
             <div className="space-y-1.5 mt-4 pt-4 border-t">
-              <Label>Test Results ({testResults.length} matches)</Label>
+              <Label>{t('testResults', { count: testResults.length })}</Label>
               {testResults.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No recent notifications match this rule.</p>
+                <p className="text-sm text-muted-foreground">{t('noMatches')}</p>
               ) : (
                 <div className="flex flex-col gap-2 max-h-[150px] overflow-y-auto pr-2">
                   {testResults.map(n => (
                     <div key={n.id} className="text-xs bg-muted p-2 rounded border">
-                      <div className="font-semibold truncate">{n.title || "No Title"}</div>
+                      <div className="font-semibold truncate">{n.title || t('noTitle')}</div>
                       <div className="truncate text-muted-foreground">{n.message}</div>
                       <div className="flex gap-1 mt-1">
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{n.severity}</Badge>
@@ -202,10 +204,10 @@ export function RoutingRuleDialog({
         </div>
 
         <DialogFooter className="flex justify-between sm:justify-between w-full">
-          <Button type="button" variant="secondary" onClick={handleTest} disabled={testing}>{testing ? "Testing..." : "Test Rule"}</Button>
+          <Button type="button" variant="secondary" onClick={handleTest} disabled={testing}>{testing ? t('testing') : t('testRule')}</Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleSave}>Save Rule</Button>
+            <Button variant="outline" onClick={onClose}>{t('cancel')}</Button>
+            <Button onClick={handleSave}>{t('saveRule')}</Button>
           </div>
         </DialogFooter>
       </DialogContent>

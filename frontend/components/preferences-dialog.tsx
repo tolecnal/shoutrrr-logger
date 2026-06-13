@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical, Mail, Pencil } from "lucide-react";
+import { Settings, Plus, Trash2, GripVertical, Key, Copy, Check, FlaskConical, Mail, Pencil, Monitor, Tags, Bell, Puzzle } from "lucide-react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import {
@@ -60,6 +60,7 @@ import { UserPluginsTab } from "@/components/user-plugins-tab";
 import { TokenDeliveryToggles } from "@/components/token-delivery-toggles";
 import { ExternalDeliveryWarning } from "@/components/external-delivery-warning";
 import type { AccessTokenOut } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 const LABEL_COLORS: LabelColor[] = [
   "slate","blue","green","yellow","orange","red","purple","pink","teal",
@@ -85,6 +86,7 @@ function LabelRuleRow({
   onUpdate: (patch: Partial<Omit<LabelRule, "id">>) => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations("PreferencesDialog");
   const [expanded, setExpanded] = useState(false);
   const [patternInput, setPatternInput] = useState("");
 
@@ -112,7 +114,7 @@ function LabelRuleRow({
         />
         <button
           onClick={() => onUpdate({ exclude: !rule.exclude })}
-          title={rule.exclude ? "Exclude mode on — matching messages are hidden" : "Exclude mode off — click to hide matching messages"}
+          title={rule.exclude ? t('excludeOn') : t('excludeOff')}
           className={cn(
             "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium border transition-colors",
             rule.exclude
@@ -120,7 +122,7 @@ function LabelRuleRow({
               : "bg-transparent text-muted-foreground border-border hover:border-foreground/30"
           )}
         >
-          Exclude
+          {t('exclude')}
         </button>
         <Select
           value={rule.color}
@@ -145,14 +147,14 @@ function LabelRuleRow({
           className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setExpanded((v) => !v)}
         >
-          {rule.patterns.length} pattern{rule.patterns.length !== 1 ? "s" : ""}
+          {t('patternsCount', { count: rule.patterns.length })}
         </button>
         <Button
           size="sm"
           variant="ghost"
           className="shrink-0 h-7 w-7 p-0 text-destructive hover:text-destructive"
           onClick={onDelete}
-          aria-label="Delete rule"
+          aria-label={t('deleteRule')}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -163,19 +165,18 @@ function LabelRuleRow({
         <div className="border-t border-border px-3 pb-3 pt-2 space-y-1.5">
           {/* Name editor */}
           <div className="flex items-center gap-2 pb-1">
-            <Label className="text-xs text-muted-foreground shrink-0 w-12" htmlFor={`label-rule-name-${rule.id}`}>Name</Label>
+            <Label className="text-xs text-muted-foreground shrink-0 w-12" htmlFor={`label-rule-name-${rule.id}`}>{t('name')}</Label>
             <Input
               id={`label-rule-name-${rule.id}`}
               name={`label-rule-name-${rule.id}`}
               className="h-7 flex-1 min-w-0 text-xs"
               value={rule.name}
-              placeholder="Label name"
+              placeholder={t('labelNamePlaceholder')}
               onChange={(e) => onUpdate({ name: e.target.value })}
             />
           </div>
           <p className="text-xs text-muted-foreground mb-2">
-            Regex patterns — any match applies this label. Use{" "}
-            <code className="font-mono">(?i)</code> prefix for case-insensitive.
+            {t('regexPatternsDesc')}
           </p>
           {rule.patterns.map((p, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -187,7 +188,7 @@ function LabelRuleRow({
                 variant="ghost"
                 className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                 onClick={() => removePattern(i)}
-                aria-label="Remove pattern"
+                aria-label={t('removePattern')}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -198,13 +199,13 @@ function LabelRuleRow({
               id={`label-rule-pattern-${rule.id}`}
               name={`label-rule-pattern-${rule.id}`}
               className="h-7 flex-1 font-mono text-xs bg-input"
-              placeholder="(?i)new pattern"
+              placeholder={t('newPatternPlaceholder')}
               value={patternInput}
               onChange={(e) => setPatternInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addPattern()}
             />
             <Button size="sm" className="h-7 px-2 text-xs" onClick={addPattern}>
-              <Plus className="h-3 w-3 mr-1" /> Add
+              <Plus className="h-3 w-3 mr-1" /> {t('add')}
             </Button>
           </div>
         </div>
@@ -232,6 +233,7 @@ function AlertRuleRow({
   isTestingEmail: boolean;
   testResult: { matches: import("@/lib/types").NotificationOut[]; total: number } | null | undefined;
 }) {
+  const t = useTranslations("PreferencesDialog");
   const [draft, setDraft] = useState(rule);
   const [saving, setSaving] = useState(false);
 
@@ -243,7 +245,7 @@ function AlertRuleRow({
     <AccordionItem value={rule.id} className="rounded-md border border-border bg-card px-3">
       <div className="flex items-center justify-between">
         <AccordionTrigger className="hover:no-underline py-3 flex-1 justify-start gap-2 text-sm font-medium">
-          {draft.name || "Unnamed Rule"}
+          {draft.name || t('unnamedRule')}
         </AccordionTrigger>
         <div className="flex items-center gap-2 shrink-0">
           {hasChanges && (
@@ -256,7 +258,7 @@ function AlertRuleRow({
                 setSaving(false);
               }
             }}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? t('saving') : t('save')}
             </Button>
           )}
           <Button
@@ -272,19 +274,19 @@ function AlertRuleRow({
       <AccordionContent>
         <div className="space-y-3 pl-2 pb-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground w-16" htmlFor={`alert-rule-name-${draft.id}`}>Name</Label>
+            <Label className="text-xs text-muted-foreground w-16" htmlFor={`alert-rule-name-${draft.id}`}>{t('name')}</Label>
             <Input
               id={`alert-rule-name-${draft.id}`}
               name={`alert-rule-name-${draft.id}`}
               value={draft.name}
               onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
               className="h-7 text-xs flex-1"
-              placeholder="Rule Name"
+              placeholder={t('name')}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-type-${draft.id}`}>Match Type</Label>
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-type-${draft.id}`}>{t('matchType')}</Label>
               <select
                 id={`alert-rule-match-type-${draft.id}`}
                 name={`alert-rule-match-type-${draft.id}`}
@@ -292,13 +294,13 @@ function AlertRuleRow({
                 value={draft.match_type}
                 onChange={(e) => setDraft(prev => ({ ...prev, match_type: e.target.value as any }))}
               >
-                <option value="contains">Contains</option>
-                <option value="exact">Exact Match</option>
-                <option value="regex">RegEx</option>
+                <option value="contains">{t('contains')}</option>
+                <option value="exact">{t('exactMatch')}</option>
+                <option value="regex">{t('regex')}</option>
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-target-${draft.id}`}>Match Target</Label>
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-match-target-${draft.id}`}>{t('matchTarget')}</Label>
               <select
                 id={`alert-rule-match-target-${draft.id}`}
                 name={`alert-rule-match-target-${draft.id}`}
@@ -306,18 +308,18 @@ function AlertRuleRow({
                 value={draft.match_target}
                 onChange={(e) => setDraft(prev => ({ ...prev, match_target: e.target.value as any }))}
               >
-                <option value="all">Anywhere</option>
-                <option value="title">Title Only</option>
-                <option value="message">Message Only</option>
+                <option value="all">{t('anywhere')}</option>
+                <option value="title">{t('titleOnly')}</option>
+                <option value="message">{t('messageOnly')}</option>
               </select>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-pattern-${draft.id}`}>Pattern</Label>
+            <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-pattern-${draft.id}`}>{t('pattern')}</Label>
             <Input
               id={`alert-rule-pattern-${draft.id}`}
               name={`alert-rule-pattern-${draft.id}`}
-              placeholder="String or regex to match..."
+              placeholder={t('patternPlaceholder')}
               value={draft.match_pattern}
               onChange={(e) => setDraft(prev => ({ ...prev, match_pattern: e.target.value }))}
               className="h-8 text-xs bg-input"
@@ -325,7 +327,7 @@ function AlertRuleRow({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-scope-${draft.id}`}>Scope</Label>
+              <Label className="text-xs text-muted-foreground" htmlFor={`alert-rule-scope-${draft.id}`}>{t('scope')}</Label>
               <select
                 id={`alert-rule-scope-${draft.id}`}
                 name={`alert-rule-scope-${draft.id}`}
@@ -333,9 +335,9 @@ function AlertRuleRow({
                 value={draft.notification_scope}
                 onChange={(e) => setDraft(prev => ({ ...prev, notification_scope: e.target.value as any }))}
               >
-                <option value="all">All Notifications</option>
-                <option value="global_only">Global Only</option>
-                <option value="personal_only">Personal Only</option>
+                <option value="all">{t('allNotifications')}</option>
+                <option value="global_only">{t('globalOnly')}</option>
+                <option value="personal_only">{t('personalOnly')}</option>
               </select>
             </div>
             <div className="flex items-center gap-2 mt-4">
@@ -344,13 +346,13 @@ function AlertRuleRow({
                 onCheckedChange={(v) => setDraft(prev => ({ ...prev, send_email: v }))}
                 id={`email-${draft.id}`}
               />
-              <Label htmlFor={`email-${draft.id}`} className="text-xs text-muted-foreground">Send Email Alert</Label>
+              <Label htmlFor={`email-${draft.id}`} className="text-xs text-muted-foreground">{t('sendEmailAlert')}</Label>
             </div>
           </div>
           <div className="pt-2 border-t mt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button
+                  <Button
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs gap-1 hover:text-foreground"
@@ -358,7 +360,7 @@ function AlertRuleRow({
                   disabled={isTestingRule || !draft.match_pattern}
                 >
                   <FlaskConical className="h-3 w-3" />
-                  {isTestingRule ? "Testing..." : "Test Rule Match"}
+                  {isTestingRule ? t('testing') : t('testRuleMatch')}
                 </Button>
                 {draft.send_email && (
                   <Button
@@ -369,13 +371,13 @@ function AlertRuleRow({
                     disabled={isTestingEmail || !draft.match_pattern}
                   >
                     <FlaskConical className="h-3 w-3" />
-                    {isTestingEmail ? "Sending..." : "Test Email Alert"}
+                    {isTestingEmail ? t('sending') : t('testEmailAlert')}
                   </Button>
                 )}
               </div>
               {testResult !== undefined && testResult !== null && (
                 <span className="text-xs text-muted-foreground">
-                  {testResult.total === 0 ? "No matches found" : `Found ${testResult.total} match(es)`}
+                  {testResult.total === 0 ? t('noMatches') : t('foundMatches', { count: testResult.total })}
                 </span>
               )}
             </div>
@@ -384,7 +386,7 @@ function AlertRuleRow({
                 {testResult.matches.slice(0, 3).map(n => (
                   <div key={n.id} className="bg-background border rounded px-2 py-1.5 text-xs flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{n.title || "No title"}</div>
+                      <div className="font-medium truncate">{n.title || t('noTitle')}</div>
                       <div className="text-muted-foreground truncate">{n.message}</div>
                     </div>
                     {draft.send_email && (
@@ -393,7 +395,7 @@ function AlertRuleRow({
                         variant="ghost"
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground shrink-0"
                         onClick={() => onTestEmail(draft, n.id)}
-                        title="Send test email with this notification"
+                        title={t('sendTestEmailTitle')}
                         disabled={isTestingEmail}
                       >
                         <Mail className="h-3.5 w-3.5" />
@@ -403,7 +405,7 @@ function AlertRuleRow({
                 ))}
                 {testResult.total > 3 && (
                   <p className="text-xs text-muted-foreground italic pl-1">
-                    ...and {testResult.total - 3} more.
+                    {t('andMore', { count: testResult.total - 3 })}
                   </p>
                 )}
               </div>
@@ -416,6 +418,7 @@ function AlertRuleRow({
 }
 
 export function PreferencesDialog() {
+  const t = useTranslations("PreferencesDialog");
   const { prefs, setPrefs } = usePreferences();
   const { rules, addRule, updateRule, deleteRule } = useLabelRules();
   const { theme, setTheme } = useTheme();
@@ -481,7 +484,7 @@ export function PreferencesDialog() {
       setCreatingToken(false);
       await mutateTokens();
     } catch (e) {
-      setTokenError(e instanceof Error ? e.message : "Failed to create token");
+      setTokenError(e instanceof Error ? e.message : t('failedCreateToken'));
     } finally {
       setTokenCreating(false);
     }
@@ -535,7 +538,7 @@ export function PreferencesDialog() {
       }
       setEditingToken(null);
     } catch (e) {
-      setEditTokenError(e instanceof Error ? e.message : "Failed to update token");
+      setEditTokenError(e instanceof Error ? e.message : t('failedUpdateToken'));
     } finally {
       setEditTokenSaving(false);
     }
@@ -573,7 +576,7 @@ export function PreferencesDialog() {
         [rule.id]: { matches: res.matched_notifications || [], total: res.total_matches || 0 } 
       }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to test rule");
+      toast.error(err instanceof Error ? err.message : t('testRuleFail'));
     } finally {
       setTestingRule(prev => ({ ...prev, [rule.id]: false }));
     }
@@ -583,9 +586,9 @@ export function PreferencesDialog() {
     setTestingEmail(prev => ({ ...prev, [rule.id]: true }));
     try {
       await testAlertEmail({ ...rule, notification_id: notificationId } as any);
-      toast.success("Test email sent via SMTP successfully!");
+      toast.success(t('testEmailSuccess'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send test email");
+      toast.error(err instanceof Error ? err.message : t('testEmailFail'));
     } finally {
       setTestingEmail(prev => ({ ...prev, [rule.id]: false }));
     }
@@ -620,33 +623,33 @@ export function PreferencesDialog() {
       <DialogTrigger asChild>
         <button
           className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          aria-label="Open preferences"
+          aria-label={t('preferences')}
         >
           <Settings className="h-4 w-4" />
-          Preferences
+          {t('preferences')}
         </button>
       </DialogTrigger>
 
       <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[95vw] md:max-w-6xl h-[85vh] flex flex-col bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Preferences</DialogTitle>
+          <DialogTitle className="text-foreground">{t('preferences')}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="display" className="flex-1 flex flex-col min-h-0">
           <TabsList className="flex flex-wrap bg-secondary">
-            <TabsTrigger value="display" className="flex-1">Display</TabsTrigger>
-            <TabsTrigger value="labels" className="flex-1">Labels</TabsTrigger>
-            <TabsTrigger value="alerts" className="flex-1">Alert Rules</TabsTrigger>
-            <TabsTrigger value="tokens" className="flex-1">My Tokens</TabsTrigger>
-            <TabsTrigger value="plugins" className="flex-1">My Plugins</TabsTrigger>
+            <TabsTrigger value="display" className="flex-1 gap-1.5"><Monitor className="h-3.5 w-3.5" />{t('tabs.display')}</TabsTrigger>
+            <TabsTrigger value="labels" className="flex-1 gap-1.5"><Tags className="h-3.5 w-3.5" />{t('tabs.labels')}</TabsTrigger>
+            <TabsTrigger value="alerts" className="flex-1 gap-1.5"><Bell className="h-3.5 w-3.5" />{t('tabs.alerts')}</TabsTrigger>
+            <TabsTrigger value="tokens" className="flex-1 gap-1.5"><Key className="h-3.5 w-3.5" />{t('tabs.tokens')}</TabsTrigger>
+            <TabsTrigger value="plugins" className="flex-1 gap-1.5"><Puzzle className="h-3.5 w-3.5" />{t('tabs.plugins')}</TabsTrigger>
           </TabsList>
 
           {/* ---- Display tab ---- */}
           <TabsContent value="display" className="mt-4 flex-1 min-h-0 overflow-y-auto space-y-6">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Theme</Label>
+              <Label className="text-sm font-medium">{t('theme')}</Label>
               <p className="text-xs text-muted-foreground">
-                Choose how shoutrrr-logger looks. &quot;System&quot; follows your operating system setting.
+                {t('themeDesc')}
               </p>
               <Select
                 value={mounted ? (theme ?? "dark") : "dark"}
@@ -656,17 +659,17 @@ export function PreferencesDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="light">Light</SelectItem>
-                  <SelectItem value="system">System</SelectItem>
+                  <SelectItem value="dark">{t('themeDark')}</SelectItem>
+                  <SelectItem value="light">{t('themeLight')}</SelectItem>
+                  <SelectItem value="system">{t('themeSystem')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Separator className="bg-border" />
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Time format</Label>
+              <Label className="text-sm font-medium">{t('timeFormat')}</Label>
               <p className="text-xs text-muted-foreground">
-                Override how timestamps are displayed. &quot;Auto&quot; uses your browser&apos;s language setting.
+                {t('timeFormatDesc')}
               </p>
               <Select
                 value={prefs.timeFormat}
@@ -676,15 +679,15 @@ export function PreferencesDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="locale">Auto (browser language)</SelectItem>
-                  <SelectItem value="24h">24-hour (14:05:03)</SelectItem>
-                  <SelectItem value="12h">12-hour (2:05:03 pm)</SelectItem>
+                  <SelectItem value="locale">{t('timeAuto')}</SelectItem>
+                  <SelectItem value="24h">{t('time24h')}</SelectItem>
+                  <SelectItem value="12h">{t('time12h')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Separator className="bg-border" />
             <p className="text-xs text-muted-foreground">
-              Preferences are stored locally in your browser and are not synced between devices.
+              {t('localStoreNotice')}
             </p>
           </TabsContent>
 
@@ -695,20 +698,20 @@ export function PreferencesDialog() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Label rules</p>
+                <p className="text-sm font-medium">{t('labelRules')}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Rules are applied in order. A notification can match multiple labels.
+                  {t('labelRulesDesc')}
                 </p>
               </div>
               <Button size="sm" onClick={handleAddRule} className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Add rule
+                <Plus className="h-3.5 w-3.5" /> {t('addRule')}
               </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {rules.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No label rules yet. Add one to start classifying notifications.
+                  {t('noLabelRules')}
                 </p>
               )}
               {rules.map((rule) => (
@@ -726,25 +729,25 @@ export function PreferencesDialog() {
           <TabsContent value="alerts" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Alert rules</p>
+                <p className="text-sm font-medium">{t('alertRules')}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Define which notifications should trigger a visual alert.
+                  {t('alertRulesDesc')}
                 </p>
               </div>
               <Button size="sm" onClick={handleAddAlertRule} className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Add rule
+                <Plus className="h-3.5 w-3.5" /> {t('addRule')}
               </Button>
             </div>
 
             {!externalDeliveryEnabled && (
-              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — rules with “Send email alert” enabled will still create in-app alerts, but no emails are sent for notifications from your private tokens until it's re-enabled." />
+              <ExternalDeliveryWarning message={t('externalDeliveryWarningAlerts')} />
             )}
 
-            {!alertRules && <p className="text-sm text-muted-foreground py-4">Loading rules...</p>}
+            {!alertRules && <p className="text-sm text-muted-foreground py-4">{t('loadingRules')}</p>}
             
             {alertRules?.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No alert rules defined. Add one to receive notifications.
+                {t('noAlertRules')}
               </p>
             )}
 
@@ -774,14 +777,14 @@ export function PreferencesDialog() {
           {/* ---- My Tokens tab ---- */}
           <TabsContent value="tokens" className="mt-4 flex flex-col min-h-0 flex-1 space-y-4">
             {!externalDeliveryEnabled && (
-              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — notifications sent with your personal tokens won't be forwarded to plugins or emailed until it's re-enabled." />
+              <ExternalDeliveryWarning message={t('externalDeliveryWarningTokens')} />
             )}
 
             {/* Reveal-once raw token banner */}
             {newRawToken && (
               <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 space-y-2">
                 <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
-                  Token created — copy it now, it will not be shown again.
+                  {t('tokenCreated')}
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 rounded bg-black/20 px-2 py-1.5 text-xs font-mono text-foreground break-all">
@@ -792,7 +795,7 @@ export function PreferencesDialog() {
                     variant="outline"
                     className="h-7 shrink-0"
                     onClick={handleCopyToken}
-                    aria-label="Copy token"
+                    aria-label={t('copyToken')}
                   >
                     {copiedToken ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
@@ -837,7 +840,7 @@ export function PreferencesDialog() {
                     setCreatingToken(true);
                   }}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Create token
+                  <Plus className="h-3.5 w-3.5" /> {t('createToken')}
                 </Button>
               </div>
             ) : (
@@ -855,7 +858,7 @@ export function PreferencesDialog() {
               )}
               {myTokens && myTokens.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No personal tokens yet.
+                  {t('noTokens')}
                 </p>
               )}
               {myTokens?.map((tok) => (
@@ -902,7 +905,7 @@ export function PreferencesDialog() {
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
                     onClick={() => openTokenEdit(tok)}
                     aria-label={`Edit ${tok.name}`}
-                    title="Edit token"
+                    title={t('editToken')}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -932,7 +935,7 @@ export function PreferencesDialog() {
       <Dialog open={creatingToken} onOpenChange={(o) => !o && setCreatingToken(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Create personal token</DialogTitle>
+            <DialogTitle className="text-sm">{t('createToken')}</DialogTitle>
             <DialogDescription className="text-xs">
               Private to you — only notifications sent with it are visible to you. The raw value
               is shown once after creation.
@@ -940,12 +943,12 @@ export function PreferencesDialog() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor="create-personal-token-name">Token name</Label>
+              <Label className="text-xs" htmlFor="create-personal-token-name">{t('name')}</Label>
               <Input
                 id="create-personal-token-name"
                 name="create-personal-token-name"
                 className="h-8 text-sm"
-                placeholder="e.g. laptop-watchtower"
+                placeholder={t('cliScriptPlaceholder')}
                 value={tokenName}
                 onChange={(e) => setTokenName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateToken()}
@@ -954,7 +957,7 @@ export function PreferencesDialog() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs" htmlFor="create-personal-token-expiry">
-                Expiration date <span className="text-muted-foreground">(optional)</span>
+                {t('expiresAt')}
               </Label>
               <Input
                 id="create-personal-token-expiry"
@@ -966,7 +969,7 @@ export function PreferencesDialog() {
               />
             </div>
             {!externalDeliveryEnabled && (
-              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled." />
+              <ExternalDeliveryWarning message={t('externalDeliveryWarningToggles')} />
             )}
             <TokenDeliveryToggles
               idPrefix="personal-create"
@@ -991,7 +994,7 @@ export function PreferencesDialog() {
               onClick={handleCreateToken}
               disabled={tokenCreating || !tokenName.trim()}
             >
-              {tokenCreating ? "Creating…" : "Create"}
+              {tokenCreating ? t('creating') : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1001,11 +1004,11 @@ export function PreferencesDialog() {
       <Dialog open={!!editingToken} onOpenChange={(o) => !o && setEditingToken(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Edit token</DialogTitle>
+            <DialogTitle className="text-sm">{t('editToken')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor="edit-personal-token-name">Token name</Label>
+              <Label className="text-xs" htmlFor="edit-personal-token-name">{t('name')}</Label>
               <Input
                 id="edit-personal-token-name"
                 name="edit-personal-token-name"
@@ -1016,7 +1019,7 @@ export function PreferencesDialog() {
               />
             </div>
             {!externalDeliveryEnabled && (
-              <ExternalDeliveryWarning message="External delivery is disabled by your administrator — these toggles have no effect until it's re-enabled." />
+              <ExternalDeliveryWarning message={t('externalDeliveryWarningToggles')} />
             )}
             <TokenDeliveryToggles
               idPrefix="personal-edit"

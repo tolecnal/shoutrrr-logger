@@ -52,6 +52,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useTranslations } from "next-intl";
 
 // ---------------------------------------------------------------------------
 // Time range helpers
@@ -107,6 +108,7 @@ function customFieldValue(n: NotificationOut, key: string): string | null {
 }
 
 export function NotificationLog() {
+  const t = useTranslations("NotificationLog");
   // Keyset pagination: cursorStack[pageIndex] is the cursor for the current
   // server page (cursorStack[0] is always null = first page). Moving forward
   // appends the response's next_cursor; moving back just steps through what
@@ -531,19 +533,20 @@ export function NotificationLog() {
               filters={searchFilters} 
               inputRef={searchInputRef}
             />
-            <Button type="submit" size="sm" variant="secondary" className="h-8">
-              Search
+            <Button type="submit" size="sm" variant="secondary" className="h-8 gap-1.5">
+              <Search className="h-3.5 w-3.5" />
+              {t('search')}
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" title="Search syntax help">
+                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" title={t('searchSyntaxHelp')}>
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4 text-sm bg-card border-border shadow-md" align="start">
                 <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Advanced Search</h4>
-                  <p className="text-muted-foreground">Search specific fields and use regular expressions.</p>
+                  <h4 className="font-medium leading-none">{t('advancedSearch')}</h4>
+                  <p className="text-muted-foreground">{t('advancedSearchDesc')}</p>
                   <ul className="space-y-1 mt-2 list-disc list-inside text-muted-foreground">
                     <li><code className="text-foreground">title:"error"</code> - exact substring in title</li>
                     <li><code className="text-foreground">message:/regex/</code> - regex search in message</li>
@@ -564,7 +567,7 @@ export function NotificationLog() {
                 className="h-8 text-muted-foreground"
                 onClick={handleClearSearch}
               >
-                Clear
+                {t('clear')}
               </Button>
             )}
           </form>
@@ -573,7 +576,7 @@ export function NotificationLog() {
             variant="ghost"
             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
             onClick={() => { setRefreshNonce((n) => n + 1); mutate(); }}
-            title="Refresh"
+            title={t('refresh')}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
@@ -584,7 +587,7 @@ export function NotificationLog() {
                 size="sm"
                 variant="ghost"
                 className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                title="Bulk delete visible notifications"
+                title={t('bulkDelete')}
                 disabled={isDeleting || (data?.total === 0)}
               >
                 {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -592,15 +595,15 @@ export function NotificationLog() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete <strong>all matching notifications</strong> from the database.
+                  {t('deleteWarning')}
                   <br /><br />
-                  Notifications matching your current filter: <strong>{data?.total.toLocaleString() ?? 0}</strong>
+                  {t('notificationsMatching')} <strong>{data?.total.toLocaleString() ?? 0}</strong>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault();
@@ -610,7 +613,7 @@ export function NotificationLog() {
                   disabled={isDeleting}
                 >
                   {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Delete All
+                  {t('deleteAll')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -621,7 +624,7 @@ export function NotificationLog() {
                 size="sm"
                 variant="ghost"
                 className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                title="Export current view"
+                title={t('exportView')}
               >
                 <Download className="h-3.5 w-3.5" />
               </Button>
@@ -634,7 +637,7 @@ export function NotificationLog() {
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  Export as CSV
+                  {t('exportCsv')}
                 </a>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -644,7 +647,7 @@ export function NotificationLog() {
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <FileJson className="h-3.5 w-3.5" />
-                  Export as JSON
+                  {t('exportJson')}
                 </a>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -652,14 +655,14 @@ export function NotificationLog() {
           {data && (
             <span className="text-xs text-muted-foreground whitespace-nowrap">
               {filtersActive
-                ? `${displayTotal.toLocaleString()} visible`
-                : `${data.total.toLocaleString()} total`}
+                ? `${displayTotal.toLocaleString()} ${t('visible')}`
+                : `${data.total.toLocaleString()} ${t('total')}`}
             </span>
           )}
           {(displayPages > 1 || serverHasMore) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
               <span>
-                Page {displayPage} of {displayPages}
+                {t('page')} {displayPage} {t('of')} {displayPages}
                 {serverHasMore && "+"}
               </span>
               <Button
@@ -689,7 +692,7 @@ export function NotificationLog() {
         {/* Filter bar: always visible — scope + label chips on the left, time range + group-by on the right */}
         <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card/30 overflow-x-auto">
           {/* Scope filter */}
-          <span className="text-[11px] text-muted-foreground shrink-0">Scope:</span>
+          <span className="text-[11px] text-muted-foreground shrink-0">{t('scope')}</span>
           {(["all", "global", "mine"] as const).map((s) => (
             <button
               key={s}
@@ -701,13 +704,13 @@ export function NotificationLog() {
                   : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
               )}
             >
-              {s === "all" ? "All" : s === "global" ? "Global" : "My tokens"}
+              {s === "all" ? t('all') : s === "global" ? t('global') : t('myTokens')}
             </button>
           ))}
 
           {enabledLabels.length > 0 && (
             <>
-              <span className="text-[11px] text-muted-foreground shrink-0 ml-1 mr-1">Filter:</span>
+              <span className="text-[11px] text-muted-foreground shrink-0 ml-1 mr-1">{t('filter')}</span>
               <button
                 onClick={() => setActiveLabel(null)}
                 className={cn(
@@ -717,7 +720,7 @@ export function NotificationLog() {
                     : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
                 )}
               >
-                All
+                {t('all')}
               </button>
               {rules
                 .filter((r) => r.enabled)
@@ -754,8 +757,8 @@ export function NotificationLog() {
                 <button
                   onClick={() => { setActiveLabel(null); setClientPage(1); }}
                   className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                  title="Clear label filter"
-                  aria-label="Clear label filter"
+                  title={t('clearLabelFilter')}
+                  aria-label={t('clearLabelFilter')}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -814,7 +817,7 @@ export function NotificationLog() {
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-3 border-b border-border bg-primary/5 px-4 py-2">
             <span className="text-sm font-medium text-foreground">
-              {selectedIds.size} selected
+              {selectedIds.size} {t('selected')}
             </span>
             <Button
               size="sm"
@@ -828,7 +831,7 @@ export function NotificationLog() {
               ) : (
                 <Trash2 className="h-3.5 w-3.5" />
               )}
-              Delete selected
+              {t('deleteSelected')}
             </Button>
             <Button
               size="sm"
@@ -838,7 +841,7 @@ export function NotificationLog() {
               disabled={isDeletingSelected}
             >
               <X className="h-3.5 w-3.5" />
-              Clear
+              {t('clear')}
             </Button>
           </div>
         )}
@@ -860,14 +863,14 @@ export function NotificationLog() {
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
                 {activeLabel
-                  ? `No notifications labeled "${activeLabel}".`
+                  ? t('noNotificationsLabeled', { label: activeLabel })
                   : groupingActive
-                  ? `No notifications match the selected ${groupField} value(s).`
+                  ? t('noNotificationsGroup', { field: groupField })
                   : hasExclude
-                  ? "No notifications match the current filters."
+                  ? t('noNotificationsFilter')
                   : query
-                  ? "No notifications match your search."
-                  : "No notifications yet."}
+                  ? t('noNotificationsSearch')
+                  : t('noNotifications')}
               </p>
               {serverHasMore && (
                 <Button
@@ -875,7 +878,7 @@ export function NotificationLog() {
                   variant="secondary"
                   onClick={() => { advanceServerPage(); setClientPage(1); }}
                 >
-                  Load more from server
+                  {t('loadMore')}
                 </Button>
               )}
             </div>
@@ -899,22 +902,22 @@ export function NotificationLog() {
                     )}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-44">
-                    Received
+                    {t('colReceived')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-24">
-                    Severity
+                    {t('colSeverity')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-32">
-                    Sender
+                    {t('colSender')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2">
-                    Message
+                    {t('colMessage')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-32">
-                    Labels
+                    {t('colLabels')}
                   </th>
                   <th className="text-right text-xs text-muted-foreground font-medium px-4 py-2 w-24">
-                    Count
+                    {t('colCount')}
                   </th>
                 </tr>
               </thead>
@@ -996,6 +999,7 @@ function TimeRangeControl({
   onChange: (preset: Preset) => void;
   onCustomChange: (after: string, before: string) => void;
 }) {
+  const t = useTranslations("NotificationLog");
   const [open, setOpen] = useState(false);
   const [draftAfter, setDraftAfter] = useState(customAfter);
   const [draftBefore, setDraftBefore] = useState(customBefore);
@@ -1016,8 +1020,10 @@ function TimeRangeControl({
           : "…";
       return `${fmt(customAfter)} – ${fmt(customBefore)}`;
     }
-    return PRESETS.find((p) => p.value === value)?.label ?? "All time";
-  }, [value, customAfter, customBefore]);
+    // Typecast to any to avoid TS error on string indexing
+    const valKey = value === "custom" ? "custom" : value;
+    return t(`timePresets.${valKey}`) ?? "All time";
+  }, [value, customAfter, customBefore, t]);
 
   const isActive = value !== "all";
 
@@ -1063,15 +1069,15 @@ function TimeRangeControl({
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 )}
               >
-                {p.label}
+                {t(`timePresets.${p.value}`)}
               </button>
             ))}
           </div>
           {/* Custom range — always visible, no extra click required */}
           <div className="border-t border-border p-3 space-y-2">
-            <p className="text-[11px] font-medium text-muted-foreground">Custom range</p>
+            <p className="text-[11px] font-medium text-muted-foreground">{t('customRange')}</p>
             <div className="space-y-1">
-              <label htmlFor="time-range-from" className="text-[11px] text-muted-foreground">From</label>
+              <label htmlFor="time-range-from" className="text-[11px] text-muted-foreground">{t('from')}</label>
               <Input
                 id="time-range-from"
                 name="time-range-from"
@@ -1082,7 +1088,7 @@ function TimeRangeControl({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="time-range-to" className="text-[11px] text-muted-foreground">To</label>
+              <label htmlFor="time-range-to" className="text-[11px] text-muted-foreground">{t('to')}</label>
               <Input
                 id="time-range-to"
                 name="time-range-to"
@@ -1104,7 +1110,7 @@ function TimeRangeControl({
                   setOpen(false);
                 }}
               >
-                Clear
+                {t('clear')}
               </Button>
               <Button
                 size="sm"
@@ -1116,7 +1122,7 @@ function TimeRangeControl({
                   setOpen(false);
                 }}
               >
-                Apply
+                {t('apply')}
               </Button>
             </div>
           </div>
@@ -1156,6 +1162,7 @@ function GroupByControl({
   onSelectValues: (values: string[]) => void;
   onClearValues: () => void;
 }) {
+  const t = useTranslations("NotificationLog");
   const [open, setOpen] = useState(false);
   const [valueSearch, setValueSearch] = useState("");
   const prevGroupField = useRef<string | null>(null);
@@ -1177,7 +1184,7 @@ function GroupByControl({
 
   return (
     <div className="flex items-center gap-0.5 shrink-0">
-      <span className="text-[11px] text-muted-foreground shrink-0 mr-1">Group by:</span>
+      <span className="text-[11px] text-muted-foreground shrink-0 mr-1">{t('groupBy')}</span>
       <Select
         value={groupField ?? "__none"}
         onValueChange={(v) => onFieldChange(v === "__none" ? null : v)}
@@ -1191,7 +1198,7 @@ function GroupByControl({
           <SelectValue placeholder="Field…" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__none">None</SelectItem>
+          <SelectItem value="__none">{t('none')}</SelectItem>
           {availableGroupFields.map((key) => (
             <SelectItem key={key} value={key}>
               {key}
@@ -1214,16 +1221,16 @@ function GroupByControl({
           >
             <ListFilter className="h-3 w-3 shrink-0" />
             {groupValues.size > 0
-              ? `${groupValues.size} value${groupValues.size === 1 ? "" : "s"}`
-              : "Select values…"}
+              ? `${groupValues.size} ${groupValues.size === 1 ? t('value') : t('values')}`
+              : t('selectValues')}
           </button>
 
           {/* Clear group-by entirely */}
           <button
             onClick={() => { onFieldChange(null); onClearValues(); }}
             className="h-7 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            title="Clear group-by filter"
-            aria-label="Clear group-by filter"
+            title={t('clearGroupBy')}
+            aria-label={t('clearGroupBy')}
           >
             <X className="h-3 w-3" />
           </button>
@@ -1252,7 +1259,7 @@ function GroupByControl({
               name="group-value-search"
               value={valueSearch}
               onChange={(e) => setValueSearch(e.target.value)}
-              placeholder="Search values..."
+              placeholder={t('searchValues')}
               className="pl-8 h-8 text-sm bg-input"
               autoFocus
             />
@@ -1260,7 +1267,7 @@ function GroupByControl({
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {groupValues.size} of {availableGroupValues.length} selected
+              {groupValues.size} {t('of')} {availableGroupValues.length} {t('selected')}
             </span>
             <div className="flex items-center gap-3">
               <button
@@ -1269,7 +1276,7 @@ function GroupByControl({
                 disabled={filteredValues.length === 0}
                 onClick={() => onSelectValues(filteredValues)}
               >
-                Select all
+                {t('selectAll')}
               </button>
               <button
                 type="button"
@@ -1277,7 +1284,7 @@ function GroupByControl({
                 disabled={groupValues.size === 0}
                 onClick={onClearValues}
               >
-                Clear all
+                {t('clearAll')}
               </button>
             </div>
           </div>
@@ -1285,7 +1292,7 @@ function GroupByControl({
           <div className="flex-1 overflow-y-auto rounded-md border border-border divide-y divide-border">
             {filteredValues.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No matching values.
+                {t('noMatchingValues')}
               </p>
             ) : (
               filteredValues.map((value) => (

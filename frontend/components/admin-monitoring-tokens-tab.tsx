@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { format } from "date-fns";
-import { Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff, Pencil } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Save, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { fetchMonitoringTokens, createMonitoringToken, deleteMonitoringToken, updateMonitoringToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MonitoringTokenTestDialog } from "@/components/monitoring-token-test-dialog";
+import { useTranslations } from "next-intl";
 
 export function MonitoringTokensTab() {
+  const t = useTranslations("AdminTabs.monitoring");
   const { data: tokens, error, isLoading, mutate } = useSWR("/admin/monitoring-tokens", fetchMonitoringTokens);
 
   // New token dialog state
@@ -67,9 +69,9 @@ export function MonitoringTokensTab() {
       setNewName("");
       setIsAddOpen(false);
       mutate();
-      toast.success("Monitoring token created successfully");
+      toast.success(t('toastCreated'));
     } catch (err: any) {
-      toast.error(err.message || "Failed to create token");
+      toast.error(err.message || t('toastFailedCreate'));
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +84,7 @@ export function MonitoringTokensTab() {
       await updateMonitoringToken(token.id, { is_active: !token.is_active });
       mutate();
     } catch (err: any) {
-      toast.error(err.message || "Failed to toggle token state");
+      toast.error(err.message || t('toastFailedToggle'));
     } finally {
       setToggling(null);
     }
@@ -95,9 +97,9 @@ export function MonitoringTokensTab() {
       await deleteMonitoringToken(deleteId);
       mutate();
       setDeleteId(null);
-      toast.success("Token deleted");
+      toast.success(t('toastDeleted'));
     } catch (err: any) {
-      toast.error(err.message || "Failed to delete token");
+      toast.error(err.message || t('toastFailedDelete'));
     } finally {
       setIsDeleting(false);
     }
@@ -118,9 +120,9 @@ export function MonitoringTokensTab() {
       });
       setEditToken(null);
       mutate();
-      toast.success("Token updated");
+      toast.success(t('toastUpdated'));
     } catch (err: any) {
-      toast.error(err.message || "Failed to update token");
+      toast.error(err.message || t('toastFailedUpdate'));
     } finally {
       setIsUpdating(false);
     }
@@ -134,12 +136,11 @@ export function MonitoringTokensTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground max-w-[600px]">
-          Monitoring tokens grant read-only access to the <code>/api/v1/monitoring/health</code> endpoint. 
-          Use them for external systems like Nagios or Icinga2.
+          {t('description')}
         </div>
         <Button size="sm" onClick={() => setIsAddOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Create Token
+          {t('createToken')}
         </Button>
       </div>
 
@@ -151,7 +152,7 @@ export function MonitoringTokensTab() {
           </div>
         ) : !tokens?.length ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
-            No monitoring tokens found.
+            {t('noTokens')}
           </div>
         ) : (
           tokens.map((token) => (
@@ -159,11 +160,11 @@ export function MonitoringTokensTab() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-sm truncate">{token.name}</span>
-                  {!token.is_active && <Badge variant="secondary" className="text-[10px]">Inactive</Badge>}
+                  {!token.is_active && <Badge variant="secondary" className="text-[10px]">{t('inactive')}</Badge>}
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-3">
-                  <span>Created: {format(new Date(token.created_at), "MMM d, yyyy HH:mm")}</span>
-                  <span>Last used: {token.last_used_at ? format(new Date(token.last_used_at), "MMM d, yyyy HH:mm") : "Never"}</span>
+                  <span>{t('created')} {format(new Date(token.created_at), "MMM d, yyyy HH:mm")}</span>
+                  <span>{t('lastUsed')} {token.last_used_at ? format(new Date(token.last_used_at), "MMM d, yyyy HH:mm") : t('never')}</span>
                 </div>
               </div>
 
@@ -174,7 +175,7 @@ export function MonitoringTokensTab() {
                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
                   onClick={() => handleToggleActive(token)}
                   disabled={toggling === token.id}
-                  title={token.is_active ? "Deactivate token" : "Activate token"}
+                  title={token.is_active ? t('deactivate') : t('activate')}
                 >
                   {toggling === token.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -190,7 +191,7 @@ export function MonitoringTokensTab() {
                   variant="ghost"
                   className="h-8 w-8 p-0 text-muted-foreground"
                   onClick={() => openEdit(token)}
-                  title="Edit token"
+                  title={t('edit')}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -201,7 +202,7 @@ export function MonitoringTokensTab() {
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                      title="Test token"
+                      title={t('test')}
                     >
                       <span className="text-xs font-mono font-bold">{"{}"}</span>
                     </Button>
@@ -213,7 +214,7 @@ export function MonitoringTokensTab() {
                   variant="ghost"
                   className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                   onClick={() => setDeleteId(token.id)}
-                  title="Delete token"
+                  title={t('delete')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -228,17 +229,17 @@ export function MonitoringTokensTab() {
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle>Create Monitoring Token</DialogTitle>
+              <DialogTitle>{t('createTitle')}</DialogTitle>
               <DialogDescription>
-                Provide a descriptive name for this token (e.g. "Icinga2 Server").
+                {t('createDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="token-name">Name</Label>
+                <Label htmlFor="token-name">{t('name')}</Label>
                 <Input
                   id="token-name"
-                  placeholder="e.g. Nagios Poller"
+                  placeholder={t('namePlaceholder')}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   autoFocus
@@ -247,8 +248,8 @@ export function MonitoringTokensTab() {
             </div>
             <DialogFooter>
               <Button type="submit" disabled={!newName.trim() || isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Create
+                {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {t('createBtn')}
               </Button>
             </DialogFooter>
           </form>
@@ -259,9 +260,9 @@ export function MonitoringTokensTab() {
       <Dialog open={!!createdToken} onOpenChange={(o) => !o && setCreatedToken(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Token Created</DialogTitle>
+            <DialogTitle>{t('createdTitle')}</DialogTitle>
             <DialogDescription className="text-amber-600 dark:text-amber-400 font-medium">
-              Copy this token now. You won't be able to see it again!
+              {t('createdDesc')}
             </DialogDescription>
           </DialogHeader>
           {createdToken && (
@@ -271,8 +272,7 @@ export function MonitoringTokensTab() {
                 <CopyButton value={createdToken.raw_token} className="h-6 w-6" />
               </div>
               <p className="text-xs text-muted-foreground">
-                Use this as a Bearer token in the <code className="font-mono">Authorization</code> header
-                when polling <code className="font-mono">/api/v1/monitoring/health</code>.
+                {t('usageDesc')}
               </p>
             </div>
           )}
@@ -281,11 +281,14 @@ export function MonitoringTokensTab() {
               token={createdToken?.raw_token}
               trigger={
                 <Button variant="outline">
-                  Test this token
+                  {t('testBtn')}
                 </Button>
               }
             />
-            <Button onClick={() => setCreatedToken(null)}>Close</Button>
+            <Button onClick={() => setCreatedToken(null)}>
+              <X className="h-4 w-4 mr-2" />
+              {t('close')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -295,11 +298,11 @@ export function MonitoringTokensTab() {
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={handleEdit}>
             <DialogHeader>
-              <DialogTitle>Edit Token</DialogTitle>
+              <DialogTitle>{t('editTitle')}</DialogTitle>
             </DialogHeader>
             <div className="py-4 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Name</Label>
+                <Label htmlFor="edit-name">{t('name')}</Label>
                 <Input
                   id="edit-name"
                   value={editName}
@@ -309,10 +312,13 @@ export function MonitoringTokensTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditToken(null)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setEditToken(null)}>
+                <X className="h-4 w-4 mr-2" />
+                {t('cancel')}
+              </Button>
               <Button type="submit" disabled={!editName.trim() || isUpdating}>
-                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Save Changes
+                {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {t('saveChanges')}
               </Button>
             </DialogFooter>
           </form>
@@ -323,14 +329,13 @@ export function MonitoringTokensTab() {
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Monitoring Token</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure? Any monitoring systems using this token will immediately lose access.
-              This action cannot be undone.
+              {t('deleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -340,7 +345,7 @@ export function MonitoringTokensTab() {
               disabled={isDeleting}
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Delete
+              {t('deleteBtn')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

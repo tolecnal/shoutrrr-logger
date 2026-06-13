@@ -8,6 +8,7 @@
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useTranslations } from "next-intl";
 
 export interface TokenDeliveryValue {
   allow_plugin_dispatch: boolean;
@@ -26,18 +27,18 @@ export function TokenDeliveryToggles({
   /** Locks both switches (e.g. an admin master switch is off). */
   disabled?: boolean;
 }) {
+  const t = useTranslations("TokenDeliveryToggles");
   return (
     <div className="space-y-2">
-      <Label className="text-xs">External delivery</Label>
+      <Label className="text-xs">{t('externalDelivery')}</Label>
       <div className="rounded-md border border-border/60 divide-y">
         <div className="flex items-center justify-between gap-4 p-3">
           <div className="space-y-0.5">
             <Label htmlFor={`${idPrefix}-allow-plugins`} className="text-xs font-medium">
-              Allow plugins
+              {t('allowPlugins')}
             </Label>
             <p className="text-[11px] text-muted-foreground">
-              Let plugins (Slack, Splunk, webhooks…) forward this token&apos;s notifications to
-              third-party services.
+              {t('allowPluginsDesc')}
             </p>
           </div>
           <Switch
@@ -50,11 +51,10 @@ export function TokenDeliveryToggles({
         <div className="flex items-center justify-between gap-4 p-3">
           <div className="space-y-0.5">
             <Label htmlFor={`${idPrefix}-allow-email`} className="text-xs font-medium">
-              Allow email alerts
+              {t('allowEmail')}
             </Label>
             <p className="text-[11px] text-muted-foreground">
-              Let matching alert rules email this token&apos;s notifications. In-app alerts are
-              unaffected.
+              {t('allowEmailDesc')}
             </p>
           </div>
           <Switch

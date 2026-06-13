@@ -16,6 +16,7 @@ import { Activity, BarChart2, CalendarDays, Clock } from "lucide-react";
 import { fetchSettings, fetchStats, settingsToMap } from "@/lib/api";
 import type { NotificationStats, SettingOut } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // ---------------------------------------------------------------------------
 // Stat card
@@ -68,6 +69,7 @@ function ChartTooltip({
   payload?: { value: number }[];
   label?: string;
 }) {
+  const t = useTranslations("Stats");
   if (!active || !payload?.length || !label) return null;
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 shadow-md text-xs">
@@ -75,7 +77,7 @@ function ChartTooltip({
         {format(parseISO(label), "EEE, MMM d")}
       </p>
       <p className="font-semibold text-foreground">
-        {payload[0].value.toLocaleString()} notification{payload[0].value !== 1 ? "s" : ""}
+        {payload[0].value.toLocaleString()} {t('notification')}{payload[0].value !== 1 ? "s" : ""}
       </p>
     </div>
   );
@@ -85,6 +87,7 @@ function ChartTooltip({
 // Main panel
 // ---------------------------------------------------------------------------
 export function StatsPanel() {
+  const t = useTranslations("Stats");
   const { data: settingsList } = useSWR<SettingOut[]>("/settings", fetchSettings, {
     revalidateOnFocus: false,
   });
@@ -105,31 +108,31 @@ export function StatsPanel() {
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Statistics</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('title')}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Notification activity overview
+          {t('description')}
         </p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Total notifications"
+          label={t('total')}
           value={data?.total}
           icon={BarChart2}
         />
         <StatCard
-          label="Today"
+          label={t('today')}
           value={data?.today}
           icon={Clock}
         />
         <StatCard
-          label="This week"
+          label={t('thisWeek')}
           value={data?.this_week}
           icon={CalendarDays}
         />
         <StatCard
-          label={`Last ${windowDays} days`}
+          label={t('lastNDays', { days: windowDays })}
           value={lastN}
           icon={Activity}
         />
@@ -138,17 +141,17 @@ export function StatsPanel() {
       {/* Area chart */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-sm font-medium text-foreground mb-4">
-          Notifications over time
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">(last {windowDays} days)</span>
+          {t('overTime')}
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">({t('lastNDays', { days: windowDays })})</span>
         </h2>
 
         {isLoading ? (
           <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
-            Loading…
+            {t('loading')}
           </div>
         ) : error ? (
           <div className="h-52 flex items-center justify-center text-sm text-destructive">
-            Failed to load stats
+            {t('failedToLoad')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
@@ -196,7 +199,7 @@ export function StatsPanel() {
       {/* Top senders */}
       {data && data.top_senders.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-sm font-medium text-foreground mb-4">Top senders</h2>
+          <h2 className="text-sm font-medium text-foreground mb-4">{t('topSenders')}</h2>
           <div className="space-y-2">
             {data.top_senders.map((s, i) => {
               const max = data.top_senders[0]?.count ?? 1;
@@ -207,7 +210,7 @@ export function StatsPanel() {
                     {i + 1}
                   </span>
                   <span className="w-40 truncate text-foreground font-mono text-xs shrink-0">
-                    {s.sender ?? "(unknown)"}
+                    {s.sender ?? t('unknownSender')}
                   </span>
                   <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                     <div

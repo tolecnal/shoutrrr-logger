@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { Activity, BarChart2, Bell, Inbox, Info, LogIn, LogOut, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -21,15 +22,16 @@ import useSWR from "swr";
 import { fetchAlerts, logout } from "@/lib/api";
 
 const navItems = [
-  { href: "/log", label: "Notification Log", icon: Inbox, roles: ["viewer", "admin"] },
-  { href: "/alerts", label: "Alerts", icon: Bell, roles: ["viewer", "admin"] },
-  { href: "/stats", label: "Statistics", icon: BarChart2, roles: ["admin"] },
-  { href: "/performance", label: "API Performance", icon: Activity, roles: ["admin"] },
-  { href: "/admin", label: "Admin", icon: Settings, roles: ["admin"] },
-  { href: "/about", label: "About", icon: Info, roles: ["viewer", "admin"] },
+  { id: "log", href: "/log", icon: Inbox, roles: ["viewer", "admin"] },
+  { id: "alerts", href: "/alerts", icon: Bell, roles: ["viewer", "admin"] },
+  { id: "stats", href: "/stats", icon: BarChart2, roles: ["admin"] },
+  { id: "performance", href: "/performance", icon: Activity, roles: ["admin"] },
+  { id: "admin", href: "/admin", icon: Settings, roles: ["admin"] },
+  { id: "about", href: "/about", icon: Info, roles: ["viewer", "admin"] },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Navigation");
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const { data: alerts } = useSWR(user ? "/alerts" : null, fetchAlerts, { refreshInterval: 10000 });
@@ -68,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
-                {item.label}
+                {t(item.id as any)}
                 {item.href === "/alerts" && unreadCount > 0 && (
                   <span className="ml-auto inline-flex items-center justify-center rounded-full bg-destructive dark:bg-destructive/60 w-5 h-5 text-[10px] font-medium text-destructive-foreground">
                     {unreadCount}
@@ -111,6 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem asChild onSelect={(e) => e.preventDefault()}>
                   <PreferencesDialog />
                 </DropdownMenuItem>
+                <LocaleSwitcher />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <button
@@ -119,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className="flex w-full items-center gap-2 text-destructive"
                   >
                     <LogOut className="h-3.5 w-3.5" />
-                    Sign out
+                    {t('signOut')}
                   </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -130,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
             >
               <LogIn className="h-4 w-4" />
-              Sign in
+              {t('signIn')}
             </a>
           )}
         </div>
@@ -155,11 +158,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => void logout()}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              Sign out
+              {t('signOut')}
             </button>
           ) : (
             <a href="/api/auth/login" className="text-xs text-primary">
-              Sign in
+              {t('signIn')}
             </a>
           )}
         </div>

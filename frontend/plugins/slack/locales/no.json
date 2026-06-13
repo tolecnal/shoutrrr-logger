@@ -1,0 +1,21 @@
+{
+  "name": "Slack",
+  "description": "Sender varsler til Slack via innkommende webhooks.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "Innkommende Webhook URL fra din Slack-app eller integrasjonsinnstillinger.",
+  "messageTemplate": "Meldingsmal",
+  "messageTemplateDesc": "Slack markdown støttes. Bruk {title}, {message}, {severity}, osv. for å injisere varslingsfelt. For egendefinerte felt, bruk {custom_fields.your_key}.",
+  "emojiIcon": "Emoji-ikon",
+  "emojiIconDesc": "Valgfri Slack emoji-kode for å bruke som avatar (f.eks. :rotating_light: eller :warning:).",
+  "includedFields": "Inkluderte felt (vedlegg)",
+  "noAdditionalFields": "Ingen ekstra felt",
+  "addFieldPlaceholder": "Legg til et felt f.eks. tags, source_ip (trykk Enter)",
+  "sendTestNotification": "Send testvarsel",
+  "sending": "Sender...",
+  "testFailed": "Test feilet: ",
+  "slackMessagePreview": "Forhåndsvisning av Slack-melding",
+  "previewNotification": "Forhåndsvisning av varsel",
+  "previewBody": "Slik kan meldingen din se ut i Slack.",
+  "value": "Verdi",
+  "unknownError": "Ukjent feil"
+}

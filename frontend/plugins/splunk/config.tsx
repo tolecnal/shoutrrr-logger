@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { GripVertical, Plus, Trash2, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import type { PluginConfigProps } from "@/plugins/types";
 import type { SplunkConfig, SplunkFieldMapping } from "./types";
@@ -170,6 +171,7 @@ export function SplunkConfigPanel({
   saving,
   availableCustomFields,
 }: PluginConfigProps) {
+  const t = useTranslations("Plugin_splunk");
   const config = toSplunkConfig(rawConfig);
   const [testState, setTestState] = useState<"idle" | "loading" | "ok" | "err">("idle");
   const [testMsg, setTestMsg] = useState("");
@@ -218,10 +220,10 @@ export function SplunkConfigPanel({
     try {
       await onTest();
       setTestState("ok");
-      setTestMsg("Test event sent successfully.");
+      setTestMsg(t('testSuccess'));
     } catch (e: unknown) {
       setTestState("err");
-      setTestMsg(e instanceof Error ? e.message : "Unknown error");
+      setTestMsg(e instanceof Error ? `${t('testFailed')}${e.message}` : t('unknownError'));
     }
   }
 
@@ -231,10 +233,10 @@ export function SplunkConfigPanel({
     <div className="space-y-5">
       {/* HEC credentials */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground">HEC endpoint</h4>
+        <h4 className="text-xs font-semibold text-foreground">{t('hecEndpoint')}</h4>
         <div className="grid gap-2">
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="splunk-hec-url">URL</Label>
+            <Label className="text-xs" htmlFor="splunk-hec-url">{t('url')}</Label>
             <Input
               id="splunk-hec-url"
               name="splunk-hec-url"
@@ -245,7 +247,7 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="splunk-hec-token">HEC token</Label>
+            <Label className="text-xs" htmlFor="splunk-hec-token">{t('hecToken')}</Label>
             <Input
               id="splunk-hec-token"
               name="splunk-hec-token"
@@ -263,7 +265,7 @@ export function SplunkConfigPanel({
               onCheckedChange={(v) => update("verify_tls", v)}
             />
             <Label htmlFor="verify-tls" className="text-xs text-muted-foreground cursor-pointer">
-              Verify TLS certificate
+              {t('verifyTls')}
             </Label>
           </div>
         </div>
@@ -273,10 +275,10 @@ export function SplunkConfigPanel({
 
       {/* Splunk metadata */}
       <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-foreground">Splunk metadata</h4>
+        <h4 className="text-xs font-semibold text-foreground">{t('splunkMetadata')}</h4>
         <div className="grid grid-cols-3 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="splunk-index">Index</Label>
+            <Label className="text-xs" htmlFor="splunk-index">{t('index')}</Label>
             <Input
               id="splunk-index"
               name="splunk-index"
@@ -287,7 +289,7 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="splunk-source">Source</Label>
+            <Label className="text-xs" htmlFor="splunk-source">{t('source')}</Label>
             <Input
               id="splunk-source"
               name="splunk-source"
@@ -298,7 +300,7 @@ export function SplunkConfigPanel({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs" htmlFor="splunk-sourcetype">Sourcetype</Label>
+            <Label className="text-xs" htmlFor="splunk-sourcetype">{t('sourcetype')}</Label>
             <Input
               id="splunk-sourcetype"
               name="splunk-sourcetype"
@@ -317,11 +319,9 @@ export function SplunkConfigPanel({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h4 className="text-xs font-semibold text-foreground">Field mappings</h4>
+            <h4 className="text-xs font-semibold text-foreground">{t('fieldMappings')}</h4>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Drag rows to reorder. Use{" "}
-              <code className="font-mono">custom_fields.&lt;key&gt;</code> for custom fields
-              and <code className="font-mono">literal:value</code> for constants.
+              {t('fieldMappingsDesc')}
             </p>
           </div>
           <Button
@@ -331,7 +331,7 @@ export function SplunkConfigPanel({
             className="h-6 text-xs gap-1 shrink-0"
           >
             <Plus className="h-3 w-3" />
-            Add
+            {t('add')}
           </Button>
         </div>
 
@@ -358,7 +358,7 @@ export function SplunkConfigPanel({
           ))}
           {config.field_mappings.length === 0 && (
             <p className="text-xs text-muted-foreground italic">
-              No mappings — all notification fields will be forwarded.
+              {t('noMappings')}
             </p>
           )}
         </div>
@@ -366,9 +366,9 @@ export function SplunkConfigPanel({
         {/* Payload preview */}
         <div className="space-y-1.5 pt-1">
           <p className="text-[11px] text-muted-foreground font-medium">
-            Preview{" "}
+            {t('preview')}{" "}
             <span className="font-normal opacity-70">
-              (sample data — reflects current mappings and metadata)
+              {t('sampleData')}
             </span>
           </p>
           <div className="rounded-md border border-border bg-[#1e1e1e] overflow-hidden">
@@ -396,7 +396,7 @@ export function SplunkConfigPanel({
           className="h-7 text-xs gap-1.5"
         >
           <Send className="h-3 w-3" />
-          Send test event
+          {t('sendTestEvent')}
         </Button>
         {testState !== "idle" && (
           <span
@@ -410,7 +410,7 @@ export function SplunkConfigPanel({
             ) : testState === "err" ? (
               <AlertCircle className="h-3 w-3" />
             ) : null}
-            {testMsg || (testState === "loading" ? "Sending…" : "")}
+            {testMsg || (testState === "loading" ? t('sending') : "")}
           </span>
         )}
       </div>

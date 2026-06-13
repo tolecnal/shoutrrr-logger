@@ -1,0 +1,19 @@
+{
+  "name": "Webhook",
+  "description": "Sends custom HTTP requests.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "The destination URL for the HTTP request.",
+  "method": "Method",
+  "tlsVerification": "TLS Verification",
+  "tlsVerificationDesc": "Verify the SSL/TLS certificate of the destination endpoint. Disable only for trusted internal networks.",
+  "headersJson": "Headers (JSON)",
+  "headersJsonDesc": "Custom HTTP headers defined as a JSON object.",
+  "payloadTemplate": "Payload Template",
+  "payloadTemplateDesc": "The payload sent in the request body. Variables like {title}, {message}, and {severity} will be replaced. Use {custom_fields.your_key} for custom fields. Values will be escaped for JSON injection if necessary.",
+  "payloadPreview": "Payload Preview",
+  "payloadPreviewDesc": "Example payload generated from your template.",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: ",
+  "unknownError": "Unknown error"
+}

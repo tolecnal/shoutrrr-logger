@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KeyRound, Puzzle, ScrollText, Settings2, Users } from "lucide-react";
+import { Key, Puzzle, ScrollText, Settings2, Users } from "lucide-react";
 import { UsersTab } from "@/components/admin-users-tab";
 import { TokensTab } from "@/components/admin-tokens-tab";
 import { PluginsTab } from "@/components/admin-plugins-tab";
@@ -9,15 +9,17 @@ import { SettingsTab } from "@/components/admin-settings-tab";
 import { AuditLogTab } from "@/components/admin-audit-log-tab";
 import { MonitoringTokensTab } from "@/components/admin-monitoring-tokens-tab";
 import { Activity } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function AdminPanel() {
+  const t = useTranslations("Admin");
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Page header */}
       <div className="px-6 py-4 border-b border-border bg-card/40">
-        <h1 className="text-base font-semibold text-foreground">Admin</h1>
+        <h1 className="text-base font-semibold text-foreground">{t('title')}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Manage users, access tokens, plugins, and application settings.
+          {t('description')}
         </p>
       </div>
 
@@ -26,27 +28,27 @@ export function AdminPanel() {
           <TabsList className="w-fit bg-muted">
             <TabsTrigger value="users" className="flex items-center gap-1.5 text-xs">
               <Users className="h-3.5 w-3.5" />
-              Users
+              {t('tabUsers')}
             </TabsTrigger>
             <TabsTrigger value="tokens" className="flex items-center gap-1.5 text-xs">
-              <KeyRound className="h-3.5 w-3.5" />
-              Access Tokens
+              <Key className="h-3.5 w-3.5" />
+              {t('tabTokens')}
             </TabsTrigger>
             <TabsTrigger value="monitoring-tokens" className="flex items-center gap-1.5 text-xs">
               <Activity className="h-3.5 w-3.5" />
-              Monitoring
+              {t('tabMonitoring')}
             </TabsTrigger>
             <TabsTrigger value="plugins" className="flex items-center gap-1.5 text-xs">
               <Puzzle className="h-3.5 w-3.5" />
-              Plugins
+              {t('tabPlugins')}
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-1.5 text-xs">
               <Settings2 className="h-3.5 w-3.5" />
-              Settings
+              {t('tabSettings')}
             </TabsTrigger>
             <TabsTrigger value="audit-log" className="flex items-center gap-1.5 text-xs">
               <ScrollText className="h-3.5 w-3.5" />
-              Audit Log
+              {t('tabAuditLog')}
             </TabsTrigger>
           </TabsList>
 

@@ -2,13 +2,18 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, FileText } from "lucide-react";
 import { fetchAuditLogs, auditLogsKey } from "@/lib/api";
 import type { AuditLogOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import jsonLang from "react-syntax-highlighter/dist/esm/languages/hljs/json";
+import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
+
+SyntaxHighlighter.registerLanguage("json", jsonLang);
 import {
   Select,
   SelectContent,
@@ -22,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslations } from "next-intl";
 
 const AUDIT_ACTIONS = [
   "user.create",
@@ -48,6 +54,7 @@ function targetLabel(entry: AuditLogOut): string {
 }
 
 export function AuditLogTab() {
+  const t = useTranslations("AdminTabs.auditLog");
   // Keyset pagination: cursorStack[pageIndex] is the cursor for the current
   // page (cursorStack[0] is always null = first page). Moving "next" appends
   // the response's next_cursor; moving "prev" just steps back through what
@@ -84,18 +91,18 @@ export function AuditLogTab() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-muted-foreground">
-            {data?.total ?? 0} entr{data?.total === 1 ? "y" : "ies"}
+            {data?.total ?? 0} {data?.total === 1 ? t('entry') : t('entries')}
           </p>
           <p className="text-[11px] text-muted-foreground/60 mt-0.5">
-            Records of admin actions: user, token, settings, and plugin changes.
+            {t('description')}
           </p>
         </div>
         <Select value={action ?? "__all"} onValueChange={handleActionChange}>
           <SelectTrigger className="h-8 w-44 text-xs">
-            <SelectValue placeholder="All actions" />
+            <SelectValue placeholder={t('allActions')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all">All actions</SelectItem>
+            <SelectItem value="__all">{t('allActions')}</SelectItem>
             {AUDIT_ACTIONS.map((a) => (
               <SelectItem key={a} value={a}>{a}</SelectItem>
             ))}
@@ -107,11 +114,11 @@ export function AuditLogTab() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Time</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Actor</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Action</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">Target</th>
-              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">IP</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colTime')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colUsername')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colAction')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colTarget')}</th>
+              <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2.5">{t('colIp')}</th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
@@ -151,10 +158,11 @@ export function AuditLogTab() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1.5"
                         onClick={() => setDetails(entry)}
                       >
-                        Details
+                        <FileText className="h-3.5 w-3.5" />
+                        {t('details')}
                       </Button>
                     )}
                   </td>
@@ -163,7 +171,7 @@ export function AuditLogTab() {
             ) : (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-xs text-muted-foreground">
-                  No audit log entries yet.
+                  {t('noEntries')}
                 </td>
               </tr>
             )}
@@ -173,7 +181,7 @@ export function AuditLogTab() {
 
       {data && data.pages > 1 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Page {pageIndex + 1} of {data.pages}</span>
+          <span>{t('pageOf', { page: pageIndex + 1, total: data.pages })}</span>
           <div className="flex items-center gap-1">
             <Button
               size="sm"
@@ -200,11 +208,19 @@ export function AuditLogTab() {
       <Dialog open={!!details} onOpenChange={(o) => !o && setDetails(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-sm">Audit Log Details</DialogTitle>
+            <DialogTitle className="text-sm">{t('dialogTitle')}</DialogTitle>
           </DialogHeader>
-          <pre className="text-xs bg-muted rounded-md p-3 overflow-auto max-h-96 whitespace-pre-wrap break-all">
-            {details ? JSON.stringify(details.details, null, 2) : ""}
-          </pre>
+          <div className="rounded-md border bg-[#1e1e1e] p-0 overflow-auto max-h-96">
+            <SyntaxHighlighter
+              language="json"
+              style={vs2015}
+              customStyle={{ margin: 0, padding: "0.75rem", fontSize: "0.75rem" }}
+              wrapLines={true}
+              wrapLongLines={true}
+            >
+              {details ? JSON.stringify(details.details, null, 2) : ""}
+            </SyntaxHighlighter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

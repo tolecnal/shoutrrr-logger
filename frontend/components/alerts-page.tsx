@@ -19,8 +19,10 @@ import {
 import { cn } from "@/lib/utils";
 import { usePreferences } from "@/lib/use-preferences";
 import { NotificationDetailContent } from "@/components/notification-detail";
+import { useTranslations } from "next-intl";
 
 export function AlertsPage() {
+  const t = useTranslations("Alerts");
   const { data: alerts, mutate, isLoading } = useSWR("/alerts", fetchAlerts, { refreshInterval: 10000 });
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const { formatTimestamp } = usePreferences();
@@ -105,16 +107,16 @@ export function AlertsPage() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-foreground" />
-            <h1 className="text-sm font-semibold tracking-tight text-foreground">Alerts</h1>
+            <h1 className="text-sm font-semibold tracking-tight text-foreground">{t('title')}</h1>
             {alerts && (
               <span className="text-xs text-muted-foreground ml-2">
-                {alerts.length} total • {alerts.filter(a => !a.is_read).length} unread
+                {alerts.length} {t('total')} • {alerts.filter(a => !a.is_read).length} {t('unread')}
               </span>
             )}
           </div>
           <Button onClick={markAllRead} variant="outline" size="sm" disabled={!alerts?.some(a => !a.is_read)}>
             <CheckCircle2 className="mr-2 h-4 w-4" />
-            Mark all as read
+            {t('markAllAsRead')}
           </Button>
         </div>
 
@@ -133,9 +135,9 @@ export function AlertsPage() {
           ) : sortedAlerts.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
-              <h3 className="text-sm font-medium text-foreground">No alerts yet</h3>
+              <h3 className="text-sm font-medium text-foreground">{t('noAlerts')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                When your alert rules match incoming notifications, they'll appear here.
+                {t('noAlertsDescription')}
               </p>
             </div>
           ) : (
@@ -143,22 +145,22 @@ export function AlertsPage() {
               <thead className="sticky top-0 z-10 bg-card/90 backdrop-blur-sm border-b border-border">
                 <tr>
                   <th className="text-center px-4 py-2 w-12">
-                    <span className="sr-only">Status</span>
+                    <span className="sr-only">{t('colStatus')}</span>
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-44">
-                    Triggered
+                    {t('colTriggered')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-24">
-                    Severity
+                    {t('colSeverity')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-48">
-                    Sender
+                    {t('colSender')}
                   </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2">
-                    Message
+                    {t('colMessage')}
                   </th>
                   <th className="text-right text-xs text-muted-foreground font-medium px-4 py-2 w-24">
-                    Actions
+                    {t('colActions')}
                   </th>
                 </tr>
               </thead>
@@ -193,7 +195,7 @@ export function AlertsPage() {
                             handleToggleState(alert.id, alert.is_read);
                           }}
                           className="text-muted-foreground hover:text-foreground transition-colors"
-                          title={!alert.is_read ? "Mark as read" : "Mark as unread"}
+                          title={!alert.is_read ? t('markAsRead') : t('markAsUnread')}
                         >
                           {!alert.is_read ? (
                             <Circle className="h-4 w-4 fill-blue-500/20 text-blue-500" />
@@ -216,7 +218,7 @@ export function AlertsPage() {
                       </td>
                       <td className="px-4 py-2 align-top pt-3">
                         <span className={cn("font-medium", !alert.is_read ? "text-foreground" : "text-foreground/80")}>
-                          {n?.sender_name || "Unknown"}
+                          {n?.sender_name || t('unknown')}
                         </span>
                       </td>
                       <td className="px-4 py-2 align-top pt-3">
@@ -227,7 +229,7 @@ export function AlertsPage() {
                             </span>
                           )}
                           <span className={cn("line-clamp-2 text-muted-foreground", !n?.title && "mt-0")}>
-                            {n?.message || "No content"}
+                            {n?.message || t('noContent')}
                           </span>
                         </div>
                       </td>
@@ -242,7 +244,7 @@ export function AlertsPage() {
                           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          <span className="sr-only">Delete alert</span>
+                          <span className="sr-only">{t('deleteAlert')}</span>
                         </Button>
                       </td>
                     </tr>
@@ -259,10 +261,10 @@ export function AlertsPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="pr-6">
-                  {selectedAlert.notification.title || selectedAlert.notification.sender_name || "Alert details"}
+                  {selectedAlert.notification.title || selectedAlert.notification.sender_name || t('alertDetails')}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
-                  Alert notification details
+                  {t('alertDetailsDescription')}
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1 -mx-6 px-6">
@@ -285,13 +287,13 @@ export function AlertsPage() {
                   ) : (
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                   )}
-                  {selectedAlert.is_read ? "Mark as unread" : "Mark as read"}
+                  {selectedAlert.is_read ? t('markAsUnread') : t('markAsRead')}
                   <kbd className="ml-2 hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
                     R
                   </kbd>
                 </Button>
                 <Button variant="secondary" onClick={goToNextUnread}>
-                  Next unread
+                  {t('nextUnread')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                   <kbd className="ml-2 hidden h-5 items-center rounded border border-border/60 bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-flex">
                     N

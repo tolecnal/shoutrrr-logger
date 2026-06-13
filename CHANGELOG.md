@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Internationalization (i18n)**: Implemented full frontend translation support via `next-intl`. Added Norwegian (`no`) as a supported language.
+- **Plugin Localization**: Frontend plugin configurations (`frontend/plugins/<plugin>/locales/`) are now fully localized and dynamically merged into the global messaging tree, including graceful fallbacks to API-provided plugin names and descriptions.
+- **Locale Switcher**: Added a top-bar component to easily toggle the UI language.
+- **UI Polish**: Added Lucide icons to all primary action buttons and application tabs (Admin Panel, Settings, User Preferences, Plugins) to ensure visual consistency and better UX.
+- **Audit Log Syntax Highlighting**: Audit Log JSON details now render with `react-syntax-highlighter` (vs2015 theme) for improved readability.
+
+### Changed
+
+- **Next.js Proxy**: Renamed `frontend/middleware.ts` to `frontend/proxy.ts` to fix a Next.js 16+ deprecation warning.
+- **Dependencies**: Bumped `pnpm` from `11.5.3` to `11.6.0` (managed via corepack).
+- **Audit Log Terminology**: Renamed "Actor" to "Username" in the UI to be more precise for users.
+- **Graceful Locale Fallbacks**: Visiting URLs with an unsupported or missing language code (e.g., `/es/log`) now dynamically intercepts the route in `proxy.ts` and safely redirects users to the English default to prevent 404 crashes.
+
 ## [0.8.0] — 2026-06-13
 
 This release centers on **plugin configuration profiles**, **per-token external delivery control**, and **finer-grained notification deletion**, plus operational and security hardening (auto-applied migrations, RP-initiated logout). Note the API and migration changes called out below.

@@ -1,0 +1,19 @@
+{
+  "name": "Webhook",
+  "description": "Sender tilpassede HTTP-forespørsler.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "Mål-URL-en for HTTP-forespørselen.",
+  "method": "Metode",
+  "tlsVerification": "TLS-verifisering",
+  "tlsVerificationDesc": "Verifiser SSL/TLS-sertifikatet til målendepunktet. Deaktiver kun for klarerte interne nettverk.",
+  "headersJson": "Headere (JSON)",
+  "headersJsonDesc": "Tilpassede HTTP-headere definert som et JSON-objekt.",
+  "payloadTemplate": "Payload-mal",
+  "payloadTemplateDesc": "Payloaden som sendes i forespørselskroppen. Variabler som {title}, {message} og {severity} vil bli erstattet. Bruk {custom_fields.your_key} for egendefinerte felt. Verdier vil bli unnslippet for JSON-injeksjon om nødvendig.",
+  "payloadPreview": "Forhåndsvisning av payload",
+  "payloadPreviewDesc": "Eksempel på payload generert fra malen din.",
+  "sendTestNotification": "Send testvarsel",
+  "sending": "Sender...",
+  "testFailed": "Test feilet: ",
+  "unknownError": "Ukjent feil"
+}

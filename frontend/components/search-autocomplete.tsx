@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import type { NotificationSearchFilters } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 interface SearchAutocompleteProps {
   value: string;
@@ -13,6 +14,7 @@ interface SearchAutocompleteProps {
 const KEYS = ["title:", "message:", "sender:", "severity:", "tag:", "after:", "before:"];
 
 export function SearchAutocomplete({ value, onChange, filters, inputRef }: SearchAutocompleteProps) {
+  const t = useTranslations("SearchAutocomplete");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -138,7 +140,7 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
           updateCursor();
         }}
         onKeyDown={handleKeyDown}
-        placeholder="Search… (press / to focus)"
+        placeholder={t('searchPlaceholder')}
         className="pl-8 h-8 text-sm bg-input"
         autoComplete="off"
       />

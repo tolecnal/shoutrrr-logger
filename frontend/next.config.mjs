@@ -1,4 +1,7 @@
 import { readFileSync } from "fs";
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin();
 
 const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url)));
 
@@ -27,4 +30,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

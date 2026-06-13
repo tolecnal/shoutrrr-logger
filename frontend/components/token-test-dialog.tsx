@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { CopyButton } from "@/components/copy-button";
 import { CodeBlock } from "@/components/code-block";
+import { useTranslations } from "next-intl";
 
 const PLACEHOLDER_TOKEN = "YOUR_TOKEN";
 
@@ -84,6 +85,7 @@ export function TokenTestDialog({
   token?: string;
   trigger: ReactNode;
 }) {
+  const t = useTranslations("TokenTestDialog");
   const [open, setOpen] = useState(false);
 
   const url =
@@ -97,11 +99,11 @@ export function TokenTestDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-sm">Test this token</DialogTitle>
+          <DialogTitle className="text-sm">{t('testToken')}</DialogTitle>
           <DialogDescription className="text-xs">
             {token
-              ? "Copy any of the examples below to send a test notification."
-              : "Replace YOUR_TOKEN with the token's raw value, then run one of the examples below."}
+              ? t('copyDesc')
+              : t('replaceDesc')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-1">

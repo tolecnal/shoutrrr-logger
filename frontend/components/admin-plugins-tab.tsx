@@ -21,6 +21,7 @@ import {
   PluginProfileTabs,
   type ProfileApi,
 } from "@/components/plugin-profile-tabs";
+import { useTranslations } from "next-intl";
 
 const adminProfileApi: ProfileApi = {
   create: createPluginProfile,
@@ -42,6 +43,8 @@ function PluginCard({
   availableCustomFields: string[];
   onSaved: () => void;
 }) {
+  const t = useTranslations("AdminTabs.plugins");
+  const tPlugin = useTranslations();
   const [expanded, setExpanded] = useState(false);
   const [allowUserConfigs, setAllowUserConfigs] = useState(plugin.allow_user_configs ?? true);
   const [allowSaving, setAllowSaving] = useState(false);
@@ -64,8 +67,9 @@ function PluginCard({
   return (
     <div className="rounded-lg border border-border bg-card">
       <PluginCardHeader
-        name={plugin.name}
-        description={plugin.description}
+        pluginId={plugin.id}
+        name={tPlugin.has(`Plugin_${plugin.id}.name`) ? tPlugin(`Plugin_${plugin.id}.name`) : plugin.name}
+        description={tPlugin.has(`Plugin_${plugin.id}.description`) ? tPlugin(`Plugin_${plugin.id}.description`) : plugin.description}
         enabledCount={enabledCount}
         expanded={expanded}
         onToggle={() => setExpanded((v) => !v)}
@@ -77,9 +81,9 @@ function PluginCard({
           <div className="px-4 py-4 space-y-6">
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
-                <p className="text-sm font-medium">Allow User Configurations</p>
+                <p className="text-sm font-medium">{t('allowUserConfigs')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Allow regular users to configure this plugin with their own private settings.
+                  {t('allowUserConfigsDesc')}
                 </p>
               </div>
               <Switch
@@ -91,7 +95,7 @@ function PluginCard({
             <Separator />
             <PluginProfileTabs
               pluginId={plugin.id}
-              pluginName={plugin.name}
+              pluginName={tPlugin.has(`Plugin_${plugin.id}.name`) ? tPlugin(`Plugin_${plugin.id}.name`) : plugin.name}
               profiles={plugin.profiles}
               maxProfiles={0}
               availableCustomFields={availableCustomFields}
@@ -110,6 +114,7 @@ function PluginCard({
 // ---------------------------------------------------------------------------
 
 export function PluginsTab() {
+  const t = useTranslations("AdminTabs.plugins");
   const { data: customFields = [] } = useSWR<string[]>(
     "/api/v1/admin/plugins/custom-field-keys",
     fetchCustomFieldKeys,
@@ -133,12 +138,9 @@ export function PluginsTab() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
         <Puzzle className="h-8 w-8 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">No plugins registered.</p>
+        <p className="text-sm text-muted-foreground">{t('noPlugins')}</p>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Drop a plugin folder into{" "}
-          <code className="font-mono">backend/plugins/</code> and restart the
-          application. See <code className="font-mono">PLUGINS.md</code> for the
-          authoring guide.
+          {t('dropHint')}
         </p>
       </div>
     );

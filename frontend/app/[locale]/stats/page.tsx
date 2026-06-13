@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
-import { NotificationLog } from "@/components/notification-log";
 import { Spinner } from "@/components/ui/spinner";
+import { StatsPanel } from "@/components/stats-panel";
 
-export default function LogPage() {
+export default function StatsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace("/api/auth/login");
-    }
+    if (!isLoading && !user) router.replace("/api/auth/login");
+    if (!isLoading && user && user.role !== "admin") router.replace("/log");
   }, [user, isLoading, router]);
 
   if (isLoading) {
@@ -24,7 +23,7 @@ export default function LogPage() {
     );
   }
 
-  if (!user) return null;
+  if (!user || user.role !== "admin") return null;
 
-  return <NotificationLog />;
+  return <StatsPanel />;
 }

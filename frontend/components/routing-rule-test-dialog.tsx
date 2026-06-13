@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 
 export function RoutingRuleTestDialog({
   rule,
@@ -18,6 +19,7 @@ export function RoutingRuleTestDialog({
   rule: any;
   onClose: () => void;
 }) {
+  const t = useTranslations("RoutingRuleTest");
   const [results, setResults] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,21 +55,20 @@ export function RoutingRuleTestDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Test Routing Rule: {rule.name}</DialogTitle>
+          <DialogTitle>{t('testTitle', { name: rule.name })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This will evaluate the rule against recent notifications in the database to see what matches.
-            The number of matches returned is limited by server configuration (default 10).
+            {t('testDesc')}
           </p>
 
           {!results && !loading && (
-            <Button onClick={handleTest}>Run Test</Button>
+            <Button onClick={handleTest}>{t('runTest')}</Button>
           )}
 
           {loading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Running test...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('runningTest')}
             </div>
           )}
 
@@ -75,10 +76,10 @@ export function RoutingRuleTestDialog({
 
           {results && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium">Results ({results.length} matches found)</h4>
+              <h4 className="text-sm font-medium">{t('results', { count: results.length })}</h4>
               <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
                 {results.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No recent notifications match this rule.</p>
+                  <p className="text-sm text-muted-foreground">{t('noMatches')}</p>
                 ) : (
                   results.map((n: any) => (
                     <div key={n.id} className="text-sm border rounded p-2 bg-muted/50">
@@ -98,7 +99,7 @@ export function RoutingRuleTestDialog({
                 )}
               </div>
               <div className="flex justify-end pt-2">
-                <Button variant="outline" onClick={handleTest}>Run Again</Button>
+                <Button variant="outline" onClick={handleTest}>{t('runAgain')}</Button>
               </div>
             </div>
           )}

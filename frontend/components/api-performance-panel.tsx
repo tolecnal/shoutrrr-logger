@@ -16,6 +16,7 @@ import { Activity, AlertTriangle, Clock, Gauge, Search } from "lucide-react";
 import { fetchApiPerformance } from "@/lib/api";
 import type { ApiPerformanceStats } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -103,6 +104,7 @@ function ChartTooltip({
   label?: string;
   windowHours: number;
 }) {
+  const t = useTranslations("ApiPerformance");
   if (!active || !payload?.length || !label) return null;
   const ts = parseISO(label);
   const timeStr =
@@ -126,6 +128,7 @@ function ChartTooltip({
 // Main panel
 // ---------------------------------------------------------------------------
 export function ApiPerformancePanel() {
+  const t = useTranslations("ApiPerformance");
   const [windowHours, setWindowHours] = useState(24);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<"endpoint" | "requests" | "avg" | "p95" | "error">("requests");
@@ -200,9 +203,9 @@ export function ApiPerformancePanel() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">API Performance</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t('title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Request latency and error rates across all endpoints
+            {t('description')}
           </p>
         </div>
         <select
@@ -223,22 +226,22 @@ export function ApiPerformancePanel() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Total requests"
+          label={t('totalRequests')}
           value={data ? data.total_requests.toLocaleString() : undefined}
           icon={Activity}
         />
         <StatCard
-          label="Avg response time"
+          label={t('avgResponse')}
           value={data ? fmtMs(data.avg_ms) : undefined}
           icon={Clock}
         />
         <StatCard
-          label="P95 response time"
+          label={t('p95Response')}
           value={data ? fmtMs(data.p95_ms) : undefined}
           icon={Gauge}
         />
         <StatCard
-          label="Server error rate"
+          label={t('errorRate')}
           value={data ? `${data.error_rate.toFixed(2)}%` : undefined}
           icon={AlertTriangle}
           accent={!!data && data.error_rate > 0}
@@ -248,23 +251,23 @@ export function ApiPerformancePanel() {
       {/* Requests-over-time chart */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-sm font-medium text-foreground mb-4">
-          Requests over time
+          {t('requestsOverTime')}
           <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-            ({windowLabel}, per hour)
+            ({windowLabel}, {t('perHour')})
           </span>
         </h2>
 
         {isLoading ? (
           <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
-            Loading…
+            {t('loading')}
           </div>
         ) : error ? (
           <div className="h-52 flex items-center justify-center text-sm text-destructive">
-            Failed to load performance data
+            {t('failedToLoad')}
           </div>
         ) : !data || data.by_hour.length === 0 ? (
           <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
-            No data for this window yet
+            {t('noData')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
@@ -317,7 +320,7 @@ export function ApiPerformancePanel() {
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <h2 className="text-sm font-medium text-foreground">
-              Endpoint breakdown
+              {t('endpointBreakdown')}
               <span className="ml-1.5 text-xs font-normal text-muted-foreground">
                 ({windowLabel})
               </span>
@@ -328,7 +331,7 @@ export function ApiPerformancePanel() {
                 id="performance-endpoint-search"
                 name="performance-endpoint-search"
                 type="text"
-                placeholder="Search endpoints..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 rounded-md border border-border bg-transparent pl-8 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-[200px]"
@@ -340,19 +343,19 @@ export function ApiPerformancePanel() {
               <thead>
                 <tr className="border-b border-border text-muted-foreground select-none">
                   <th className="text-left py-2 pr-4 font-medium w-full cursor-pointer group" onClick={() => handleSort("endpoint")}>
-                    Endpoint {renderSortIcon("endpoint")}
+                    {t('colEndpoint')} {renderSortIcon("endpoint")}
                   </th>
                   <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("requests")}>
-                    Requests {renderSortIcon("requests")}
+                    {t('colRequests')} {renderSortIcon("requests")}
                   </th>
                   <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("avg")}>
-                    Avg {renderSortIcon("avg")}
+                    {t('colAvg')} {renderSortIcon("avg")}
                   </th>
                   <th className="text-right py-2 px-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("p95")}>
-                    P95 {renderSortIcon("p95")}
+                    {t('colP95')} {renderSortIcon("p95")}
                   </th>
                   <th className="text-right py-2 pl-3 font-medium whitespace-nowrap cursor-pointer group" onClick={() => handleSort("error")}>
-                    Error % {renderSortIcon("error")}
+                    {t('colError')} {renderSortIcon("error")}
                   </th>
                 </tr>
               </thead>
@@ -360,7 +363,7 @@ export function ApiPerformancePanel() {
                 {filteredAndSortedEndpoints.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                      No endpoints match your search.
+                      {t('noMatch')}
                     </td>
                   </tr>
                 ) : (
@@ -411,7 +414,7 @@ export function ApiPerformancePanel() {
 
       {data && data.total_requests === 0 && (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          No API requests recorded in this window yet. Data appears as traffic comes in.
+          {t('noApiData')}
         </div>
       )}
     </div>

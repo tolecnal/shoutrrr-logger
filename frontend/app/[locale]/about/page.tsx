@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
+import { VersionPage } from "@/components/version-page";
 import { Spinner } from "@/components/ui/spinner";
-import { ApiPerformancePanel } from "@/components/api-performance-panel";
 
-export default function PerformancePage() {
+export default function AboutPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) router.replace("/api/auth/login");
-    if (!isLoading && user && user.role !== "admin") router.replace("/log");
+    if (!isLoading && !user) {
+      router.replace("/api/auth/login");
+    }
   }, [user, isLoading, router]);
 
   if (isLoading) {
@@ -23,7 +24,7 @@ export default function PerformancePage() {
     );
   }
 
-  if (!user || user.role !== "admin") return null;
+  if (!user) return null;
 
-  return <ApiPerformancePanel />;
+  return <VersionPage />;
 }

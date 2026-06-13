@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { CodeBlock } from "@/components/code-block";
 import { CopyButton } from "@/components/copy-button";
+import { useTranslations } from "next-intl";
 
 const PLACEHOLDER_TOKEN = "YOUR_TOKEN";
 
@@ -66,6 +67,7 @@ export function MonitoringTokenTestDialog({
   token?: string;
   trigger: ReactNode;
 }) {
+  const t = useTranslations("MonitoringTokenTest");
   const [open, setOpen] = useState(false);
 
   const url =
@@ -79,10 +81,9 @@ export function MonitoringTokenTestDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-sm">Test monitoring token</DialogTitle>
+          <DialogTitle className="text-sm">{t('testTitle')}</DialogTitle>
           <DialogDescription className="text-xs">
-            Copy one of the snippets below to verify your monitoring configuration.
-            Because monitoring tokens only have read access, executing these snippets will simply return system metrics and will not alter data.
+            {t('testDesc')}
           </DialogDescription>
         </DialogHeader>
 

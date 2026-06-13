@@ -1,0 +1,21 @@
+{
+  "name": "Slack",
+  "description": "Sends notifications to Slack via Incoming Webhooks.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "The Incoming Webhook URL from your Slack App or Integration settings.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Slack markdown supported. Use {title}, {message}, {severity}, etc. to inject notification fields. For custom fields, use {custom_fields.your_key}.",
+  "emojiIcon": "Emoji Icon",
+  "emojiIconDesc": "Optional Slack emoji code to use as the avatar (e.g., :rotating_light: or :warning:).",
+  "includedFields": "Included Fields (Attachments)",
+  "noAdditionalFields": "No additional fields",
+  "addFieldPlaceholder": "Add a field e.g. tags, source_ip (press Enter)",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: ",
+  "slackMessagePreview": "Slack Message Preview",
+  "previewNotification": "Preview Notification",
+  "previewBody": "This is what your message might look like in Slack.",
+  "value": "Value",
+  "unknownError": "Unknown error"
+}

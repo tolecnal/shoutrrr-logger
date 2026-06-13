@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Clock, Wifi, Tag, MessageSquare, Hash, Braces } from "lucide-react";
+import { X, Clock, Wifi, Tag, MessageSquare, Hash, Braces, Eye, CheckCircle2, RotateCcw } from "lucide-react";
 import type { NotificationOut } from "@/lib/types";
 import type { LabelRule } from "@/lib/use-label-rules";
 import { LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { updateNotificationState } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 interface Props {
   notification: NotificationOut;
@@ -51,6 +52,7 @@ function DetailRow({
 }
 
 export function NotificationDetailContent({ notification: n, tags, rules, formatTimestamp, onUpdate, alertStatesEnabled }: ContentProps) {
+  const t = useTranslations("NotificationDetail");
   const handleStateUpdate = async (newState: "new" | "acknowledged" | "resolved") => {
     try {
       const updated = await updateNotificationState(n.id, newState);
@@ -65,14 +67,14 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {/* Title */}
           {n.title && (
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Title</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('title')}</p>
               <p className="text-sm font-medium text-foreground">{n.title}</p>
             </div>
           )}
 
           <DetailRow
             icon={Clock}
-            label="Received at"
+            label={t('receivedAt')}
             value={
               <span className="font-mono text-xs">
                 {formatTimestamp(n.received_at)}
@@ -83,14 +85,14 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {n.occurrences > 1 && (
             <DetailRow
               icon={Clock}
-              label="Last received at"
+              label={t('lastReceivedAt')}
               value={
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs">
                     {formatTimestamp(n.last_received_at)}
                   </span>
                   <Badge variant="secondary" className="text-[10px]">
-                    {n.occurrences} occurrences
+                    {t('occurrences', { count: n.occurrences })}
                   </Badge>
                 </div>
               }
@@ -99,7 +101,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
 
           <DetailRow
             icon={Tag}
-            label="Severity"
+            label={t('severity')}
             value={
               <span
                 className={cn(
@@ -123,7 +125,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {n.sender_name && (
             <DetailRow
               icon={Tag}
-              label="Sender"
+              label={t('sender')}
               value={
                 <Badge variant="secondary" className="text-xs font-normal">
                   {n.sender_name}
@@ -135,7 +137,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {tags.length > 0 && (
             <DetailRow
               icon={Hash}
-              label="Labels"
+              label={t('labels')}
               value={
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
                   {tags.map((tag) => {
@@ -163,7 +165,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {n.tags && n.tags.length > 0 && (
             <DetailRow
               icon={Hash}
-              label="Tags"
+              label={t('tags')}
               value={
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
                   {n.tags.map((tag) => (
@@ -182,7 +184,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           {n.source_ip && (
             <DetailRow
               icon={Wifi}
-              label="Source IP"
+              label={t('sourceIp')}
               value={<span className="font-mono text-xs">{n.source_ip}</span>}
             />
           )}
@@ -192,7 +194,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
               <Separator />
               <DetailRow
                 icon={Braces}
-                label="Custom fields"
+                label={t('customFields')}
                 value={
                   <table className="w-full text-xs border-collapse mt-0.5">
                     <tbody>
@@ -215,7 +217,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
 
           <DetailRow
             icon={MessageSquare}
-            label="Message"
+            label={t('message')}
             value={
               <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed bg-muted rounded-md p-3 text-foreground">
                 {n.message}
@@ -224,7 +226,7 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
           />
 
           <div>
-            <p className="text-[11px] text-muted-foreground mb-1">ID</p>
+            <p className="text-[11px] text-muted-foreground mb-1">{t('id')}</p>
             <p className="font-mono text-[11px] text-muted-foreground break-all">{n.id}</p>
           </div>
 
@@ -233,22 +235,25 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
               <Separator />
               <div className="pt-2 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                  State: {n.state}
+                  {t('state', { state: n.state })}
                 </span>
                 <div className="flex gap-2">
                   {n.state !== "acknowledged" && n.state !== "resolved" && (
-                    <Button size="sm" variant="secondary" onClick={() => handleStateUpdate("acknowledged")}>
-                      Acknowledge
+                    <Button size="sm" variant="secondary" onClick={() => handleStateUpdate("acknowledged")} className="gap-1.5">
+                      <Eye className="h-3.5 w-3.5" />
+                      {t('acknowledge')}
                     </Button>
                   )}
                   {n.state !== "resolved" && (
-                    <Button size="sm" onClick={() => handleStateUpdate("resolved")}>
-                      Resolve
+                    <Button size="sm" onClick={() => handleStateUpdate("resolved")} className="gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {t('resolve')}
                     </Button>
                   )}
                   {n.state !== "new" && (
-                    <Button size="sm" variant="outline" onClick={() => handleStateUpdate("new")}>
-                      Reset
+                    <Button size="sm" variant="outline" onClick={() => handleStateUpdate("new")} className="gap-1.5">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {t('reset')}
                     </Button>
                   )}
                 </div>
@@ -260,12 +265,13 @@ export function NotificationDetailContent({ notification: n, tags, rules, format
 }
 
 export function NotificationDetail({ notification, tags, rules, formatTimestamp, onClose, onUpdate, alertStatesEnabled }: Props) {
+  const t = useTranslations("NotificationDetail");
   return (
     <div className="hidden lg:flex w-80 xl:w-96 flex-col border-l border-border bg-card shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Detail
+          {t('detailHeader')}
         </span>
         <Button
           size="sm"

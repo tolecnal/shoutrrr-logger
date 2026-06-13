@@ -20,6 +20,7 @@ import {
   type ProfileApi,
 } from "@/components/plugin-profile-tabs";
 import { ExternalDeliveryWarning } from "@/components/external-delivery-warning";
+import { useTranslations } from "next-intl";
 
 const userProfileApi: ProfileApi = {
   create: createUserPluginProfile,
@@ -37,14 +38,16 @@ function UserPluginCard({
   availableCustomFields: string[];
   onSaved: () => void;
 }) {
+  const tPlugin = useTranslations();
   const [expanded, setExpanded] = useState(false);
   const enabledCount = userPlugin.profiles.filter((p) => p.enabled).length;
 
   return (
     <div className="rounded-lg border border-border bg-card">
       <PluginCardHeader
-        name={userPlugin.name}
-        description={userPlugin.description}
+        pluginId={userPlugin.plugin_id}
+        name={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name`) : userPlugin.name}
+        description={tPlugin.has(`Plugin_${userPlugin.plugin_id}.description`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.description`) : userPlugin.description}
         enabledCount={enabledCount}
         expanded={expanded}
         onToggle={() => setExpanded((v) => !v)}
@@ -55,7 +58,7 @@ function UserPluginCard({
           <div className="px-4 py-4">
             <PluginProfileTabs
               pluginId={userPlugin.plugin_id}
-              pluginName={userPlugin.name}
+              pluginName={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name`) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name`) : userPlugin.name}
               profiles={userPlugin.profiles}
               maxProfiles={userPlugin.max_profiles}
               availableCustomFields={availableCustomFields}
@@ -74,6 +77,7 @@ export function UserPluginsTab({
 }: {
   externalDeliveryDisabled?: boolean;
 }) {
+  const t = useTranslations("UserPlugins");
   const { data: userPlugins, isLoading, mutate } = useSWR<UserPluginOut[]>(
     "/api/v1/user-plugins",
     fetchUserPlugins,
@@ -98,7 +102,7 @@ export function UserPluginsTab({
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
         <Puzzle className="h-8 w-8 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">No plugins available.</p>
+        <p className="text-sm text-muted-foreground">{t('noPlugins')}</p>
       </div>
     );
   }
@@ -106,7 +110,7 @@ export function UserPluginsTab({
   return (
     <div className="flex-1 min-h-0 overflow-y-auto mt-4 pr-1 space-y-3">
       {externalDeliveryDisabled && (
-        <ExternalDeliveryWarning message="External delivery is disabled by your administrator — your plugins won't forward notifications sent with your private tokens until it's re-enabled." />
+        <ExternalDeliveryWarning message={t('externalDisabled')} />
       )}
       {userPlugins.map((plugin) => (
         <UserPluginCard

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
+import { useTranslations } from "next-intl";
 import { Spinner } from "@/components/ui/spinner";
 import { Bell } from "lucide-react";
 
 export default function HomePage() {
+  const t = useTranslations("Index");
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
@@ -30,16 +32,16 @@ export default function HomePage() {
         <Bell className="h-8 w-8 text-primary" />
       </div>
       <div>
-        <h1 className="text-2xl font-semibold text-foreground text-balance">shoutrrr-logger</h1>
+        <h1 className="text-2xl font-semibold text-foreground text-balance">{t('title')}</h1>
         <p className="mt-2 text-sm text-muted-foreground text-pretty max-w-xs">
-          Notification logging and management for shoutrrr services. Sign in to continue.
+          {t('description')}
         </p>
       </div>
       <a
         href="/api/auth/login"
         className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
       >
-        Sign in with SSO
+        {t('signInButton')}
       </a>
     </div>
   );

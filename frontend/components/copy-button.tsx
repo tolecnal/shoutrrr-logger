@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function CopyButton({ value, className }: { value: string; className?: string }) {
+  const t = useTranslations("Common");
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(value);
@@ -18,7 +20,7 @@ export function CopyButton({ value, className }: { value: string; className?: st
       variant="outline"
       className={cn("h-7 w-7 p-0 shrink-0", className)}
       onClick={copy}
-      aria-label="Copy to clipboard"
+      aria-label={t('copyToClipboard')}
     >
       {copied ? (
         <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />

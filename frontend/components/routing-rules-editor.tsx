@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit2 } from "lucide-react";
 import { RoutingRuleDialog } from "@/components/routing-rule-dialog";
 import { RoutingRuleTestDialog } from "@/components/routing-rule-test-dialog";
 import { Beaker } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function RoutingRulesEditor({
   rules,
@@ -14,6 +15,7 @@ export function RoutingRulesEditor({
   rules: any[];
   onChange: (rules: any[]) => void;
 }) {
+  const t = useTranslations("RoutingRules");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [testingIndex, setTestingIndex] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -28,10 +30,9 @@ export function RoutingRulesEditor({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-medium text-foreground">Outbound Routing Rules</h4>
+          <h4 className="text-sm font-medium text-foreground">{t('title')}</h4>
           <p className="text-xs text-muted-foreground mt-1">
-            Define routing rules for this plugin. If multiple are defined, a notification matching ANY of them will be dispatched.
-            If NO rules are defined, ALL notifications will be dispatched (plugin catches everything).
+            {t('description')}
           </p>
         </div>
         <Button
@@ -42,13 +43,13 @@ export function RoutingRulesEditor({
           onClick={() => setIsCreating(true)}
         >
           <Plus className="h-3 w-3" />
-          Add Rule
+          {t('addRule')}
         </Button>
       </div>
 
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
         {rules.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No routing rules defined. The plugin will receive all notifications by default.</p>
+          <p className="text-xs text-muted-foreground italic">{t('noRules')}</p>
         ) : (
           rules.map((rule, idx) => (
             <div
@@ -58,9 +59,9 @@ export function RoutingRulesEditor({
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium leading-none">{rule.name}</span>
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {rule.severities?.length > 0 && <span>Severities: {rule.severities.join(", ")}</span>}
-                  {rule.tags?.length > 0 && <span>Tags: {rule.tags.join(", ")}</span>}
-                  {rule.tokens?.length > 0 && <span>Tokens: {rule.tokens.length}</span>}
+                  {rule.severities?.length > 0 && <span>{t('severities', { sevs: rule.severities.join(", ") })}</span>}
+                  {rule.tags?.length > 0 && <span>{t('tags', { tags: rule.tags.join(", ") })}</span>}
+                  {rule.tokens?.length > 0 && <span>{t('tokens', { count: rule.tokens.length })}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -69,7 +70,7 @@ export function RoutingRulesEditor({
                   variant="ghost"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                   onClick={() => setEditingIndex(idx)}
-                  title="Edit Rule"
+                  title={t('editRule')}
                 >
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>
@@ -78,7 +79,7 @@ export function RoutingRulesEditor({
                   variant="ghost"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                   onClick={() => setTestingIndex(idx)}
-                  title="Test Rule"
+                  title={t('testRule')}
                 >
                   <Beaker className="h-3.5 w-3.5" />
                 </Button>
@@ -87,7 +88,7 @@ export function RoutingRulesEditor({
                   variant="ghost"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                   onClick={() => removeRule(idx)}
-                  title="Remove Rule"
+                  title={t('removeRule')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
