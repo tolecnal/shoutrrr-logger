@@ -4,8 +4,14 @@ packages:
 # postcss <8.5.10 bundled by next/autoprefixer is vulnerable to XSS via
 # unescaped </style> in stringified output (GHSA-qx2v-qp2m-jg93). Force
 # every resolution to the patched line.
+#
+# esbuild <0.28.1 (pulled transitively via vitest → vite) has a Windows-only
+# path-traversal in its dev server allowing arbitrary file reads from the
+# served directory. We never run esbuild's dev server, but force the patched
+# line to clear the advisory and protect anyone on Windows who might.
 overrides:
   postcss: ^8.5.10
+  esbuild: ^0.28.1
 
 # pnpm 10+ skips install/postinstall scripts by default. These are trusted
 # build steps (native binary downloads/compilation) required for Next.js
