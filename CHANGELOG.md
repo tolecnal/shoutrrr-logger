@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **NQL Search**: Implemented an advanced JQL-style search query language (NQL) with full syntax validation.
+- **NQL Compiler**: Added AST-based backend query compiler supporting Boolean logic (`AND`, `OR`, `NOT`) and nested grouping `()`.
+- **Search UI**: Enhanced search bar with real-time syntax highlighting and inline syntax error validation.
 - **Internationalization (i18n)**: Implemented full frontend translation support via `next-intl`. Added Norwegian (`no`) as a supported language.
 - **Plugin Localization**: Frontend plugin configurations (`frontend/plugins/<plugin>/locales/`) are now fully localized and dynamically merged into the global messaging tree, including graceful fallbacks to API-provided plugin names and descriptions.
 - **Locale Switcher**: Added a top-bar component to easily toggle the UI language.

@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import type { NotificationSearchFilters } from "@/lib/types";
 import { useTranslations } from "next-intl";
+import { validateQuery, highlightQueryHtml } from "@/lib/search-parser";
+import { AlertCircle } from "lucide-react";
 
 interface SearchAutocompleteProps {
   value: string;
@@ -21,6 +23,8 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
   const internalInputRef = useRef<HTMLInputElement>(null);
   const activeInputRef = inputRef || internalInputRef;
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const parseError = validateQuery(value);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -121,30 +125,50 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
   }, [value]);
 
   return (
-    <div className="relative flex-1 max-w-sm" ref={containerRef}>
-      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-      <Input
-        ref={activeInputRef}
-        id="notification-search"
-        name="notification-search"
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setShowSuggestions(true);
-          updateCursor();
-        }}
-        onClick={updateCursor}
-        onKeyUp={updateCursor}
-        onFocus={() => {
-          setShowSuggestions(true);
-          updateCursor();
-        }}
-        onKeyDown={handleKeyDown}
-        placeholder={t('searchPlaceholder')}
-        className="pl-8 h-8 text-sm bg-input"
-        autoComplete="off"
-      />
-      {showSuggestions && suggestions.length > 0 && (
+    <div className="relative flex-1" ref={containerRef}>
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground z-10" />
+      
+      <div className="relative w-full h-8 flex items-center bg-input border border-input rounded-md ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+        {/* Highlight Layer */}
+        <div 
+          className="absolute inset-0 px-8 py-1.5 text-sm whitespace-pre overflow-hidden pointer-events-none text-transparent"
+          aria-hidden="true"
+        >
+          {/* We insert a zero-width space if value is empty so the div holds height properly, though absolute positioning handles that. */}
+          <span dangerouslySetInnerHTML={{ __html: highlightQueryHtml(value) }} />
+        </div>
+        
+        <input
+          ref={activeInputRef}
+          id="notification-search"
+          name="notification-search"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setShowSuggestions(true);
+            updateCursor();
+          }}
+          onClick={updateCursor}
+          onKeyUp={updateCursor}
+          onFocus={() => {
+            setShowSuggestions(true);
+            updateCursor();
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={t('searchPlaceholder')}
+          className="absolute inset-0 w-full h-full px-8 bg-transparent text-transparent caret-foreground outline-none text-sm font-mono focus:text-transparent selection:bg-primary/30 selection:text-transparent"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        
+        {parseError && value.trim().length > 0 && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2" title={parseError.message}>
+            <AlertCircle className="h-4 w-4 text-destructive" />
+          </div>
+        )}
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && !parseError && (
         <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground rounded-md border border-border shadow-md max-h-60 overflow-auto">
           {suggestions.map((s, i) => (
             <div

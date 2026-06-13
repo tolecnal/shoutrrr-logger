@@ -1,17 +1,18 @@
 """Database access for the ``notifications`` table."""
 
-import re
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import String, and_, delete, func, or_, select, text
+from sqlalchemy import String, and_, delete, func, not_, or_, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from models import AccessToken, Notification
 from repositories.cursor import decode_cursor, encode_cursor
+from utils.search_parser import AndNode, ASTNode, NotNode, OrNode, TermNode, parse_query
 
 # Reject absurdly long user-supplied regex patterns (e.g. message:/.../) before
 # they ever reach PostgreSQL — both as a sanity check and to keep the compiled
@@ -136,108 +137,89 @@ class NotificationRepository:
         # else: scope="all" for admin → no filter, sees everything
 
         if query:
-            # Pattern matches optionally prefixed key (e.g. title:, message:, tag:),
-            # followed by either a /regex/ string, a "double quoted" string, a 'single quoted' string, or unquoted text.
-            pattern = re.compile(
-                r"(?:(?P<key>[a-zA-Z0-9_]+):)?"
-                r"(?:"
-                r"/(?P<regex>(?:\\/|[^/])+)/|"
-                r'"(?P<dquote>(?:\\"|[^"])+)"|'
-                r"'(?P<squote>(?:\\'|[^'])+)'|"
-                r"(?P<unquoted>[^\s]+)"
-                r")"
-            )
+            ast = parse_query(query)
+            if ast:
 
-            for match in pattern.finditer(query):
-                d = match.groupdict()
-                key = d.get("key")
-                if key:
-                    key = key.lower()
+                def compile_ast(node: ASTNode) -> Any:
+                    if isinstance(node, AndNode):
+                        return and_(compile_ast(node.left), compile_ast(node.right))
+                    elif isinstance(node, OrNode):
+                        return or_(compile_ast(node.left), compile_ast(node.right))
+                    elif isinstance(node, NotNode):
+                        return not_(compile_ast(node.expr))
+                    elif isinstance(node, TermNode):
+                        key = node.field
+                        value = node.value
+                        is_regex = node.is_regex
 
-                is_regex = False
-                if d.get("regex") is not None:
-                    value = d["regex"].replace("\\/", "/")
-                    is_regex = True
-                elif d.get("dquote") is not None:
-                    value = d["dquote"].replace('\\"', '"')
-                elif d.get("squote") is not None:
-                    value = d["squote"].replace("\\'", "'")
-                elif d.get("unquoted") is not None:
-                    value = d["unquoted"]
-                else:
-                    continue
+                        if is_regex:
+                            if len(value) > MAX_REGEX_LENGTH:
+                                raise ValueError(
+                                    f"Regex pattern too long (max {MAX_REGEX_LENGTH} characters)"
+                                )
+                            import re
 
-                if is_regex:
-                    if len(value) > MAX_REGEX_LENGTH:
-                        raise ValueError(
-                            f"Regex pattern too long (max {MAX_REGEX_LENGTH} characters)"
-                        )
-                    try:
-                        re.compile(value)
-                    except re.error as exc:
-                        raise ValueError(f"Invalid regex pattern '{value}': {exc}") from exc
+                            try:
+                                re.compile(value)
+                            except re.error as exc:
+                                raise ValueError(f"Invalid regex pattern '{value}': {exc}") from exc
 
-                def build_condition(col, val, regex_mode):
-                    if regex_mode:
-                        return col.regexp_match(val, flags="i")
-                    val_sql = (
-                        val.replace("\\", "\\\\")
-                        .replace("%", "\\%")
-                        .replace("_", "\\_")
-                        .replace("*", "%")
-                        .replace("?", "_")
-                    )
-                    return col.ilike(f"%{val_sql}%", escape="\\")
+                        def build_condition(col, val, regex_mode):
+                            if regex_mode:
+                                return col.regexp_match(val, flags="i")
+                            val_sql = (
+                                val.replace("\\", "\\\\")
+                                .replace("%", "\\%")
+                                .replace("_", "\\_")
+                                .replace("*", "%")
+                                .replace("?", "_")
+                            )
+                            return col.ilike(f"%{val_sql}%", escape="\\")
 
-                if key == "title":
-                    base_query = base_query.where(
-                        build_condition(Notification.title, value, is_regex)
-                    )
-                elif key == "message":
-                    base_query = base_query.where(
-                        build_condition(Notification.message, value, is_regex)
-                    )
-                elif key == "sender":
-                    base_query = base_query.where(
-                        build_condition(Notification.sender_name, value, is_regex)
-                    )
-                elif key == "severity":
-                    base_query = base_query.where(
-                        build_condition(Notification.severity, value, is_regex)
-                    )
-                elif key == "tag":
-                    if is_regex:
-                        base_query = base_query.where(
-                            Notification.tags.cast(String).regexp_match(value, flags="i")
-                        )
-                    else:
-                        val_sql = (
-                            value.replace("\\", "\\\\")
-                            .replace("%", "\\%")
-                            .replace("_", "\\_")
-                            .replace("*", "%")
-                            .replace("?", "_")
-                        )
-                        base_query = base_query.where(
-                            Notification.tags.cast(String).ilike(f"%{val_sql}%", escape="\\")
-                        )
-                elif key == "after":
-                    dt = self._parse_time_string(value)
-                    if dt:
-                        base_query = base_query.where(Notification.last_received_at >= dt)
-                elif key == "before":
-                    dt = self._parse_time_string(value)
-                    if dt:
-                        base_query = base_query.where(Notification.last_received_at <= dt)
-                else:
-                    # Free-text: search across message, title, and sender_name
-                    base_query = base_query.where(
-                        or_(
-                            build_condition(Notification.message, value, is_regex),
-                            build_condition(Notification.title, value, is_regex),
-                            build_condition(Notification.sender_name, value, is_regex),
-                        )
-                    )
+                        if key == "title":
+                            return build_condition(Notification.title, value, is_regex)
+                        elif key == "message":
+                            return build_condition(Notification.message, value, is_regex)
+                        elif key == "sender":
+                            return build_condition(Notification.sender_name, value, is_regex)
+                        elif key == "severity":
+                            return build_condition(Notification.severity, value, is_regex)
+                        elif key == "tag":
+                            if is_regex:
+                                return Notification.tags.cast(String).regexp_match(value, flags="i")
+                            else:
+                                val_sql = (
+                                    value.replace("\\", "\\\\")
+                                    .replace("%", "\\%")
+                                    .replace("_", "\\_")
+                                    .replace("*", "%")
+                                    .replace("?", "_")
+                                )
+                                return Notification.tags.cast(String).ilike(
+                                    f"%{val_sql}%", escape="\\"
+                                )
+                        elif key == "after":
+                            dt = self._parse_time_string(value)
+                            if dt:
+                                return Notification.last_received_at >= dt
+                            return text("1=1")  # Skip if invalid date
+                        elif key == "before":
+                            dt = self._parse_time_string(value)
+                            if dt:
+                                return Notification.last_received_at <= dt
+                            return text("1=1")  # Skip if invalid date
+                        else:
+                            # Free-text
+                            return or_(
+                                build_condition(Notification.message, value, is_regex),
+                                build_condition(Notification.title, value, is_regex),
+                                build_condition(Notification.sender_name, value, is_regex),
+                            )
+
+                    return text("1=1")
+
+                compiled_filter = compile_ast(ast)
+                base_query = base_query.where(compiled_filter)
 
         if after:
             base_query = base_query.where(Notification.last_received_at >= after)
