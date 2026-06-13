@@ -123,12 +123,15 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
   useEffect(() => {
     setSelectedIndex(0);
   }, [value]);
+  const isError = parseError && value.trim().length > 0;
 
   return (
     <div className="relative flex-1" ref={containerRef}>
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground z-10" />
-      
-      <div className="relative w-full h-8 flex items-center bg-input border border-input rounded-md ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+
+      <div className={`relative w-full h-8 flex items-center rounded-md ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 ${
+        isError ? "bg-destructive/10 border border-destructive focus-within:ring-destructive" : "bg-input border border-input focus-within:ring-ring"
+      }`}>
         {/* Highlight Layer */}
         <div 
           className="absolute inset-0 w-full h-full px-8 flex items-center text-sm font-mono whitespace-pre overflow-hidden pointer-events-none text-transparent"

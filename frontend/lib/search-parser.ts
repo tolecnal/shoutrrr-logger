@@ -204,16 +204,24 @@ export function validateQuery(query: string): ParseError | null {
   }
 }
 
-export function highlightQueryHtml(query: string): string {
+export function highlightQueryHtml(query: string, isErrorFallback = false): string {
   if (!query) return "";
   
   let tokens: Token[] = [];
   try {
     tokens = tokenize(query);
   } catch (err: any) {
-    // If there's a parse error mid-typing, we can still highlight up to the error
-    // but we don't have the tokens easily because tokenize throws.
-    // Instead of crashing the page, we just return the raw text safely escaped.
+    if (isErrorFallback) return escapeHtml(query); // Prevent infinite loop
+    
+    if (typeof err.position === 'number') {
+      const validPart = query.slice(0, err.position);
+      const invalidPart = query.slice(err.position);
+      
+      const validHtml = highlightQueryHtml(validPart, true);
+      const invalidHtml = `<span class="bg-destructive/20 text-destructive underline decoration-wavy underline-offset-4 rounded-sm" title="Syntax error here">${escapeHtml(invalidPart)}</span>`;
+      return validHtml + invalidHtml;
+    }
+    
     return escapeHtml(query);
   }
   

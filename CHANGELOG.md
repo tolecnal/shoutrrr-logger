@@ -30,6 +30,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **NQL Lexer**: Fixed a bug where autocomplete suggestions such as `sender:` would render incorrectly as `ender:` due to greedy whitespace character exclusions swallowing the letter 's'.
 - **NQL Lexer Editor**: Corrected cursor visual desynchronization that occurred while typing by perfectly matching the overlay text classes (especially monospace font configurations) with the active transparent input.
 - **NQL Strict Validation**: The search parser now throws an explicit syntax error for unexpected characters (e.g., unclosed regex patterns like `/https`) rather than silently ignoring them, fulfilling the strict Jira-like search constraints.
+- **NQL Validation UI Indicators**: Enhanced error visibility by dynamically turning the search input border/ring a soft red and applying a wavy underline specifically to the malformed segment of the query text.
+- **NQL Query Submission**: The UI now actively prevents submitting the form and queries to the backend if the search input contains invalid syntax, accompanied by a warning toast.
 - **NQL Lexer Stability**: Fixed a critical crash where typing an incomplete key (like `sender:`) caused a parser exception that brought down the UI. The tokenizer now cleanly accepts trailing keys as empty terms and gracefully catches intermediate typing syntax errors without unmounting components.
 - **Search Autocomplete Trigger**: Prevented the autocomplete suggestion dropdown from incorrectly hijacking the "Enter" key and opening suggestions when the search input is completely cleared (e.g. CTRL+A, Backspace).
 

@@ -9,6 +9,7 @@ import { usePreferences } from "@/lib/use-preferences";
 import { useLabelRules, isExcluded, LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { validateQuery } from "@/lib/search-parser";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -368,10 +369,19 @@ export function NotificationLog() {
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
+      const err = validateQuery(search);
+      if (err) {
+        toast({
+          title: t('invalidSearch'),
+          description: err.message,
+          variant: "destructive"
+        });
+        return;
+      }
       resetPagination();
       setQuery(search.trim());
     },
-    [search, resetPagination]
+    [search, resetPagination, toast, t]
   );
 
   const handleClearSearch = useCallback(() => {
