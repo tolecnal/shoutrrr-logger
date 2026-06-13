@@ -1,0 +1,23 @@
+{
+  "userKey": "Brukernøkkel (User Key)",
+  "userKeyDesc": "Din Pushover User eller Group Key.",
+  "apiToken": "API Token",
+  "apiTokenDesc": "Din applikasjons API Token.",
+  "priority": "Prioritet",
+  "priorityDesc": "Prioritet for push varslinger.",
+  "priorityLowest": "Lavest",
+  "priorityLow": "Lav",
+  "priorityNormal": "Normal",
+  "priorityHigh": "Høy",
+  "sound": "Lyd",
+  "soundDesc": "Varslingslyd (f.eks., 'pushover', 'bike', 'alien').",
+  "device": "Enhet",
+  "deviceDesc": "Målspesifikke enheter (kommaseparert). La stå tom for å sende til alle enheter.",
+  "titleTemplate": "Tittelmal",
+  "titleTemplateDesc": "Tilgjengelige variabler: {title}, {message}, {severity}, {source_ip}, {fingerprint}, og {custom_fields.name}.",
+  "messageTemplate": "Meldingsmal",
+  "messageTemplateDesc": "Tilgjengelige variabler: {title}, {message}, {severity}, {source_ip}, {fingerprint}, og {custom_fields.name}.",
+  "sendTestNotification": "Send Test Varsel",
+  "sending": "Sender...",
+  "testFailed": "Test feilet: "
+}

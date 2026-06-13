@@ -1,0 +1,23 @@
+{
+  "userKey": "User Key",
+  "userKeyDesc": "Your Pushover User or Group Key.",
+  "apiToken": "API Token",
+  "apiTokenDesc": "Your Application's API Token.",
+  "priority": "Priority",
+  "priorityDesc": "The priority of the push notifications.",
+  "priorityLowest": "Lowest",
+  "priorityLow": "Low",
+  "priorityNormal": "Normal",
+  "priorityHigh": "High",
+  "sound": "Sound",
+  "soundDesc": "Notification sound (e.g., 'pushover', 'bike', 'alien').",
+  "device": "Device",
+  "deviceDesc": "Target specific devices (comma separated). Leave blank to send to all devices.",
+  "titleTemplate": "Title Template",
+  "titleTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}.",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: "
+}

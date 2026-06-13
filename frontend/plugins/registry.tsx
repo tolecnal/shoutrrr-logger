@@ -28,4 +28,7 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   ntfy: lazy(() =>
     import("./ntfy/config").then((m) => ({ default: m.NtfyConfigPanel }))
   ),
+  pushover: lazy(() =>
+    import("./pushover/config").then((m) => ({ default: m.PushoverConfigPanel }))
+  ),
 };

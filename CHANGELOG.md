@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Pushover Plugin**: Added a new push notification plugin for Pushover, including full frontend configuration with custom device routing, priority level adjustments, custom notification sounds, and fully validated backend integration. Full English and Norwegian i18n support is also included.
 - **Ntfy Plugin**: Created a new push notification plugin for `ntfy`. It features a full React frontend configuration panel with support for custom servers, topics, priority mapping, tagging, access tokens, and a fully tested backend Python integration adhering to the SSRF security policies. Full i18n support in both English and Norwegian is included.
 
 - **NQL Search**: Implemented an advanced JQL-style search query language (NQL) with full syntax validation.
