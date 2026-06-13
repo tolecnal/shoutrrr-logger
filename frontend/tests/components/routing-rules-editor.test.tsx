@@ -1,6 +1,16 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { RoutingRulesEditor } from "@/components/routing-rules-editor";
+import { NextIntlClientProvider } from "next-intl";
+import messages from "@/messages/en.json";
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>
+  );
+}
 
 // Mock the dialog so we don't have to test its entire SWR-dependent mounting logic here
 vi.mock("@/components/routing-rule-dialog", () => ({
@@ -27,7 +37,7 @@ vi.mock("@/components/routing-rule-dialog", () => ({
 
 describe("RoutingRulesEditor", () => {
   it("renders empty state", () => {
-    render(<RoutingRulesEditor rules={[]} onChange={vi.fn()} />);
+    renderWithIntl(<RoutingRulesEditor rules={[]} onChange={vi.fn()} />);
     expect(screen.getByText("No routing rules defined. The plugin will receive all notifications by default.")).toBeInTheDocument();
   });
 
@@ -36,7 +46,7 @@ describe("RoutingRulesEditor", () => {
       { name: "First Rule", severities: ["error", "warning"], tags: ["prod"], tokens: [] },
       { name: "Second Rule", severities: [], tags: [], tokens: ["123"] },
     ];
-    render(<RoutingRulesEditor rules={rules} onChange={vi.fn()} />);
+    renderWithIntl(<RoutingRulesEditor rules={rules} onChange={vi.fn()} />);
     expect(screen.getByText("First Rule")).toBeInTheDocument();
     expect(screen.getByText("Severities: error, warning")).toBeInTheDocument();
     expect(screen.getByText("Tags: prod")).toBeInTheDocument();
@@ -47,7 +57,7 @@ describe("RoutingRulesEditor", () => {
   it("allows removing a rule", () => {
     const rules = [{ name: "Rule to remove" }];
     const onChange = vi.fn();
-    render(<RoutingRulesEditor rules={rules} onChange={onChange} />);
+    renderWithIntl(<RoutingRulesEditor rules={rules} onChange={onChange} />);
     
     const removeBtn = screen.getByTitle("Remove Rule");
     fireEvent.click(removeBtn);
@@ -57,7 +67,7 @@ describe("RoutingRulesEditor", () => {
 
   it("allows opening create dialog and saving a rule", () => {
     const onChange = vi.fn();
-    render(<RoutingRulesEditor rules={[]} onChange={onChange} />);
+    renderWithIntl(<RoutingRulesEditor rules={[]} onChange={onChange} />);
     
     fireEvent.click(screen.getByText("Add Rule"));
     expect(screen.getByTestId("mock-dialog")).toBeInTheDocument();
@@ -72,7 +82,7 @@ describe("RoutingRulesEditor", () => {
   it("allows opening edit dialog and saving an updated rule", () => {
     const rules = [{ name: "Existing Rule" }];
     const onChange = vi.fn();
-    render(<RoutingRulesEditor rules={rules} onChange={onChange} />);
+    renderWithIntl(<RoutingRulesEditor rules={rules} onChange={onChange} />);
     
     fireEvent.click(screen.getByTitle("Edit Rule"));
     expect(screen.getByTestId("mock-dialog")).toBeInTheDocument();
