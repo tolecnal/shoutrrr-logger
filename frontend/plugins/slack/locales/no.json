@@ -18,5 +18,6 @@
   "previewBody": "Slik kan meldingen din se ut i Slack.",
   "value": "Verdi",
   "unknownError": "Ukjent feil",
-  "emojiTitle": "Emoji"
+  "emojiTitle": "Emoji",
+  "testSuccess": "Testhendelse sendt vellykket."
 }

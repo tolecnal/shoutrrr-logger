@@ -11,5 +11,6 @@
   "includedFieldsDesc": "Felt å inkludere som pre-formatert tekst på bunnen, separert med komma.",
   "sendTestNotification": "Send Test Varsel",
   "sending": "Sender...",
-  "testFailed": "Test feilet: "
+  "testFailed": "Test feilet: ",
+  "testSuccess": "Testhendelse sendt vellykket."
 }

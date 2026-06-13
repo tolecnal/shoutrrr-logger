@@ -9,5 +9,6 @@
   "includedFieldsDesc": "Fields to include in the rich embed, separated by commas (e.g. received_at,source_ip).",
   "sendTestNotification": "Send Test Notification",
   "sending": "Sending...",
-  "testFailed": "Test failed: "
+  "testFailed": "Test failed: ",
+  "testSuccess": "Test message sent successfully."
 }

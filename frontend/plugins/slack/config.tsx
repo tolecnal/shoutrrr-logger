@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { X, Send } from "lucide-react";
+import { X, Send, CheckCircle2, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { PluginConfigProps } from "../types";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -24,20 +25,20 @@ export function SlackConfigPanel({
   const includedFields = (config.included_fields as string[]) ?? ["received_at", "source_ip", "severity"];
   const emoji = (config.emoji as string) ?? ":rotating_light:";
 
-  const [testError, setTestError] = useState<string | null>(null);
-  const [testing, setTesting] = useState(false);
+  const [testState, setTestState] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  const [testMsg, setTestMsg] = useState("");
 
   const [newField, setNewField] = useState("");
 
   const handleTest = async () => {
-    setTesting(true);
-    setTestError(null);
+    setTestState("loading");
+    setTestMsg("");
     try {
       await onTest();
+      setTestState("ok");
     } catch (e: any) {
-      setTestError(e.message);
-    } finally {
-      setTesting(false);
+      setTestState("err");
+      setTestMsg(e.message);
     }
   };
 
@@ -149,13 +150,27 @@ export function SlackConfigPanel({
           size="sm"
           variant="secondary"
           onClick={handleTest}
-          disabled={testing || saving || !url}
+          disabled={testState === "loading" || saving || !url}
           className="h-7 text-xs gap-1.5"
         >
           <Send className="h-3 w-3" />
-          {testing ? t('sending') : t('sendTestNotification')}
+          {testState === "loading" ? t('sending') : t('sendTestNotification')}
         </Button>
-        {testError && <span className="text-xs text-destructive">{t('testFailed')} {testError}</span>}
+        {testState !== "idle" && (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-xs",
+              testState === "ok" ? "text-green-600" : "text-destructive"
+            )}
+          >
+            {testState === "ok" ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <XCircle className="h-3 w-3" />
+            )}
+            {testState === "ok" ? t("testSuccess") : `${t("testFailed")}${testMsg}`}
+          </span>
+        )}
       </div>
 
       {/* Preview box */}

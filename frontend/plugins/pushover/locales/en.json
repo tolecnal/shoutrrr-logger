@@ -21,5 +21,6 @@
   "messageTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}.",
   "sendTestNotification": "Send Test Notification",
   "sending": "Sending...",
-  "testFailed": "Test failed: "
+  "testFailed": "Test failed: ",
+  "testSuccess": "Test message sent successfully."
 }

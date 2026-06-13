@@ -15,5 +15,6 @@
   "sendTestNotification": "Send testvarsel",
   "sending": "Sender...",
   "testFailed": "Test feilet: ",
-  "unknownError": "Ukjent feil"
+  "unknownError": "Ukjent feil",
+  "testSuccess": "Testhendelse sendt vellykket."
 }

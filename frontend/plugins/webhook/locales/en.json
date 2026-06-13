@@ -15,5 +15,6 @@
   "sendTestNotification": "Send Test Notification",
   "sending": "Sending...",
   "testFailed": "Test failed: ",
-  "unknownError": "Unknown error"
+  "unknownError": "Unknown error",
+  "testSuccess": "Test message sent successfully."
 }

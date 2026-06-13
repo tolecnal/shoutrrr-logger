@@ -9,5 +9,6 @@
   "includedFieldsDesc": "Felt å inkludere i rich embed, separert med komma (f.eks. received_at,source_ip).",
   "sendTestNotification": "Send Test Varsel",
   "sending": "Sender...",
-  "testFailed": "Test feilet: "
+  "testFailed": "Test feilet: ",
+  "testSuccess": "Testhendelse sendt vellykket."
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { GripVertical, Plus, Trash2, Send, AlertCircle, CheckCircle2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, Send, XCircle, CheckCircle2 } from "lucide-react";
 import type { PluginConfigProps } from "@/plugins/types";
 import type { SplunkConfig, SplunkFieldMapping } from "./types";
 import { Button } from "@/components/ui/button";
@@ -221,10 +221,9 @@ export function SplunkConfigPanel({
     try {
       await onTest();
       setTestState("ok");
-      setTestMsg(t('testSuccess'));
-    } catch (e: unknown) {
+    } catch (e: any) {
       setTestState("err");
-      setTestMsg(e instanceof Error ? `${t('testFailed')}${e.message}` : t('unknownError'));
+      setTestMsg(e.message);
     }
   }
 
@@ -408,10 +407,10 @@ export function SplunkConfigPanel({
           >
             {testState === "ok" ? (
               <CheckCircle2 className="h-3 w-3" />
-            ) : testState === "err" ? (
-              <AlertCircle className="h-3 w-3" />
-            ) : null}
-            {testMsg || (testState === "loading" ? t('sending') : "")}
+            ) : (
+              <XCircle className="h-3 w-3" />
+            )}
+            {testState === "ok" ? t("testSuccess") : `${t("testFailed")}${testMsg}`}
           </span>
         )}
       </div>

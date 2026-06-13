@@ -18,5 +18,6 @@
   "previewBody": "This is what your message might look like in Slack.",
   "value": "Value",
   "unknownError": "Unknown error",
-  "emojiTitle": "Emoji"
+  "emojiTitle": "Emoji",
+  "testSuccess": "Test message sent successfully."
 }

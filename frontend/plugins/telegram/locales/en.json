@@ -11,5 +11,6 @@
   "includedFieldsDesc": "Fields to include as pre-formatted text at the bottom, separated by commas.",
   "sendTestNotification": "Send Test Notification",
   "sending": "Sending...",
-  "testFailed": "Test failed: "
+  "testFailed": "Test failed: ",
+  "testSuccess": "Test message sent successfully."
 }

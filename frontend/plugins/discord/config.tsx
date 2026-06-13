@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Send, AlertCircle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, XCircle, Send } from "lucide-react";
 import type { PluginConfigProps } from "@/plugins/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,10 +53,9 @@ export function DiscordConfigPanel({
     try {
       await onTest();
       setTestState("ok");
-      setTestMsg("");
-    } catch (e: unknown) {
+    } catch (e: any) {
       setTestState("err");
-      setTestMsg(e instanceof Error ? `${t("testFailed")}${e.message}` : "Error");
+      setTestMsg(e.message);
     }
   }
 
@@ -201,8 +200,12 @@ export function DiscordConfigPanel({
               testState === "ok" ? "text-green-600" : "text-destructive"
             )}
           >
-            {testState === "ok" ? <CheckCircle2 className="h-3 w-3" /> : testState === "err" ? <AlertCircle className="h-3 w-3" /> : null}
-            {testMsg || (testState === "loading" ? t("sending") : "")}
+            {testState === "ok" ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : (
+              <XCircle className="h-3 w-3" />
+            )}
+            {testState === "ok" ? t("testSuccess") : `${t("testFailed")}${testMsg}`}
           </span>
         )}
       </div>
