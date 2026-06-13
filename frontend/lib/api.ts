@@ -297,7 +297,7 @@ export const fetchPlugins = () => apiFetch<PluginMeta[]>("/admin/plugins");
 export const fetchCustomFieldKeys = () =>
   apiFetch<string[]>("/admin/plugins/custom-field-keys");
 
-export const updatePlugin = (id: string, updates: { allow_user_configs?: boolean }): Promise<PluginMeta> =>
+export const updatePlugin = (id: string, updates: { enabled?: boolean; allow_user_configs?: boolean }): Promise<PluginMeta> =>
   apiFetch<PluginMeta>(`/admin/plugins/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),

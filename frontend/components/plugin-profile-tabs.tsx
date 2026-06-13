@@ -9,7 +9,7 @@
  */
 
 import { Suspense, useState } from "react";
-import { ChevronDown, Save, Plus, Trash2, Pencil, Copy, Hash, Webhook, Activity, Puzzle } from "lucide-react";
+import { ChevronDown, Save, Plus, Trash2, Pencil, Copy, Hash, Webhook, Activity, Puzzle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -394,25 +394,29 @@ export function PluginCardHeader({
   pluginId,
   name,
   description,
-  enabledCount,
-  expanded,
-  onToggle,
+  activeGlobalCount,
+  activeUserCount,
+  globalEnabled,
+  onGlobalToggle,
+  onConfigure,
 }: {
   pluginId: string;
   name: string;
   description: string;
-  enabledCount: number;
-  expanded: boolean;
-  onToggle: () => void;
+  activeGlobalCount?: number;
+  activeUserCount?: number;
+  globalEnabled?: boolean;
+  onGlobalToggle?: (enabled: boolean) => void;
+  onConfigure: () => void;
 }) {
   const t = useTranslations("PluginProfile");
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg",
-        expanded && "rounded-b-none"
+        "flex items-center gap-4 px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-lg",
+        globalEnabled === false && "opacity-60 grayscale-[0.5]"
       )}
-      onClick={onToggle}
+      onClick={onConfigure}
     >
       <div className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 text-primary shrink-0">
         <PluginIcon pluginId={pluginId} className="h-4 w-4" />
@@ -421,18 +425,36 @@ export function PluginCardHeader({
         <p className="text-sm font-medium text-foreground leading-none">{name}</p>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {enabledCount > 0 && (
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-normal text-secondary-foreground">
-            {t('activeProfiles', { count: enabledCount })}
-          </span>
+      <div className="flex items-center gap-3 shrink-0">
+        {(activeGlobalCount !== undefined || activeUserCount !== undefined) && (
+          <div className="flex items-center gap-1.5 mr-2">
+            {activeGlobalCount !== undefined && (
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground" title={t('globalActiveProfiles')}>
+                {t('adminCount', { count: activeGlobalCount })}
+              </span>
+            )}
+            {activeUserCount !== undefined && (
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground" title={t('userActiveProfiles')}>
+                {t('userCount', { count: activeUserCount })}
+              </span>
+            )}
+          </div>
         )}
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
-            !expanded && "-rotate-90"
-          )}
-        />
+        
+        {globalEnabled !== undefined && onGlobalToggle && (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <Switch
+              checked={globalEnabled}
+              onCheckedChange={onGlobalToggle}
+              title={globalEnabled ? t('disableGlobally') : t('enableGlobally')}
+            />
+          </div>
+        )}
+
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 ml-2">
+          <Settings className="h-4 w-4" />
+          <span className="sr-only sm:not-sr-only sm:inline-block">{t('configure')}</span>
+        </Button>
       </div>
     </div>
   );

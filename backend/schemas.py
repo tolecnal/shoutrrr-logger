@@ -315,13 +315,17 @@ class PluginOut(BaseModel):
     id: str
     name: str
     description: str
+    enabled: bool
     allow_user_configs: bool
     profiles: list[PluginProfileOut] = Field(default_factory=list)
+    active_global_profiles: int = 0
+    active_user_profiles: int = 0
 
 
 class PluginUpdate(BaseModel):
     """Plugin-level settings; per-configuration state lives on profiles."""
 
+    enabled: bool | None = None
     allow_user_configs: bool | None = None
 
 

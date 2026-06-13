@@ -426,7 +426,15 @@
     "toastCreateFailed": "Kunne ikke opprette profil.",
     "creating": "Oppretter…",
     "create": "Opprett",
-    "activeProfiles": "{count} aktive {count, plural, =1 {profil} other {profiler}}"
+    "activeProfiles": "{count} aktive {count, plural, =1 {profil} other {profiler}}",
+    "adminCount": "Admin: {count}",
+    "userCount": "Bruker: {count}",
+    "globalActiveProfiles": "Globale aktive profiler",
+    "userActiveProfiles": "Brukernes aktive profiler",
+    "disableGlobally": "Deaktiver plugin globalt",
+    "enableGlobally": "Aktiver plugin globalt",
+    "configure": "Konfigurer",
+    "configurationTitle": "{name} Konfigurasjon"
   },
   "UserPlugins": {
     "noPlugins": "Ingen plugins tilgjengelig.",

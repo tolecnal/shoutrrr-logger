@@ -52,8 +52,11 @@ export interface PluginMeta {
   id: string;        // e.g. "splunk"
   name: string;      // display name
   description: string;
+  enabled: boolean;
   allow_user_configs: boolean;
   profiles: PluginProfileOut[];
+  active_global_profiles: number;
+  active_user_profiles: number;
 }
 
 export interface UserPluginOut {

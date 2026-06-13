@@ -215,6 +215,9 @@ class PluginConfig(Base):
     __tablename__ = "plugin_configs"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)  # == plugin_id
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
     allow_user_configs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow

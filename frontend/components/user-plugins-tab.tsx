@@ -29,6 +29,14 @@ const userProfileApi: ProfileApi = {
   test: testUserPluginProfile,
 };
 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
 function UserPluginCard({
   userPlugin,
   availableCustomFields,
@@ -39,26 +47,32 @@ function UserPluginCard({
   onSaved: () => void;
 }) {
   const tPlugin = useTranslations();
+  const tProfile = useTranslations("PluginProfile");
   const [expanded, setExpanded] = useState(false);
   const enabledCount = userPlugin.profiles.filter((p) => p.enabled).length;
 
+  const name = tPlugin.has(`Plugin_${userPlugin.plugin_id}.name` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name` as any) : userPlugin.name;
+  const description = tPlugin.has(`Plugin_${userPlugin.plugin_id}.description` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.description` as any) : userPlugin.description;
+
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card mb-3">
       <PluginCardHeader
         pluginId={userPlugin.plugin_id}
-        name={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name` as any) : userPlugin.name}
-        description={tPlugin.has(`Plugin_${userPlugin.plugin_id}.description` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.description` as any) : userPlugin.description}
-        enabledCount={enabledCount}
-        expanded={expanded}
-        onToggle={() => setExpanded((v) => !v)}
+        name={name}
+        description={description}
+        activeUserCount={enabledCount}
+        onConfigure={() => setExpanded(true)}
       />
-      {expanded && (
-        <>
-          <Separator />
-          <div className="px-4 py-4">
+      <Sheet open={expanded} onOpenChange={setExpanded}>
+        <SheetContent className="sm:max-w-[700px] w-[90vw] overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle>{tProfile('configurationTitle', { name })}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-6">
             <PluginProfileTabs
               pluginId={userPlugin.plugin_id}
-              pluginName={tPlugin.has(`Plugin_${userPlugin.plugin_id}.name` as any) ? tPlugin(`Plugin_${userPlugin.plugin_id}.name` as any) : userPlugin.name}
+              pluginName={name}
               profiles={userPlugin.profiles}
               maxProfiles={userPlugin.max_profiles}
               availableCustomFields={availableCustomFields}
@@ -66,8 +80,8 @@ function UserPluginCard({
               onSaved={onSaved}
             />
           </div>
-        </>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

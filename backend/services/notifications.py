@@ -352,6 +352,13 @@ class NotificationService:
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
+            from models import PluginConfig
+
+            pc_stmt = select(PluginConfig)
+            plugin_configs_map = {
+                pc.id: pc for pc in (await session.execute(pc_stmt)).scalars().all()
+            }
+
             # Load enabled global plugin profiles
             global_stmt = select(PluginProfile).where(PluginProfile.enabled.is_(True))
             global_configs = (await session.execute(global_stmt)).scalars().all()
@@ -373,6 +380,10 @@ class NotificationService:
 
         for row in configs_to_run:
             plugin_id = getattr(row, "plugin_id", getattr(row, "id", None))
+            plugin_config = plugin_configs_map.get(plugin_id)
+            if plugin_config and not plugin_config.enabled:
+                continue
+
             plugin = plugin_registry.get_plugin(plugin_id)
             if not plugin:
                 continue

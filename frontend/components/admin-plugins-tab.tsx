@@ -30,6 +30,14 @@ const adminProfileApi: ProfileApi = {
   test: testPluginProfile,
 };
 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
 // ---------------------------------------------------------------------------
 // Per-plugin card — global profiles + plugin-level settings
 // ---------------------------------------------------------------------------
@@ -45,11 +53,10 @@ function PluginCard({
 }) {
   const t = useTranslations("AdminTabs.plugins");
   const tPlugin = useTranslations();
+  const tProfile = useTranslations("PluginProfile");
   const [expanded, setExpanded] = useState(false);
   const [allowUserConfigs, setAllowUserConfigs] = useState(plugin.allow_user_configs ?? true);
   const [allowSaving, setAllowSaving] = useState(false);
-
-  const enabledCount = plugin.profiles.filter((p) => p.enabled).length;
 
   async function handleAllowUserConfigs(value: boolean): Promise<void> {
     setAllowUserConfigs(value);
@@ -64,21 +71,41 @@ function PluginCard({
     }
   }
 
+  async function handleGlobalToggle(value: boolean): Promise<void> {
+    setAllowSaving(true);
+    try {
+      await updatePlugin(plugin.id, { enabled: value });
+      onSaved();
+    } catch {
+      // revert on failure is handled by SWR revalidation
+    } finally {
+      setAllowSaving(false);
+    }
+  }
+
+  const name = tPlugin.has(`Plugin_${plugin.id}.name` as any) ? tPlugin(`Plugin_${plugin.id}.name` as any) : plugin.name;
+  const description = tPlugin.has(`Plugin_${plugin.id}.description` as any) ? tPlugin(`Plugin_${plugin.id}.description` as any) : plugin.description;
+
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card mb-3">
       <PluginCardHeader
         pluginId={plugin.id}
-        name={tPlugin.has(`Plugin_${plugin.id}.name` as any) ? tPlugin(`Plugin_${plugin.id}.name` as any) : plugin.name}
-        description={tPlugin.has(`Plugin_${plugin.id}.description` as any) ? tPlugin(`Plugin_${plugin.id}.description` as any) : plugin.description}
-        enabledCount={enabledCount}
-        expanded={expanded}
-        onToggle={() => setExpanded((v) => !v)}
+        name={name}
+        description={description}
+        activeGlobalCount={plugin.active_global_profiles}
+        activeUserCount={plugin.active_user_profiles}
+        globalEnabled={plugin.enabled}
+        onGlobalToggle={(v) => void handleGlobalToggle(v)}
+        onConfigure={() => setExpanded(true)}
       />
 
-      {expanded && (
-        <>
-          <Separator />
-          <div className="px-4 py-4 space-y-6">
+      <Sheet open={expanded} onOpenChange={setExpanded}>
+        <SheetContent className="sm:max-w-[700px] w-[90vw] overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle>{tProfile('configurationTitle', { name })}</SheetTitle>
+            <SheetDescription>{description}</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-6">
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">{t('allowUserConfigs')}</p>
@@ -95,7 +122,7 @@ function PluginCard({
             <Separator />
             <PluginProfileTabs
               pluginId={plugin.id}
-              pluginName={tPlugin.has(`Plugin_${plugin.id}.name` as any) ? tPlugin(`Plugin_${plugin.id}.name` as any) : plugin.name}
+              pluginName={name}
               profiles={plugin.profiles}
               maxProfiles={0}
               availableCustomFields={availableCustomFields}
@@ -103,8 +130,8 @@ function PluginCard({
               onSaved={onSaved}
             />
           </div>
-        </>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

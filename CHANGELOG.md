@@ -14,6 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **ntfy**: Send push notifications using ntfy.sh or a self-hosted instance.
   - **Pushover**: Send push notifications via the Pushover service.
 
+- **Plugin Configuration UI Redesign**: The plugins page now uses a slide-out side sheet (drawer) instead of expanding accordion sections for cleaner configuration management.
+- **Global Plugin Toggles**: Administrators can now enable/disable plugins globally using a switch on the plugin card, completely disabling the plugin regardless of active global or user profiles.
+- **Plugin Profile Counters**: Plugin cards now display dedicated counters showing the number of active `Admin` (global) profiles and `User` (private) profiles.
+
 - **NQL Search**: Implemented an advanced JQL-style search query language (NQL) with full syntax validation.
 - **NQL Compiler**: Added AST-based backend query compiler supporting Boolean logic (`AND`, `OR`, `NOT`) and nested grouping `()`.
 - **Search UI**: Enhanced search bar with real-time syntax highlighting and inline syntax error validation.

@@ -37,6 +37,13 @@ class UserPluginConfigRepository:
         result = await session.execute(stmt)
         return result.scalar_one()
 
+    async def count_enabled_by_plugin(self, session: AsyncSession, plugin_id: str) -> int:
+        stmt = select(func.count(UserPluginConfig.id)).where(
+            UserPluginConfig.plugin_id == plugin_id, UserPluginConfig.enabled.is_(True)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one()
+
     async def get_by_name(
         self, session: AsyncSession, user_id: uuid.UUID, plugin_id: str, name: str
     ) -> UserPluginConfig | None:

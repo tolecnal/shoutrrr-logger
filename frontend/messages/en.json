@@ -426,7 +426,15 @@
     "toastCreateFailed": "Failed to create profile.",
     "creating": "Creating…",
     "create": "Create",
-    "activeProfiles": "{count} active {count, plural, =1 {profile} other {profiles}}"
+    "activeProfiles": "{count} active {count, plural, =1 {profile} other {profiles}}",
+    "adminCount": "Admin: {count}",
+    "userCount": "User: {count}",
+    "globalActiveProfiles": "Global active profiles",
+    "userActiveProfiles": "User active profiles",
+    "disableGlobally": "Disable plugin globally",
+    "enableGlobally": "Enable plugin globally",
+    "configure": "Configure",
+    "configurationTitle": "{name} Configuration"
   },
   "UserPlugins": {
     "noPlugins": "No plugins available.",

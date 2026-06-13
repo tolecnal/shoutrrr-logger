@@ -80,12 +80,18 @@ class PluginService:
         plugin = plugin_registry.get_plugin(plugin_id)
         row = await self.get_or_create_config(session, plugin_id)
         profiles = await self._list_global_profiles(session, plugin_id)
+        active_global = sum(1 for p in profiles if p.enabled)
+        active_user = await self._user_repo.count_enabled_by_plugin(session, plugin_id)
+
         return PluginOut(
             id=plugin.plugin_id,
             name=plugin.name,
             description=plugin.description,
+            enabled=row.enabled,
             allow_user_configs=row.allow_user_configs,
             profiles=[self._global_profile_out(p) for p in profiles],
+            active_global_profiles=active_global,
+            active_user_profiles=active_user,
         )
 
     async def list_plugins(self, session: AsyncSession) -> list[PluginOut]:
@@ -111,6 +117,8 @@ class PluginService:
             raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
         row = await self.get_or_create_config(session, plugin_id)
 
+        if body.enabled is not None:
+            row.enabled = body.enabled
         if body.allow_user_configs is not None:
             row.allow_user_configs = body.allow_user_configs
 
