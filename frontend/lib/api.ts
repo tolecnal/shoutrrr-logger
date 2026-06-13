@@ -137,6 +137,14 @@ export const bulkDeleteNotifications = (params: {
   });
 };
 
+// Gmail-style selected delete. IDs the caller may not delete are silently
+// skipped server-side; the response reports how many were actually deleted.
+export const deleteSelectedNotifications = (ids: string[]) =>
+  apiFetch<{ requested: number; deleted: number }>("/notifications/delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+
 export const fetchSearchFilters = () =>
   apiFetch<NotificationSearchFilters>("/notifications/search-filters");
 

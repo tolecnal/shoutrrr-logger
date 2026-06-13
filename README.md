@@ -615,6 +615,15 @@ The notification log has a **Scope** filter:
 
 Each token can optionally be given an expiry date — expired tokens are rejected immediately. Tokens can be activated/deactivated without deleting them.
 
+### Deleting notifications
+
+The notification log offers two ways to delete:
+
+- **Select & delete** — tick the checkbox on individual rows (or the header checkbox to select all deletable rows on the page) and use **Delete selected**. Selection persists as you page through results within the same filter.
+- **Bulk delete by filter** — the trash button in the toolbar deletes *everything matching the current search/scope/time filter* at once.
+
+Both honor a delete-permission model that is intentionally **narrower than viewing**: an **admin** may delete any notification they can see, but a **viewer** may only delete notifications that arrived through **their own private tokens**. Viewers can *see* global notifications but cannot delete them — rows they may not delete simply have no checkbox, and the bulk delete skips them. Permission is enforced on the server regardless of the UI.
+
 ### External delivery policy
 
 When creating or editing a token (global or personal), its creator controls whether notifications sent with it may leave the application — two independent toggles, both **on by default**:

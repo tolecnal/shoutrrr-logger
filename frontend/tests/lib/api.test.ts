@@ -9,6 +9,7 @@ import {
   updateUserPluginProfile,
   deleteUserPluginProfile,
   testUserPluginProfile,
+  deleteSelectedNotifications,
 } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -185,6 +186,17 @@ describe("updateToken", () => {
     const { url, body } = lastRequest();
     expect(url).toBe("/api/v1/me/tokens/tok-1"); // no ?query
     expect(body).toEqual({ allow_email_alerts: false });
+  });
+
+  it("deleteSelectedNotifications POSTs the id list to /notifications/delete", async () => {
+    await deleteSelectedNotifications(["a", "b"]);
+    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe("/api/v1/notifications/delete");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ ids: ["a", "b"] });
   });
 });
 

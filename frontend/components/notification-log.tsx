@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2 } from "lucide-react";
-import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, settingsToMap } from "@/lib/api";
+import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, deleteSelectedNotifications, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useLabelRules, isExcluded, LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
@@ -131,6 +131,9 @@ export function NotificationLog() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Gmail-style multi-select: ids checked for deletion across loaded pages.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
   const { toast } = useToast();
 
   // Load app settings (page size, auto-refresh interval)
@@ -218,6 +221,62 @@ export function NotificationLog() {
     return classifiedItems.filter(({ tags }) => tags.includes(activeLabel));
   }, [classifiedItems, activeLabel]);
 
+  // --- Multi-select (Gmail-style) ------------------------------------------
+  // IDs on the current view the user is allowed to delete; drives the
+  // header select-all checkbox and bounds what select-all toggles.
+  const deletableVisibleIds = useMemo(
+    () =>
+      filteredItems
+        .filter(({ notification: n }) => n.can_delete)
+        .map(({ notification: n }) => n.id),
+    [filteredItems],
+  );
+  const allVisibleSelected =
+    deletableVisibleIds.length > 0 && deletableVisibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = deletableVisibleIds.some((id) => selectedIds.has(id));
+
+  const toggleOne = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAllVisible = () =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) deletableVisibleIds.forEach((id) => next.delete(id));
+      else deletableVisibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleDeleteSelected = async () => {
+    if (isDeletingSelected || selectedIds.size === 0) return;
+    setIsDeletingSelected(true);
+    try {
+      const res = await deleteSelectedNotifications([...selectedIds]);
+      toast({
+        title: "Notifications deleted",
+        description:
+          res.deleted === res.requested
+            ? `Deleted ${res.deleted} notification(s).`
+            : `Deleted ${res.deleted} of ${res.requested} (the rest you weren't allowed to delete).`,
+      });
+      if (selected && selectedIds.has(selected.id)) setSelected(null);
+      clearSelection();
+      mutate();
+    } catch (err: any) {
+      toast({
+        title: "Delete failed",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingSelected(false);
+    }
+  };
+
   // Custom field keys present across the currently (label-)filtered items —
   // populates the "Group by" field selector.
   const availableGroupFields = useMemo(() => {
@@ -288,6 +347,12 @@ export function NotificationLog() {
     setPageIndex(0);
     setClientPage(1);
   }, []);
+
+  // Drop the multi-select whenever the result set changes out from under it
+  // (new search/scope/time/label), so a stale selection can't linger.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [query, scope, timeRange, activeLabel, customAfter, customBefore]);
 
   // Advance to the next server page, appending the current response's
   // next_cursor to the stack if we haven't visited it yet.
@@ -745,6 +810,39 @@ export function NotificationLog() {
           )}
         </div>
 
+        {/* Selection action bar (Gmail-style) */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 border-b border-border bg-primary/5 px-4 py-2">
+            <span className="text-sm font-medium text-foreground">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleDeleteSelected}
+              disabled={isDeletingSelected}
+            >
+              {isDeletingSelected ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Delete selected
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1.5 text-xs text-muted-foreground"
+              onClick={clearSelection}
+              disabled={isDeletingSelected}
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="flex-1 overflow-auto">
           {isLoading ? (
@@ -785,6 +883,21 @@ export function NotificationLog() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-card/90 backdrop-blur-sm border-b border-border">
                 <tr>
+                  <th className="px-3 py-2 w-10">
+                    {deletableVisibleIds.length > 0 && (
+                      <Checkbox
+                        checked={
+                          allVisibleSelected
+                            ? true
+                            : someVisibleSelected
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={toggleAllVisible}
+                        aria-label="Select all deletable notifications on this page"
+                      />
+                    )}
+                  </th>
                   <th className="text-left text-xs text-muted-foreground font-medium px-4 py-2 w-44">
                     Received
                   </th>
@@ -810,7 +923,7 @@ export function NotificationLog() {
                   ? groupedSections.flatMap(({ value, items }) => [
                       <tr key={`group-${value}`} className="bg-muted/40">
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className="px-4 py-1.5 text-[11px] font-medium text-muted-foreground"
                         >
                           <span className="font-mono">{groupField}</span> = {" "}
@@ -825,6 +938,8 @@ export function NotificationLog() {
                           tags={tags}
                           rules={rules}
                           isSelected={selected?.id === n.id}
+                          isChecked={selectedIds.has(n.id)}
+                          onCheckedChange={() => toggleOne(n.id)}
                           formatTime={formatTime}
                           onClick={() => setSelected(selected?.id === n.id ? null : n)}
                         />
@@ -837,6 +952,8 @@ export function NotificationLog() {
                         tags={tags}
                         rules={rules}
                         isSelected={selected?.id === n.id}
+                        isChecked={selectedIds.has(n.id)}
+                        onCheckedChange={() => toggleOne(n.id)}
                         formatTime={formatTime}
                         onClick={() => setSelected(selected?.id === n.id ? null : n)}
                       />
@@ -1196,6 +1313,8 @@ function NotificationRow({
   tags,
   rules,
   isSelected,
+  isChecked,
+  onCheckedChange,
   formatTime,
   onClick,
 }: {
@@ -1203,6 +1322,8 @@ function NotificationRow({
   tags: string[];
   rules: ReturnType<typeof useLabelRules>["rules"];
   isSelected: boolean;
+  isChecked: boolean;
+  onCheckedChange: () => void;
   formatTime: (iso: string) => string;
   onClick: () => void;
 }) {
@@ -1211,11 +1332,22 @@ function NotificationRow({
       onClick={onClick}
       className={cn(
         "cursor-pointer border-b border-border transition-colors",
-        isSelected
-          ? "bg-primary/10 text-foreground"
-          : "hover:bg-muted/50 text-foreground"
+        isChecked
+          ? "bg-primary/5"
+          : isSelected
+            ? "bg-primary/10 text-foreground"
+            : "hover:bg-muted/50 text-foreground"
       )}
     >
+      <td className="px-3 py-2.5 w-10" onClick={(e) => e.stopPropagation()}>
+        {n.can_delete && (
+          <Checkbox
+            checked={isChecked}
+            onCheckedChange={onCheckedChange}
+            aria-label={`Select notification${n.title ? `: ${n.title}` : ""}`}
+          />
+        )}
+      </td>
       <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
         {formatTime(n.received_at)}
       </td>

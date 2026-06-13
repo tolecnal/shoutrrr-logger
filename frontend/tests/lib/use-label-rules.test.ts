@@ -30,6 +30,7 @@ function makeNotif(overrides: Partial<NotificationOut> = {}): NotificationOut {
     state: "new",
     last_received_at: "2024-06-01T12:00:00Z",
     custom_fields: {},
+    can_delete: true,
     ...overrides,
   };
 }

@@ -361,6 +361,71 @@ class NotificationRepository:
             raise ValueError("Search query timed out — try a more specific search.") from exc
         return result.scalars().all()
 
+    def _deletable_token_subquery(self, user_id: uuid.UUID | None):
+        """Subquery of access-token IDs a non-admin caller may delete from:
+        their own, non-global tokens. Used to gate all delete operations so a
+        viewer can never delete global or other users' notifications, even
+        though they can *see* global ones."""
+        return select(AccessToken.id).where(
+            AccessToken.user_id == user_id,
+            AccessToken.is_global == False,  # noqa: E712
+        )
+
+    def _apply_deletable_filter(self, stmt, *, user_id: uuid.UUID | None, is_admin: bool):
+        """Restrict a Notification statement to rows the caller may delete.
+
+        Admins may delete anything. Non-admins may only delete notifications
+        originating from their own non-global tokens (not global, not orphaned,
+        not other users')."""
+        if is_admin:
+            return stmt
+        return stmt.where(Notification.token_id.in_(self._deletable_token_subquery(user_id)))
+
+    async def deletable_ids_among(
+        self,
+        session: AsyncSession,
+        ids: Sequence[uuid.UUID],
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
+    ) -> set[uuid.UUID]:
+        """Of ``ids``, return those the caller is permitted to delete.
+
+        Used by the list endpoint to populate ``can_delete`` per row without an
+        N+1 (one query per page)."""
+        if not ids:
+            return set()
+        if is_admin:
+            # Admins can delete anything they can see; the page already only
+            # contains visible rows, so every id qualifies.
+            return set(ids)
+        stmt = self._apply_deletable_filter(
+            select(Notification.id).where(Notification.id.in_(ids)),
+            user_id=user_id,
+            is_admin=is_admin,
+        )
+        result = await session.execute(stmt)
+        return set(result.scalars().all())
+
+    async def delete_by_ids(
+        self,
+        session: AsyncSession,
+        ids: Sequence[uuid.UUID],
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
+    ) -> int:
+        """Delete the given notifications the caller is permitted to delete.
+
+        IDs the caller may not delete (or that don't exist) are silently
+        skipped; the returned count reflects rows actually deleted."""
+        if not ids:
+            return 0
+        id_filter = select(Notification.id).where(Notification.id.in_(ids))
+        id_filter = self._apply_deletable_filter(id_filter, user_id=user_id, is_admin=is_admin)
+        result = await session.execute(delete(Notification).where(Notification.id.in_(id_filter)))
+        return result.rowcount
+
     async def delete_bulk(
         self,
         session: AsyncSession,
@@ -382,6 +447,10 @@ class NotificationRepository:
             user_id=user_id,
             is_admin=is_admin,
         )
+        # Beyond view-scoping, a non-admin may only delete from their own
+        # non-global tokens — they can see global notifications but not delete
+        # them. (No-op for admins.)
+        base_query = self._apply_deletable_filter(base_query, user_id=user_id, is_admin=is_admin)
         delete_stmt = delete(Notification).where(Notification.id.in_(base_query))
 
         if query:

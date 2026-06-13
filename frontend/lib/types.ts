@@ -26,6 +26,9 @@ export interface NotificationOut {
   last_received_at: string;
   source_ip: string | null;
   custom_fields: Record<string, unknown>;
+  // Whether the current user may delete this notification (admins: always;
+  // viewers: only their own non-global token's notifications).
+  can_delete: boolean;
 }
 
 export interface NotificationSearchFilters {

@@ -73,8 +73,18 @@ class NotificationService:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
             ) from exc
+        # Per-row delete permission for the Gmail-style selection UI. One bounded
+        # query per page (admins short-circuit to "all deletable").
+        deletable = await self._repo.deletable_ids_among(
+            session, [r.id for r in rows], user_id=user_id, is_admin=is_admin
+        )
+        items = []
+        for r in rows:
+            out = NotificationOut.model_validate(r)
+            out.can_delete = r.id in deletable
+            items.append(out)
         return CursorPage(
-            items=[NotificationOut.model_validate(r) for r in rows],
+            items=items,
             total=total,
             page_size=page_size,
             pages=math.ceil(total / page_size) if total > 0 else 0,
@@ -315,6 +325,20 @@ class NotificationService:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
             ) from exc
+
+    async def delete_selected(
+        self,
+        session: AsyncSession,
+        ids: list[uuid.UUID],
+        *,
+        user_id: uuid.UUID | None,
+        is_admin: bool,
+    ) -> tuple[int, int]:
+        """Delete an explicit selection of notifications, enforcing per-row
+        delete permission. Returns ``(requested, deleted)``; the difference is
+        rows skipped because the caller may not delete them (or they're gone)."""
+        deleted = await self._repo.delete_by_ids(session, ids, user_id=user_id, is_admin=is_admin)
+        return len(ids), deleted
 
     async def dispatch_plugins(self, notification_dict: dict, user_id_str: str | None) -> None:
         """

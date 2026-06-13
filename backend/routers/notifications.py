@@ -14,6 +14,8 @@ from database import get_db
 from models import User, UserRole
 from schemas import (
     CursorPage,
+    NotificationDeleteRequest,
+    NotificationDeleteResult,
     NotificationOut,
     NotificationSearchFilters,
     NotificationStateUpdate,
@@ -207,6 +209,40 @@ async def bulk_delete_notifications(
     )
     await db.commit()
     return {"deleted": deleted_count}
+
+
+@router.post(
+    "/delete",
+    response_model=NotificationDeleteResult,
+    summary="Delete selected notifications",
+    description=(
+        "Deletes an explicit list of notification IDs (Gmail-style selection). "
+        "IDs the caller is not permitted to delete are silently skipped; the "
+        "response reports how many were actually deleted."
+    ),
+)
+async def delete_selected_notifications(
+    body: NotificationDeleteRequest,
+    request: Request,
+    user: User = Depends(require_viewer),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationDeleteResult:
+    requested, deleted = await notification_service.delete_selected(
+        db,
+        body.ids,
+        user_id=user.id,
+        is_admin=(user.role == UserRole.admin),
+    )
+    await audit_log_service.log(
+        db,
+        actor=user,
+        action=AuditAction.NOTIFICATION_BULK_DELETE,
+        target_type="notification",
+        details={"mode": "selected", "requested": requested, "deleted_count": deleted},
+        request=request,
+    )
+    await db.commit()
+    return NotificationDeleteResult(requested=requested, deleted=deleted)
 
 
 @router.get(

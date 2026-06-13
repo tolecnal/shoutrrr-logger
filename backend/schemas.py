@@ -56,6 +56,11 @@ class NotificationOut(BaseModel):
     source_ip: str | None
     # Parsed from raw_payload at serialization time — never stored directly
     custom_fields: dict[str, Any] = {}
+    # Whether the requesting user may delete this notification. Populated by
+    # the list endpoint (admins: always; viewers: only their own non-global
+    # token's notifications). Defaults False elsewhere (export/get/state),
+    # where it is not used.
+    can_delete: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -110,6 +115,18 @@ class NotificationSearchFilters(BaseModel):
 
 class NotificationStateUpdate(BaseModel):
     state: str = Field(..., pattern="^(new|acknowledged|resolved)$")
+
+
+class NotificationDeleteRequest(BaseModel):
+    """Explicit selection of notification IDs to delete (Gmail-style)."""
+
+    # Capped to bound the IN (...) clause and the audit payload.
+    ids: list[uuid.UUID] = Field(..., min_length=1, max_length=500)
+
+
+class NotificationDeleteResult(BaseModel):
+    requested: int
+    deleted: int
 
 
 # ---------------------------------------------------------------------------
