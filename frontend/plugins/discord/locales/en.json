@@ -1,0 +1,13 @@
+{
+  "name": "Discord",
+  "description": "Send notifications to a Discord channel via Webhook.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "The Discord Webhook URL.",
+  "botUsername": "Bot Username",
+  "botUsernameDesc": "The name the bot will display when posting.",
+  "includedFields": "Included Fields",
+  "includedFieldsDesc": "Fields to include in the rich embed, separated by commas (e.g. received_at,source_ip).",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: "
+}

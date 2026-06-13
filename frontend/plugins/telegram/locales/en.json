@@ -1,0 +1,15 @@
+{
+  "name": "Telegram",
+  "description": "Send notifications to a Telegram chat via Bot API.",
+  "botToken": "Bot Token",
+  "botTokenDesc": "Your Telegram Bot Token (from @BotFather).",
+  "chatId": "Chat ID",
+  "chatIdDesc": "The target Chat ID or Channel Username.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Available variables: {title}, {message}, {severity}, {source_ip}, {fingerprint}, and {custom_fields.name}. HTML tags are supported.",
+  "includedFields": "Included Fields",
+  "includedFieldsDesc": "Fields to include as pre-formatted text at the bottom, separated by commas.",
+  "sendTestNotification": "Send Test Notification",
+  "sending": "Sending...",
+  "testFailed": "Test failed: "
+}

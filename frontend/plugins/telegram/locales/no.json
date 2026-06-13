@@ -1,0 +1,15 @@
+{
+  "name": "Telegram",
+  "description": "Send varsler til en Telegram chat via Bot API.",
+  "botToken": "Bot Token",
+  "botTokenDesc": "Din Telegram Bot Token (fra @BotFather).",
+  "chatId": "Chat ID",
+  "chatIdDesc": "Mål Chat ID eller Kanal Brukernavn.",
+  "messageTemplate": "Meldingsmal",
+  "messageTemplateDesc": "Tilgjengelige variabler: {title}, {message}, {severity}, {source_ip}, {fingerprint}, og {custom_fields.name}. HTML-tagger er støttet.",
+  "includedFields": "Inkluderte Felt",
+  "includedFieldsDesc": "Felt å inkludere som pre-formatert tekst på bunnen, separert med komma.",
+  "sendTestNotification": "Send Test Varsel",
+  "sending": "Sender...",
+  "testFailed": "Test feilet: "
+}

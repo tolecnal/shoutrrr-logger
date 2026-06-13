@@ -16,6 +16,8 @@ type AppMessages = typeof import("../messages/en.json") & {
   Plugin_webhook: typeof import("../plugins/webhook/locales/en.json");
   Plugin_ntfy: typeof import("../plugins/ntfy/locales/en.json");
   Plugin_pushover: typeof import("../plugins/pushover/locales/en.json");
+  Plugin_discord: typeof import("../plugins/discord/locales/en.json");
+  Plugin_telegram: typeof import("../plugins/telegram/locales/en.json");
 };
 
 declare module "next-intl" {

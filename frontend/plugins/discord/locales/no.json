@@ -1,0 +1,13 @@
+{
+  "name": "Discord",
+  "description": "Send varsler til en Discord-kanal via Webhook.",
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "Discord Webhook URL.",
+  "botUsername": "Bot Brukernavn",
+  "botUsernameDesc": "Navnet boten vil bruke når den poster.",
+  "includedFields": "Inkluderte Felt",
+  "includedFieldsDesc": "Felt å inkludere i rich embed, separert med komma (f.eks. received_at,source_ip).",
+  "sendTestNotification": "Send Test Varsel",
+  "sending": "Sender...",
+  "testFailed": "Test feilet: "
+}
