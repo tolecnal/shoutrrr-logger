@@ -66,6 +66,7 @@ TOKEN_REGEX = re.compile(
     r"(?P<OR>\bOR\b)|"
     r"(?P<NOT>\bNOT\b|-)|"
     r"(?P<TERM_EXPR>(?P<key>[a-zA-Z0-9_]+:)?(?:/(?P<regex>(?:\\/|[^/])+)/|\"(?P<dquote>(?:\\\"|[^\"])+)\"|'(?P<squote>(?:\\'|[^'])+)'|(?P<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\s\(\)\/\"'][^\s\(\)]*)))|"
+    r"(?P<KEY_ONLY>[a-zA-Z0-9_]+:)|"
     r"(?P<WS>\s+)",
     re.IGNORECASE,
 )
@@ -117,6 +118,11 @@ def tokenize(query: str) -> list[Token]:
                 continue
 
             tokens.append(Token(T_TERM, val, field=field, exact=exact, is_regex=is_regex))
+        elif kind == "KEY_ONLY":
+            field = match.group()[:-1].lower()
+            tokens.append(Token(T_TERM, "", field=field, exact=False, is_regex=False))
+        else:
+            raise ParseError(f"Unexpected token kind: {kind}")
 
     if expected_index < len(query):
         raise ParseError(f"Unexpected character '{query[expected_index:]}'")

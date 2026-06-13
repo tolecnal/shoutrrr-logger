@@ -22,6 +22,7 @@ const TOKEN_REGEX_STR = [
   "(?<OR>\\bOR\\b)",
   "(?<NOT>\\bNOT\\b|-)",
   "(?<TERM_EXPR>(?<key>[a-zA-Z0-9_]+:)?(?:/(?<regex>(?:\\\\/|[^/])+)/|\"(?<dquote>(?:\\\\\"|[^\"])+)\"|'(?<squote>(?:\\\\'|[^'])+)'|(?<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\\s()\\/\"'][^\\s()]*)))",
+  "(?<KEY_ONLY>[a-zA-Z0-9_]+:)",
   "(?<WS>\\s+)"
 ].join("|");
 
@@ -83,6 +84,17 @@ export function tokenize(query: string): Token[] {
       }
 
       tokens.push({ type: 'TERM', value: termVal, field, exact, isRegex, start, end });
+    } else if (g.KEY_ONLY) {
+      const field = value.slice(0, -1).toLowerCase();
+      tokens.push({
+        type: 'TERM',
+        value: "",
+        start,
+        end,
+        field,
+        isRegex: false,
+        exact: false
+      });
     }
   }
 
@@ -193,11 +205,18 @@ export function validateQuery(query: string): ParseError | null {
 }
 
 export function highlightQueryHtml(query: string): string {
-  // We can rebuild the query with highlighted tokens
-  // but to preserve exact spacing, we just wrap tokens based on their start/end
   if (!query) return "";
   
-  const tokens = tokenize(query);
+  let tokens: Token[] = [];
+  try {
+    tokens = tokenize(query);
+  } catch (err: any) {
+    // If there's a parse error mid-typing, we can still highlight up to the error
+    // but we don't have the tokens easily because tokenize throws.
+    // Instead of crashing the page, we just return the raw text safely escaped.
+    return escapeHtml(query);
+  }
+  
   let html = "";
   let lastIndex = 0;
 
@@ -224,6 +243,9 @@ export function highlightQueryHtml(query: string): string {
         else if (t.exact) valClass = "text-emerald-500";
         
         html += `<span class="text-blue-500">${fieldPart}</span><span class="${valClass}">${valPart}</span>`;
+      } else if (t.field && tokenStr.endsWith(":")) {
+        // Handle KEY_ONLY token when user is actively typing
+        html += `<span class="text-blue-500">${tokenStr}</span>`;
       } else {
         let valClass = "text-foreground";
         if (t.isRegex) valClass = "text-amber-500";
