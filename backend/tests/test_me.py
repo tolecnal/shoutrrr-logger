@@ -255,14 +255,14 @@ class TestCreateMyToken:
 class TestUpdateMyToken:
     async def test_requires_auth(self, client, viewer_private_token):
         _, tok = viewer_private_token
-        resp = await client.patch(f"/api/v1/me/tokens/{tok.id}", params={"name": "x"})
+        resp = await client.patch(f"/api/v1/me/tokens/{tok.id}", json={"name": "x"})
         assert resp.status_code == 401
 
     async def test_rename_token(self, client, viewer_session_headers, viewer_private_token):
         _, tok = viewer_private_token
         resp = await client.patch(
             f"/api/v1/me/tokens/{tok.id}",
-            params={"name": "renamed"},
+            json={"name": "renamed"},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 200
@@ -272,7 +272,7 @@ class TestUpdateMyToken:
         _, tok = viewer_private_token
         resp = await client.patch(
             f"/api/v1/me/tokens/{tok.id}",
-            params={"is_active": "false"},
+            json={"is_active": False},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 200
@@ -284,7 +284,7 @@ class TestUpdateMyToken:
         _, tok = admin_private_token
         resp = await client.patch(
             f"/api/v1/me/tokens/{tok.id}",
-            params={"name": "hijacked"},
+            json={"name": "hijacked"},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 404
@@ -301,7 +301,7 @@ class TestUpdateMyToken:
         await db.flush()
         resp = await client.patch(
             f"/api/v1/me/tokens/{tok.id}",
-            params={"name": "tamper"},
+            json={"name": "tamper"},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 404
@@ -309,7 +309,7 @@ class TestUpdateMyToken:
     async def test_nonexistent_returns_404(self, client, viewer_session_headers):
         resp = await client.patch(
             "/api/v1/me/tokens/00000000-0000-0000-0000-000000000000",
-            params={"name": "x"},
+            json={"name": "x"},
             headers=viewer_session_headers,
         )
         assert resp.status_code == 404

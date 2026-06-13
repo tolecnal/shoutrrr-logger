@@ -167,6 +167,8 @@ export const createToken = (body: {
   user_id?: string;
   expires_at?: string | null;
   rate_limit_override?: number | null;
+  allow_plugin_dispatch?: boolean;
+  allow_email_alerts?: boolean;
 }) => apiFetch<AccessTokenCreated>("/admin/tokens", { method: "POST", body: JSON.stringify(body) });
 
 export const updateToken = (
@@ -176,6 +178,8 @@ export const updateToken = (
     is_active?: boolean;
     rate_limit_override?: number;
     clear_rate_limit_override?: boolean;
+    allow_plugin_dispatch?: boolean;
+    allow_email_alerts?: boolean;
   }
 ): Promise<AccessTokenOut> =>
   apiFetch<AccessTokenOut>(`/admin/tokens/${id}`, {
@@ -241,18 +245,26 @@ export const testSmtp = (values: { smtp_host: string; smtp_port: number; smtp_us
 // ---- Personal tokens ----
 export const fetchMyTokens = () => apiFetch<AccessTokenOut[]>("/me/tokens");
 
-export const createMyToken = (body: { name: string; expires_at?: string | null }) =>
-  apiFetch<AccessTokenCreated>("/me/tokens", { method: "POST", body: JSON.stringify(body) });
+export const createMyToken = (body: {
+  name: string;
+  expires_at?: string | null;
+  allow_plugin_dispatch?: boolean;
+  allow_email_alerts?: boolean;
+}) => apiFetch<AccessTokenCreated>("/me/tokens", { method: "POST", body: JSON.stringify(body) });
 
 export const updateMyToken = (
   id: string,
-  params: { name?: string; is_active?: boolean },
-) => {
-  const sp = new URLSearchParams();
-  if (params.name !== undefined) sp.set("name", params.name);
-  if (params.is_active !== undefined) sp.set("is_active", String(params.is_active));
-  return apiFetch<AccessTokenOut>(`/me/tokens/${id}?${sp}`, { method: "PATCH" });
-};
+  body: {
+    name?: string;
+    is_active?: boolean;
+    allow_plugin_dispatch?: boolean;
+    allow_email_alerts?: boolean;
+  },
+): Promise<AccessTokenOut> =>
+  apiFetch<AccessTokenOut>(`/me/tokens/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 
 export const deleteMyToken = (id: string) =>
   apiFetch<void>(`/me/tokens/${id}`, { method: "DELETE" });

@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Per-Token External Delivery Policy**: Access tokens (global and personal) now carry two independent toggles — **Allow plugins** and **Allow email alerts** — set by the token's creator, both on by default. When *Allow plugins* is off, no plugin (global or user) forwards that token's notifications to third parties; when *Allow email alerts* is off, matching alert rules don't email them while the in-app alert is still created. Both are evaluated at ingestion time and recorded in the audit log. Built to extend: additional external-delivery channels can be added as further per-token toggles (see `models.EXTERNAL_DELIVERY_CHANNELS`). Ships with an Alembic migration (both columns default TRUE, preserving existing behavior).
 - **Automatic Database Migrations**: The container entrypoint now runs `alembic upgrade head` before starting the servers, so a release that changes the schema can never serve requests against an un-migrated database (with retries while PostgreSQL starts up). Opt out with `AUTO_MIGRATE=false` to apply migrations out-of-band.
 - **Global Plugin Profiles**: Admin → Plugins now uses the same named configuration profiles as user configurations — each global profile has its own settings, routing rules, enable toggle, and per-profile test button, with no cap for admins. Existing global plugin configurations are migrated into a "Default" profile automatically; `plugin_configs` keeps only plugin-level settings (allow user configurations). The admin plugin API is now profile-based (`/api/v1/admin/plugins/{plugin}/profiles/...`); `PATCH /admin/plugins/{id}` only accepts `allow_user_configs`, and the old `POST /admin/plugins/{id}/test` endpoint is replaced by per-profile tests.
 - **Plugin Configuration Profiles**: Users can now create multiple named configuration profiles per plugin (e.g. several Slack channels), presented as tabs under Preferences → My Plugins. Each profile has its own settings, routing rules, and enable toggle, and every enabled profile is dispatched independently through the routing engine. Profiles can be renamed, duplicated, deleted, and test-fired individually. A new *Max plugin profiles per user* admin setting caps profiles per plugin (default 5, 0 = unlimited; admins exempt). Ships with an Alembic migration that turns existing user configs into a "Default" profile.
@@ -21,6 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **User Plugins API**: `/api/v1/user-plugins` responses are now profile-based (plugin metadata + a `profiles` array), and per-profile CRUD lives under `/api/v1/user-plugins/{plugin}/profiles/...`. The old `PATCH /api/v1/user-plugins/{plugin}` endpoint is removed.
+- **Personal Token Update API**: `PATCH /api/v1/me/tokens/{id}` now takes a JSON body instead of query parameters (consistent with the admin token endpoint), and accepts the new `allow_plugin_dispatch` / `allow_email_alerts` fields.
 
 ## [0.7.5] — 2026-06-12
 

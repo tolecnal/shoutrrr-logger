@@ -158,11 +158,16 @@ async def receive_notification(
         severity=severity,
     ).inc()
 
-    background_tasks.add_task(
-        notification_service.dispatch_plugins,
-        notification_dict,
-        str(token.user_id) if token.user_id else None,
-    )
+    # Per-token external delivery policy: skip plugin dispatch entirely when
+    # the token disallows it (no plugin — global or user — handles it). The
+    # email-alert gate lives in the trigger engine, since the in-app GUI alert
+    # must still be created regardless.
+    if token.allow_plugin_dispatch:
+        background_tasks.add_task(
+            notification_service.dispatch_plugins,
+            notification_dict,
+            str(token.user_id) if token.user_id else None,
+        )
     background_tasks.add_task(
         run_trigger_engine,
         str(notification.id),

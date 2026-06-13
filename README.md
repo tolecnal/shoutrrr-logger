@@ -615,6 +615,17 @@ The notification log has a **Scope** filter:
 
 Each token can optionally be given an expiry date — expired tokens are rejected immediately. Tokens can be activated/deactivated without deleting them.
 
+### External delivery policy
+
+When creating or editing a token (global or personal), its creator controls whether notifications sent with it may leave the application — two independent toggles, both **on by default**:
+
+| Toggle | When off |
+|---|---|
+| **Allow plugins** | Plugins (Slack, Splunk, webhooks, …) never forward this token's notifications to third-party services. No plugin — global or user — processes them. |
+| **Allow email alerts** | Matching alert rules never email this token's notifications. The in-app alert (bell / alerts list) is still created — only the outbound email is suppressed. |
+
+Both flags are evaluated once, at ingestion time, and the decision is captured in the audit log. This lets you ingest sensitive notifications for in-app viewing while guaranteeing they are never relayed to an external service. The model is designed to grow: new external delivery channels can be added as further per-token toggles.
+
 ---
 
 ## Admin settings

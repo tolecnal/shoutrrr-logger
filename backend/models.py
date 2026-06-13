@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -79,6 +80,23 @@ class AccessToken(Base):
     # >0    → custom per-minute limit
     rate_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # ---- External delivery policy (per-token) --------------------------------
+    # Whether notifications ingested with this token may leave the application
+    # through each external delivery channel. The token's creator decides; all
+    # default to True (opt-out). Each flag is evaluated once, at ingestion time.
+    # To add a new channel: add a column here, gate it at its dispatch site, and
+    # expose it in EXTERNAL_DELIVERY_CHANNELS below + the token dialogs.
+    #
+    # allow_plugin_dispatch: forward to plugins (Slack/Splunk/webhook → 3rd parties)
+    allow_plugin_dispatch: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
+    # allow_email_alerts: send matched-alert emails. The in-app GUI alert is
+    # always created regardless — this only suppresses the outbound email.
+    allow_email_alerts: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
+
     user: Mapped["User"] = relationship("User", back_populates="access_tokens")
 
     __table_args__ = (
@@ -87,6 +105,35 @@ class AccessToken(Base):
         Index("ix_access_tokens_token_hash", "token_hash", unique=True),
         Index("ix_access_tokens_user_global", "user_id", "is_global"),
     )
+
+
+# Single source of truth for the per-token external delivery toggles, consumed
+# by the token schemas, services, and frontend (via /api/v1/... metadata). Add a
+# new channel here (plus its AccessToken column and dispatch-site gate) and it
+# flows through create/update/out automatically.
+#
+#   field: the AccessToken column / schema field name
+#   label/description: shown in the token dialogs
+EXTERNAL_DELIVERY_CHANNELS: tuple[dict[str, str], ...] = (
+    {
+        "field": "allow_plugin_dispatch",
+        "label": "Allow plugins",
+        "description": (
+            "Let plugins (Slack, Splunk, webhooks, …) forward notifications "
+            "sent with this token to third-party services."
+        ),
+    },
+    {
+        "field": "allow_email_alerts",
+        "label": "Allow email alerts",
+        "description": (
+            "Let matching alert rules email notifications sent with this token. "
+            "In-app alerts are unaffected."
+        ),
+    },
+)
+
+EXTERNAL_DELIVERY_FIELDS: tuple[str, ...] = tuple(c["field"] for c in EXTERNAL_DELIVERY_CHANNELS)
 
 
 class MonitoringToken(Base):

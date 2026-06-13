@@ -55,6 +55,7 @@ import {
   type LabelRule,
 } from "@/lib/use-label-rules";
 import { UserPluginsTab } from "@/components/user-plugins-tab";
+import { TokenDeliveryToggles } from "@/components/token-delivery-toggles";
 
 const LABEL_COLORS: LabelColor[] = [
   "slate","blue","green","yellow","orange","red","purple","pink","teal",
@@ -424,6 +425,8 @@ export function PreferencesDialog() {
   // Personal tokens state
   const [tokenName, setTokenName] = useState("");
   const [tokenExpiry, setTokenExpiry] = useState("");
+  const [tokenAllowPlugins, setTokenAllowPlugins] = useState(true);
+  const [tokenAllowEmail, setTokenAllowEmail] = useState(true);
   const [tokenCreating, setTokenCreating] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
   const [newRawToken, setNewRawToken] = useState<string | null>(null);
@@ -452,10 +455,14 @@ export function PreferencesDialog() {
       const created = await createMyToken({
         name,
         expires_at: tokenExpiry ? new Date(tokenExpiry).toISOString() : null,
+        allow_plugin_dispatch: tokenAllowPlugins,
+        allow_email_alerts: tokenAllowEmail,
       });
       setNewRawToken(created.raw_token);
       setTokenName("");
       setTokenExpiry("");
+      setTokenAllowPlugins(true);
+      setTokenAllowEmail(true);
       await mutateTokens();
     } catch (e) {
       setTokenError(e instanceof Error ? e.message : "Failed to create token");
@@ -785,6 +792,17 @@ export function PreferencesDialog() {
                     <Plus className="h-3.5 w-3.5 mr-1" /> Create
                   </Button>
                 </div>
+                <TokenDeliveryToggles
+                  idPrefix="personal-create"
+                  value={{
+                    allow_plugin_dispatch: tokenAllowPlugins,
+                    allow_email_alerts: tokenAllowEmail,
+                  }}
+                  onChange={(v) => {
+                    setTokenAllowPlugins(v.allow_plugin_dispatch);
+                    setTokenAllowEmail(v.allow_email_alerts);
+                  }}
+                />
                 {tokenError && (
                   <p className="text-xs text-destructive">{tokenError}</p>
                 )}

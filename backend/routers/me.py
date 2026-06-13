@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import require_viewer
 from database import get_db
 from models import AccessToken, User
-from schemas import AccessTokenCreated, AccessTokenOut, PersonalTokenCreate
+from schemas import (
+    AccessTokenCreated,
+    AccessTokenOut,
+    PersonalTokenCreate,
+    PersonalTokenUpdate,
+)
 from services.settings import settings_service
 from services.tokens import access_token_service
 
@@ -47,6 +52,8 @@ async def create_my_token(
         name=body.name,
         expires_at=body.expires_at,
         max_tokens=max_tokens,
+        allow_plugin_dispatch=body.allow_plugin_dispatch,
+        allow_email_alerts=body.allow_email_alerts,
     )
     out = AccessTokenCreated.model_validate(token)
     return out.model_copy(update={"raw_token": raw})
@@ -59,13 +66,18 @@ async def create_my_token(
 )
 async def update_my_token(
     token_id: uuid.UUID,
-    name: str | None = None,
-    is_active: bool | None = None,
+    body: PersonalTokenUpdate,
     user: User = Depends(require_viewer),
     db: AsyncSession = Depends(get_db),
 ) -> AccessTokenOut:
     token = await access_token_service.update_personal_token(
-        db, user.id, token_id, name=name, is_active=is_active
+        db,
+        user.id,
+        token_id,
+        name=body.name,
+        is_active=body.is_active,
+        allow_plugin_dispatch=body.allow_plugin_dispatch,
+        allow_email_alerts=body.allow_email_alerts,
     )
     return _token_out(token)
 

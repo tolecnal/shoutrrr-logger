@@ -46,6 +46,8 @@ class AccessTokenService:
             expires_at=body.expires_at,
             is_global=body.is_global,
             rate_limit_override=body.rate_limit_override,
+            allow_plugin_dispatch=body.allow_plugin_dispatch,
+            allow_email_alerts=body.allow_email_alerts,
         )
         await self._repo.add(session, token)
         return token, raw
@@ -59,6 +61,8 @@ class AccessTokenService:
         is_active: bool | None,
         rate_limit_override: int | None = None,
         clear_rate_limit_override: bool = False,
+        allow_plugin_dispatch: bool | None = None,
+        allow_email_alerts: bool | None = None,
     ) -> AccessToken:
         token = await self._repo.get_by_id(session, token_id, with_user=True)
         if token is None:
@@ -71,6 +75,10 @@ class AccessTokenService:
             token.rate_limit_override = None
         elif rate_limit_override is not None:
             token.rate_limit_override = rate_limit_override
+        if allow_plugin_dispatch is not None:
+            token.allow_plugin_dispatch = allow_plugin_dispatch
+        if allow_email_alerts is not None:
+            token.allow_email_alerts = allow_email_alerts
         await session.flush()
         await session.refresh(token, attribute_names=["user"])
         return token
@@ -99,6 +107,8 @@ class AccessTokenService:
         name: str,
         expires_at: datetime | None,
         max_tokens: int,
+        allow_plugin_dispatch: bool = True,
+        allow_email_alerts: bool = True,
     ) -> tuple[AccessToken, str]:
         """Create a private token for a user, enforcing the per-user limit."""
         if not await settings_service.get_bool(session, "private_tokens_enabled"):
@@ -123,6 +133,8 @@ class AccessTokenService:
             token_hash=hash_token(raw),
             expires_at=expires_at,
             is_global=False,
+            allow_plugin_dispatch=allow_plugin_dispatch,
+            allow_email_alerts=allow_email_alerts,
         )
         await self._repo.add(session, token)
         return token, raw
@@ -135,6 +147,8 @@ class AccessTokenService:
         *,
         name: str | None,
         is_active: bool | None,
+        allow_plugin_dispatch: bool | None = None,
+        allow_email_alerts: bool | None = None,
     ) -> AccessToken:
         token = await self._repo.get_by_id(session, token_id)
         if token is None or token.user_id != user_id or token.is_global:
@@ -143,6 +157,10 @@ class AccessTokenService:
             token.name = name
         if is_active is not None:
             token.is_active = is_active
+        if allow_plugin_dispatch is not None:
+            token.allow_plugin_dispatch = allow_plugin_dispatch
+        if allow_email_alerts is not None:
+            token.allow_email_alerts = allow_email_alerts
         await session.flush()
         return token
 

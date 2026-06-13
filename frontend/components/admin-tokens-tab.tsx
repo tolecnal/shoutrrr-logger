@@ -6,6 +6,7 @@ import { format, isPast } from "date-fns";
 import { Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Eye, EyeOff, Pencil, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { fetchTokens, createToken, deleteToken, updateToken } from "@/lib/api";
+import { TokenDeliveryToggles } from "@/components/token-delivery-toggles";
 import type { AccessTokenCreated, AccessTokenOut } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -121,12 +122,16 @@ export function TokensTab() {
     expires_at: "",
     rateLimitMode: "default" as RateLimitMode,
     rateLimitValue: "",
+    allow_plugin_dispatch: true,
+    allow_email_alerts: true,
   });
 
   const [editForm, setEditForm] = useState({
     name: "",
     rateLimitMode: "default" as RateLimitMode,
     rateLimitValue: "",
+    allow_plugin_dispatch: true,
+    allow_email_alerts: true,
   });
 
   const handleCreate = async () => {
@@ -141,6 +146,8 @@ export function TokensTab() {
             : form.rateLimitMode === "unlimited"
               ? 0
               : Number(form.rateLimitValue),
+        allow_plugin_dispatch: form.allow_plugin_dispatch,
+        allow_email_alerts: form.allow_email_alerts,
       });
       setCreated(result);
       setCreating(false);
@@ -181,6 +188,8 @@ export function TokensTab() {
       name: t.name,
       rateLimitMode: rateLimitToMode(t.rate_limit_override),
       rateLimitValue: t.rate_limit_override && t.rate_limit_override > 0 ? String(t.rate_limit_override) : "",
+      allow_plugin_dispatch: t.allow_plugin_dispatch,
+      allow_email_alerts: t.allow_email_alerts,
     });
   };
 
@@ -192,6 +201,8 @@ export function TokensTab() {
         name?: string;
         rate_limit_override?: number;
         clear_rate_limit_override?: boolean;
+        allow_plugin_dispatch?: boolean;
+        allow_email_alerts?: boolean;
       } = {};
       if (editForm.name !== editing.name) params.name = editForm.name;
       if (editForm.rateLimitMode === "default") {
@@ -202,6 +213,10 @@ export function TokensTab() {
         const value = Number(editForm.rateLimitValue);
         if (editing.rate_limit_override !== value) params.rate_limit_override = value;
       }
+      if (editForm.allow_plugin_dispatch !== editing.allow_plugin_dispatch)
+        params.allow_plugin_dispatch = editForm.allow_plugin_dispatch;
+      if (editForm.allow_email_alerts !== editing.allow_email_alerts)
+        params.allow_email_alerts = editForm.allow_email_alerts;
       if (Object.keys(params).length > 0) {
         await updateToken(editing.id, params);
         toast.success("Token updated.");
@@ -226,7 +241,7 @@ export function TokensTab() {
             Admin-created tokens are global — visible to all users in the log.
           </p>
         </div>
-        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", expires_at: "", rateLimitMode: "default", rateLimitValue: "" }); }}>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setCreating(true); setForm({ name: "", expires_at: "", rateLimitMode: "default", rateLimitValue: "", allow_plugin_dispatch: true, allow_email_alerts: true }); }}>
           <Plus className="h-3.5 w-3.5" />
           Create Token
         </Button>
@@ -371,6 +386,14 @@ export function TokensTab() {
               onValueChange={(value) => setForm({ ...form, rateLimitValue: value })}
               idPrefix="create"
             />
+            <TokenDeliveryToggles
+              idPrefix="create"
+              value={{
+                allow_plugin_dispatch: form.allow_plugin_dispatch,
+                allow_email_alerts: form.allow_email_alerts,
+              }}
+              onChange={(v) => setForm({ ...form, ...v })}
+            />
           </div>
           <DialogFooter>
             <Button size="sm" variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
@@ -456,6 +479,14 @@ export function TokensTab() {
               value={editForm.rateLimitValue}
               onValueChange={(value) => setEditForm({ ...editForm, rateLimitValue: value })}
               idPrefix="edit"
+            />
+            <TokenDeliveryToggles
+              idPrefix="edit"
+              value={{
+                allow_plugin_dispatch: editForm.allow_plugin_dispatch,
+                allow_email_alerts: editForm.allow_email_alerts,
+              }}
+              onChange={(v) => setEditForm({ ...editForm, ...v })}
             />
           </div>
           <DialogFooter>

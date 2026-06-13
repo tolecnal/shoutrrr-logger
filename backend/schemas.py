@@ -157,6 +157,9 @@ class AccessTokenCreate(BaseModel):
     # Per-token rate limit override (notifications/minute). None = inherit the
     # global "rate_limit_per_minute" setting; 0 = unlimited; >0 = custom limit.
     rate_limit_override: int | None = Field(None, ge=0)
+    # External delivery policy (see models.EXTERNAL_DELIVERY_CHANNELS).
+    allow_plugin_dispatch: bool = True
+    allow_email_alerts: bool = True
 
 
 class AccessTokenUpdate(BaseModel):
@@ -168,6 +171,9 @@ class AccessTokenUpdate(BaseModel):
     rate_limit_override: int | None = Field(None, ge=0)
     # When true, resets rate_limit_override to "inherit the global setting".
     clear_rate_limit_override: bool = False
+    # External delivery policy; None leaves the flag unchanged.
+    allow_plugin_dispatch: bool | None = None
+    allow_email_alerts: bool | None = None
 
 
 class PersonalTokenCreate(BaseModel):
@@ -175,6 +181,17 @@ class PersonalTokenCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     expires_at: datetime | None = None
+    allow_plugin_dispatch: bool = True
+    allow_email_alerts: bool = True
+
+
+class PersonalTokenUpdate(BaseModel):
+    """Partial private-token update; omitted fields are left unchanged."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    is_active: bool | None = None
+    allow_plugin_dispatch: bool | None = None
+    allow_email_alerts: bool | None = None
 
 
 class AccessTokenOut(BaseModel):
@@ -190,6 +207,9 @@ class AccessTokenOut(BaseModel):
     owner_username: str | None = None
     # None = inherit the global "rate_limit_per_minute" setting; 0 = unlimited
     rate_limit_override: int | None = None
+    # External delivery policy (see models.EXTERNAL_DELIVERY_CHANNELS).
+    allow_plugin_dispatch: bool = True
+    allow_email_alerts: bool = True
 
     model_config = {"from_attributes": True}
 

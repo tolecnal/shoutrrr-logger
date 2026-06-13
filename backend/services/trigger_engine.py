@@ -77,14 +77,19 @@ async def run_trigger_engine(
                     is_match = False
 
             if is_match:
+                # The in-app (GUI) alert is always created. The token's
+                # allow_email_alerts policy only governs the outbound email:
+                # when disabled, pre-mark the alert as email_sent so the digest
+                # worker skips it — the alert still shows in the UI.
                 alerts_to_create.append(
                     UserAlert(
                         user_id=rule.user_id,
                         notification_id=notification.id,
                         rule_id=rule.id,
+                        email_sent=not token.allow_email_alerts,
                     )
                 )
-                if rule.send_email:
+                if rule.send_email and token.allow_email_alerts:
                     users_to_email.setdefault(rule.user_id, set()).add(rule.name)
 
         if alerts_to_create:

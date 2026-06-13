@@ -185,6 +185,10 @@ export interface AccessTokenOut {
   owner_username: string | null;
   // null = inherit the global "rate_limit_per_minute" setting; 0 = unlimited
   rate_limit_override: number | null;
+  // External delivery policy: whether notifications sent with this token may
+  // be forwarded by plugins / emailed by alert rules.
+  allow_plugin_dispatch: boolean;
+  allow_email_alerts: boolean;
 }
 
 export interface AccessTokenCreated extends AccessTokenOut {

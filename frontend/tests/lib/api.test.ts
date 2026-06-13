@@ -3,6 +3,7 @@ import {
   notificationsKey,
   auditLogsKey,
   updateToken,
+  updateMyToken,
   settingsToMap,
   createUserPluginProfile,
   updateUserPluginProfile,
@@ -170,6 +171,20 @@ describe("updateToken", () => {
     const { url, body } = lastRequest();
     expect(url).not.toContain("renamed"); // nothing leaks into the URL
     expect(body).toEqual({ name: "renamed" });
+  });
+
+  it("sends external-delivery flags in the JSON body", async () => {
+    await updateToken("tok-1", { allow_plugin_dispatch: false, allow_email_alerts: false });
+    const { url, body } = lastRequest();
+    expect(url).toBe("/api/v1/admin/tokens/tok-1");
+    expect(body).toEqual({ allow_plugin_dispatch: false, allow_email_alerts: false });
+  });
+
+  it("updateMyToken PATCHes a JSON body (not query params)", async () => {
+    await updateMyToken("tok-1", { allow_email_alerts: false });
+    const { url, body } = lastRequest();
+    expect(url).toBe("/api/v1/me/tokens/tok-1"); // no ?query
+    expect(body).toEqual({ allow_email_alerts: false });
   });
 });
 

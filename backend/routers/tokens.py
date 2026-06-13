@@ -58,6 +58,8 @@ async def create_token(
             "is_global": effective.is_global,
             "user_id": str(effective.user_id) if effective.user_id else None,
             "rate_limit_override": effective.rate_limit_override,
+            "allow_plugin_dispatch": effective.allow_plugin_dispatch,
+            "allow_email_alerts": effective.allow_email_alerts,
         },
         request=request,
     )
@@ -84,6 +86,8 @@ async def update_token(
         is_active=body.is_active,
         rate_limit_override=body.rate_limit_override,
         clear_rate_limit_override=body.clear_rate_limit_override,
+        allow_plugin_dispatch=body.allow_plugin_dispatch,
+        allow_email_alerts=body.allow_email_alerts,
     )
     details: dict = {}
     if body.name is not None:
@@ -94,6 +98,10 @@ async def update_token(
         details["rate_limit_override"] = None
     elif body.rate_limit_override is not None:
         details["rate_limit_override"] = body.rate_limit_override
+    if body.allow_plugin_dispatch is not None:
+        details["allow_plugin_dispatch"] = body.allow_plugin_dispatch
+    if body.allow_email_alerts is not None:
+        details["allow_email_alerts"] = body.allow_email_alerts
     await audit_log_service.log(
         db,
         actor=admin,
