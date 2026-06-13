@@ -101,6 +101,16 @@ pnpm lint                     # ESLint
 pnpm exec tsc --noEmit        # TypeScript strict check
 ```
 
+### Internationalization (i18n)
+
+All user-facing text must be localized with `next-intl`. Never hardcode strings in the UI.
+
+```bash
+pnpm i18n:check               # Verify locale key parity across en.json and no.json
+```
+
+See `TRANSLATING.md` and `AGENTS.md` for more details on translating the application and writing plugins.
+
 ---
 
 ## Git hooks
@@ -181,6 +191,6 @@ WORKERS=4
 
 - Keep PRs focused — one concern per PR.
 - All CI checks must pass (lint, format, type-check, tests).
-- Backend: follow the repository → service → router layering defined in `CLAUDE.md`.
+- Backend: follow the repository → service → router layering defined in `AGENTS.md`.
 - Frontend: use TypeScript strict mode; no `any` types.
 - New endpoints need at least a basic pytest test.
