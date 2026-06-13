@@ -69,6 +69,32 @@ lint:frontend:
     - when: always
 
 # ---------------------------------------------------------------------------
+# Lint — i18n coverage (advisory / non-blocking)
+#
+# Translation coverage is rarely 100% and missing translations must never block
+# the pipeline, so this job is allow_failure. It surfaces locale key-parity gaps
+# and undefined-key references as a warning. See TRANSLATING.md.
+# ---------------------------------------------------------------------------
+i18n:frontend:
+  stage: lint
+  image: node:24-alpine
+  services: []
+  allow_failure: true
+  before_script:
+    - corepack enable
+    - cd frontend && pnpm install --frozen-lockfile
+  script:
+    - pnpm i18n:check
+  cache:
+    key:
+      files:
+        - frontend/pnpm-lock.yaml
+    paths:
+      - frontend/node_modules/
+  rules:
+    - when: always
+
+# ---------------------------------------------------------------------------
 # Test — Backend (pytest)
 # ---------------------------------------------------------------------------
 test:backend:

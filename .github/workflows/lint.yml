@@ -60,6 +60,13 @@ jobs:
       - name: TypeScript type-check
         run: pnpm exec tsc --noEmit
 
+      # Advisory only — translation coverage is rarely 100% and missing
+      # translations should never block the pipeline. Surfaces parity gaps and
+      # undefined-key references as a warning. See TRANSLATING.md.
+      - name: i18n coverage (advisory)
+        run: pnpm i18n:check
+        continue-on-error: true
+
   test-backend:
     name: Backend tests (pytest)
     runs-on: ubuntu-latest
