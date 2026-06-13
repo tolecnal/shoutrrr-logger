@@ -105,6 +105,10 @@ export function tokenize(query: string): Token[] {
   return tokens;
 }
 
+// Keep in sync with the backend's MAX_TOKENS (utils/search_parser.py): bounds
+// query complexity so the server can't be pushed into deep recursion.
+export const MAX_TOKENS = 200;
+
 export function validateQuery(query: string): ParseError | null {
   if (!query || !query.trim()) return null;
 
@@ -113,6 +117,10 @@ export function validateQuery(query: string): ParseError | null {
     tokens = tokenize(query);
   } catch (err: any) {
     return { message: "Invalid syntax", position: 0 };
+  }
+
+  if (tokens.length > MAX_TOKENS) {
+    return { message: `Query too complex (max ${MAX_TOKENS} terms and operators)`, position: 0 };
   }
 
   let pos = 0;

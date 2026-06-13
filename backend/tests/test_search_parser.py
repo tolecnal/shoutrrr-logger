@@ -1,4 +1,6 @@
-from utils.search_parser import AndNode, NotNode, OrNode, TermNode, parse_query
+import pytest
+
+from utils.search_parser import MAX_TOKENS, AndNode, NotNode, OrNode, TermNode, parse_query
 
 
 def test_parse_simple_term():
@@ -105,16 +107,35 @@ def test_parse_complex():
     assert or_node.right.value == "urgent"
 
 
-def test_parse_error_fallback():
-    # If there's an unmatched paren, it should fallback to a simple term rather than crash
-    ast = parse_query("(")
-    assert isinstance(ast, TermNode)
-    assert ast.value == "("
+def test_unmatched_paren_raises():
+    # Invalid syntax must surface as an error (ValueError -> HTTP 422),
+    # not silently degrade to a literal search.
+    with pytest.raises(ValueError, match="Invalid search query"):
+        parse_query("(")
 
 
-def test_parse_error_fallback_2():
-    # Invalid syntax falls back
-    ast = parse_query("a AND OR b")
-    # "a AND OR b" throws inside Parser
-    assert isinstance(ast, TermNode)
-    assert ast.value == "a AND OR b"
+def test_invalid_operator_sequence_raises():
+    with pytest.raises(ValueError, match="Invalid search query"):
+        parse_query("a AND OR b")
+
+
+def test_empty_query_returns_none():
+    assert parse_query("") is None
+    assert parse_query("   ") is None
+
+
+def test_too_many_tokens_raises():
+    # Bounds AST depth so compiling can't blow the recursion limit.
+    with pytest.raises(ValueError, match="too complex"):
+        parse_query(" ".join(["x"] * (MAX_TOKENS + 1)))
+
+
+def test_deep_query_at_limit_parses_without_error():
+    # A query right at the cap must parse cleanly (no RecursionError).
+    ast = parse_query(" ".join(["x"] * MAX_TOKENS))
+    assert ast is not None
+
+
+def test_quoted_phrase_marked_exact_unquoted_not():
+    assert parse_query('"db error"').exact is True
+    assert parse_query("dberror").exact is False

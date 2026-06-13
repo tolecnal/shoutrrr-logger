@@ -340,6 +340,7 @@
     "noNotificationsGroup": "No notifications match the selected {field} value(s).",
     "noNotificationsFilter": "No notifications match the current filters.",
     "noNotificationsSearch": "No notifications match your search.",
+    "searchFailed": "Search failed. Check your query syntax.",
     "noNotifications": "No notifications yet.",
     "timePresets": {
       "all": "All time",

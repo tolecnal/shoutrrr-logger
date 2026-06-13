@@ -151,6 +151,7 @@ class NotificationRepository:
                         key = node.field
                         value = node.value
                         is_regex = node.is_regex
+                        exact = node.exact
 
                         if is_regex:
                             if len(value) > MAX_REGEX_LENGTH:
@@ -164,40 +165,53 @@ class NotificationRepository:
                             except re.error as exc:
                                 raise ValueError(f"Invalid regex pattern '{value}': {exc}") from exc
 
-                        def build_condition(col, val, regex_mode):
-                            if regex_mode:
-                                return col.regexp_match(val, flags="i")
-                            val_sql = (
+                        def _substring_pattern(val: str) -> str:
+                            # Unquoted term: escape the LIKE metacharacters so user
+                            # input can't inject wildcards, then translate * and ?
+                            # into SQL wildcards.
+                            escaped = (
                                 val.replace("\\", "\\\\")
                                 .replace("%", "\\%")
                                 .replace("_", "\\_")
                                 .replace("*", "%")
                                 .replace("?", "_")
                             )
-                            return col.ilike(f"%{val_sql}%", escape="\\")
+                            return f"%{escaped}%"
+
+                        def build_condition(col, val, regex_mode, exact_mode=False):
+                            if regex_mode:
+                                return col.regexp_match(val, flags="i")
+                            if exact_mode:
+                                # Quoted term: match the whole field exactly,
+                                # case-insensitively (no wildcards, no substring).
+                                return func.lower(col) == val.lower()
+                            return col.ilike(_substring_pattern(val), escape="\\")
 
                         if key == "title":
-                            return build_condition(Notification.title, value, is_regex)
+                            return build_condition(Notification.title, value, is_regex, exact)
                         elif key == "message":
-                            return build_condition(Notification.message, value, is_regex)
+                            return build_condition(Notification.message, value, is_regex, exact)
                         elif key == "sender":
-                            return build_condition(Notification.sender_name, value, is_regex)
+                            return build_condition(Notification.sender_name, value, is_regex, exact)
                         elif key == "severity":
-                            return build_condition(Notification.severity, value, is_regex)
+                            return build_condition(Notification.severity, value, is_regex, exact)
                         elif key == "tag":
                             if is_regex:
                                 return Notification.tags.cast(String).regexp_match(value, flags="i")
-                            else:
-                                val_sql = (
+                            if exact:
+                                # Match one tag element exactly (case-insensitive)
+                                # by anchoring on the JSON array element quotes.
+                                esc = (
                                     value.replace("\\", "\\\\")
                                     .replace("%", "\\%")
                                     .replace("_", "\\_")
-                                    .replace("*", "%")
-                                    .replace("?", "_")
                                 )
                                 return Notification.tags.cast(String).ilike(
-                                    f"%{val_sql}%", escape="\\"
+                                    f'%"{esc}"%', escape="\\"
                                 )
+                            return Notification.tags.cast(String).ilike(
+                                _substring_pattern(value), escape="\\"
+                            )
                         elif key == "after":
                             dt = self._parse_time_string(value)
                             if dt:
@@ -211,9 +225,9 @@ class NotificationRepository:
                         else:
                             # Free-text
                             return or_(
-                                build_condition(Notification.message, value, is_regex),
-                                build_condition(Notification.title, value, is_regex),
-                                build_condition(Notification.sender_name, value, is_regex),
+                                build_condition(Notification.message, value, is_regex, exact),
+                                build_condition(Notification.title, value, is_regex, exact),
+                                build_condition(Notification.sender_name, value, is_regex, exact),
                             )
 
                     return text("1=1")

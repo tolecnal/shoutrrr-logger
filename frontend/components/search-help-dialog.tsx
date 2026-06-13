@@ -93,7 +93,7 @@ export function SearchHelpDialog() {
                 <div className="text-sm">
                   <p className="font-medium">Partial Match (ILIKE)</p>
                   <p className="text-muted-foreground text-xs mt-0.5">Matches any part of the field, case-insensitive.</p>
-                  <p className="font-mono text-xs mt-1 text-foreground">sender:git <span className="text-muted-foreground ml-2">// matches "github", "gitlab"</span></p>
+                  <p className="font-mono text-xs mt-1 text-foreground">sender:git <span className="text-muted-foreground ml-2">{'// matches "github", "gitlab"'}</span></p>
                 </div>
               </div>
               
@@ -102,7 +102,7 @@ export function SearchHelpDialog() {
                 <div className="text-sm">
                   <p className="font-medium text-emerald-700 dark:text-emerald-400">Exact Match</p>
                   <p className="text-muted-foreground text-xs mt-0.5">Must match the entire field exactly.</p>
-                  <p className="font-mono text-xs mt-1 text-emerald-600 dark:text-emerald-400">sender:"github" <span className="opacity-70 ml-2">// matches only "github"</span></p>
+                  <p className="font-mono text-xs mt-1 text-emerald-600 dark:text-emerald-400">sender:"github" <span className="opacity-70 ml-2">{'// matches only "github"'}</span></p>
                 </div>
               </div>
 
@@ -111,7 +111,7 @@ export function SearchHelpDialog() {
                 <div className="text-sm">
                   <p className="font-medium text-amber-700 dark:text-amber-400">Regular Expressions</p>
                   <p className="text-muted-foreground text-xs mt-0.5">Full POSIX regular expression support.</p>
-                  <p className="font-mono text-xs mt-1 text-amber-600 dark:text-amber-400">message:/error|failed/ <span className="opacity-70 ml-2">// matches either</span></p>
+                  <p className="font-mono text-xs mt-1 text-amber-600 dark:text-amber-400">message:/error|failed/ <span className="opacity-70 ml-2">{'// matches either'}</span></p>
                 </div>
               </div>
             </div>

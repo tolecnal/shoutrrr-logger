@@ -140,3 +140,74 @@ class TestAdvancedSearch:
         )
         assert resp.status_code == 422
         assert "too long" in resp.json()["detail"]
+
+
+class TestSearchExactVsSubstring:
+    """Quoted terms match the whole field exactly; unquoted terms are substring
+    (with * / ? wildcards)."""
+
+    @pytest.fixture
+    async def sender_notifications(self, db: AsyncSession, access_token):
+        notifs = [
+            Notification(token_id=access_token[1].id, title="A", message="m", sender_name="github"),
+            Notification(
+                token_id=access_token[1].id, title="B", message="m", sender_name="github-actions"
+            ),
+        ]
+        db.add_all(notifs)
+        await db.commit()
+        return notifs
+
+    async def test_quoted_value_matches_exact_field(
+        self, client: AsyncClient, admin_session_headers, sender_notifications
+    ):
+        # sender:"github" → only the sender that equals "github".
+        resp = await client.get(
+            '/api/v1/notifications?q=sender:"github"', headers=admin_session_headers
+        )
+        assert resp.status_code == 200
+        data = resp.json()["items"]
+        assert len(data) == 1
+        assert data[0]["sender_name"] == "github"
+
+    async def test_quoted_value_is_case_insensitive(
+        self, client: AsyncClient, admin_session_headers, sender_notifications
+    ):
+        resp = await client.get(
+            '/api/v1/notifications?q=sender:"GitHub"', headers=admin_session_headers
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["items"]) == 1
+
+    async def test_unquoted_value_is_substring(
+        self, client: AsyncClient, admin_session_headers, sender_notifications
+    ):
+        # sender:github → substring → both "github" and "github-actions".
+        resp = await client.get(
+            "/api/v1/notifications?q=sender:github", headers=admin_session_headers
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["items"]) == 2
+
+
+class TestSearchRobustness:
+    async def test_syntax_error_returns_422(self, client: AsyncClient, admin_session_headers):
+        resp = await client.get("/api/v1/notifications?q=(", headers=admin_session_headers)
+        assert resp.status_code == 422
+        assert "Invalid search query" in resp.json()["detail"]
+
+    async def test_overlong_query_rejected(self, client: AsyncClient, admin_session_headers):
+        resp = await client.get(
+            "/api/v1/notifications?q=" + ("a" * 2001), headers=admin_session_headers
+        )
+        assert resp.status_code == 422  # FastAPI max_length validation
+
+    async def test_deeply_nested_query_does_not_500(
+        self, client: AsyncClient, admin_session_headers
+    ):
+        # Many bare terms previously recursed past the limit -> HTTP 500.
+        # Now bounded by MAX_TOKENS -> a clean 422, never a 500.
+        q = "+".join(["x"] * 400)  # '+' is URL-encoded space-equivalent term separator
+        resp = await client.get(f"/api/v1/notifications?q={q}", headers=admin_session_headers)
+        assert resp.status_code == 422
+        assert "too complex" in resp.json()["detail"]

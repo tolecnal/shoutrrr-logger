@@ -48,7 +48,7 @@ async def get_stats(
     response_class=StreamingResponse,
 )
 async def export_notifications(
-    q: str | None = Query(None),
+    q: str | None = Query(None, max_length=2000),
     after: datetime | None = Query(None),
     before: datetime | None = Query(None),
     scope: str = Query(
@@ -135,7 +135,9 @@ async def get_search_filters(
     description="Returns cursor-paginated notifications, newest first. Supports full-text search via the `q` parameter.",
 )
 async def list_notifications(
-    q: str | None = Query(None, description="Search query – matches title and message"),
+    q: str | None = Query(
+        None, max_length=2000, description="Search query – matches title and message"
+    ),
     cursor: str | None = Query(
         None, description="Opaque cursor from a previous response's `next_cursor`"
     ),
@@ -174,7 +176,7 @@ async def list_notifications(
 )
 async def bulk_delete_notifications(
     request: Request,
-    q: str | None = Query(None, description="Search query"),
+    q: str | None = Query(None, max_length=2000, description="Search query"),
     after: datetime | None = Query(None),
     before: datetime | None = Query(None),
     scope: str = Query(

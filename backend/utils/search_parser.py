@@ -35,6 +35,14 @@ class ParseError(Exception):
     pass
 
 
+# Upper bound on the number of tokens (terms + operators + parens) in a single
+# query. Bounds the depth of the AST — and therefore the recursion depth when
+# compiling it to SQL — well under Python's default recursion limit, so a
+# pathological query (e.g. thousands of bare terms) can't trigger a
+# RecursionError. Also keeps the generated SQL boolean tree a sane size.
+MAX_TOKENS = 200
+
+
 T_AND = "AND"
 T_OR = "OR"
 T_NOT = "NOT"
@@ -206,12 +214,18 @@ class Parser:
 
 
 def parse_query(query: str) -> ASTNode | None:
+    """Parse an NQL query into an AST.
+
+    Raises ``ValueError`` on invalid syntax so the caller can surface a clear
+    error (HTTP 422) rather than silently degrading to a literal search.
+    """
     if not query or not query.strip():
         return None
     try:
         tokens = tokenize(query)
+        if len(tokens) > MAX_TOKENS:
+            raise ParseError(f"Query too complex (max {MAX_TOKENS} terms and operators)")
         parser = Parser(tokens)
         return parser.parse()
-    except Exception:
-        # Fallback to simple term
-        return TermNode(query, None, False, False)
+    except ParseError as exc:
+        raise ValueError(f"Invalid search query: {exc}") from exc

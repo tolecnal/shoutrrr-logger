@@ -171,10 +171,17 @@ export function SettingsTab() {
                 <DialogHeader>
                   <DialogTitle>{t('previewTitle')}</DialogTitle>
                 </DialogHeader>
-                <div 
-                  className="prose dark:prose-invert max-w-none mt-4 p-4 border rounded-md bg-background"
-                  dangerouslySetInnerHTML={{ __html: previewHtml || `<i>${t('noContent')}</i>` }} 
-                />
+                {previewHtml ? (
+                  <div
+                    className="prose dark:prose-invert max-w-none mt-4 p-4 border rounded-md bg-background"
+                    // previewHtml is sanitized server-side (nh3) before return.
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  />
+                ) : (
+                  <div className="prose dark:prose-invert max-w-none mt-4 p-4 border rounded-md bg-background">
+                    <i>{t('noContent')}</i>
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, deleteSelectedNotifications, settingsToMap } from "@/lib/api";
 import type { NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
@@ -180,8 +180,9 @@ export function NotificationLog() {
     [cursor, query, fetchSize, timeAfter, timeBefore, scope]
   );
 
-  const { data, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
+  const { data, error: listError, isLoading, mutate } = useSWR(swrKey, fetchNotifications, {
     refreshInterval: autoRefreshMs > 0 ? autoRefreshMs : 0,
+    shouldRetryOnError: false,
   });
 
   // Listen for real-time updates via Server-Sent Events (SSE)
@@ -802,6 +803,17 @@ export function NotificationLog() {
             />
           )}
         </div>
+
+        {/* Search/query error from the server (e.g. invalid NQL syntax) */}
+        {listError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 border-b border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{listError instanceof Error ? listError.message : t('searchFailed')}</span>
+          </div>
+        )}
 
         {/* Selection action bar (Gmail-style) */}
         {selectedIds.size > 0 && (

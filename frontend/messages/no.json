@@ -340,6 +340,7 @@
     "noNotificationsGroup": "Ingen varsler samsvarer med den valgte {field}-verdien(e).",
     "noNotificationsFilter": "Ingen varsler samsvarer med de nåværende filtrene.",
     "noNotificationsSearch": "Ingen varsler samsvarer med søket ditt.",
+    "searchFailed": "Søket feilet. Sjekk spørringssyntaksen.",
     "noNotifications": "Ingen varsler enda.",
     "timePresets": {
       "all": "All tid",
