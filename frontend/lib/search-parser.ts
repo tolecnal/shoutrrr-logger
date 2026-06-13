@@ -15,16 +15,17 @@ export interface ParseError {
   position: number;
 }
 
-const TOKEN_REGEX = new RegExp(
-  "(?<LPAREN>\\\\()|" +
-  "(?<RPAREN>\\\\))|" +
-  "(?<AND>\\\\bAND\\\\b)|" +
-  "(?<OR>\\\\bOR\\\\b)|" +
-  "(?<NOT>\\\\bNOT\\\\b|-)|" +
-  "(?<TERM_EXPR>(?<key>[a-zA-Z0-9_]+:)?(?:/(?<regex>(?:\\\\\\\\/|[^/])+)/|\\\"(?<dquote>(?:\\\\\\\\\\\"|[^\\\"])+)\\\"|'(?<squote>(?:\\\\\\\\'|[^'])+)'|(?<unquoted>[^\\\\s()]+)))|" +
-  "(?<WS>\\\\s+)",
-  "gi"
-);
+const TOKEN_REGEX_STR = [
+  "(?<LPAREN>\\()",
+  "(?<RPAREN>\\))",
+  "(?<AND>\\bAND\\b)",
+  "(?<OR>\\bOR\\b)",
+  "(?<NOT>\\bNOT\\b|-)",
+  "(?<TERM_EXPR>(?<key>[a-zA-Z0-9_]+:)?(?:/(?<regex>(?:\\\\/|[^/])+)/|\"(?<dquote>(?:\\\\\"|[^\"])+)\"|'(?<squote>(?:\\\\'|[^'])+)'|(?<unquoted>[^\\s()]+)))",
+  "(?<WS>\\s+)"
+].join("|");
+
+const TOKEN_REGEX = new RegExp(TOKEN_REGEX_STR, "gi");
 
 export function tokenize(query: string): Token[] {
   const tokens: Token[] = [];

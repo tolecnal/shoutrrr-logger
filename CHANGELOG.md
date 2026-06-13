@@ -25,6 +25,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Audit Log Terminology**: Renamed "Actor" to "Username" in the UI to be more precise for users.
 - **Graceful Locale Fallbacks**: Visiting URLs with an unsupported or missing language code (e.g., `/es/log`) now dynamically intercepts the route in `proxy.ts` and safely redirects users to the English default to prevent 404 crashes.
 
+### Fixed
+
+- **NQL Lexer**: Fixed a bug where autocomplete suggestions such as `sender:` would render incorrectly as `ender:` due to greedy whitespace character exclusions swallowing the letter 's'.
+
 ## [0.8.0] — 2026-06-13
 
 This release centers on **plugin configuration profiles**, **per-token external delivery control**, and **finer-grained notification deletion**, plus operational and security hardening (auto-applied migrations, RP-initiated logout). Note the API and migration changes called out below.
