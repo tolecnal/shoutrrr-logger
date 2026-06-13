@@ -131,7 +131,7 @@ export function SearchAutocomplete({ value, onChange, filters, inputRef }: Searc
       <div className="relative w-full h-8 flex items-center bg-input border border-input rounded-md ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
         {/* Highlight Layer */}
         <div 
-          className="absolute inset-0 px-8 py-1.5 text-sm whitespace-pre overflow-hidden pointer-events-none text-transparent"
+          className="absolute inset-0 w-full h-full px-8 flex items-center text-sm font-mono whitespace-pre overflow-hidden pointer-events-none text-transparent"
           aria-hidden="true"
         >
           {/* We insert a zero-width space if value is empty so the div holds height properly, though absolute positioning handles that. */}

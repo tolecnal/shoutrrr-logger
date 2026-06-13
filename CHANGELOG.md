@@ -28,6 +28,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **NQL Lexer**: Fixed a bug where autocomplete suggestions such as `sender:` would render incorrectly as `ender:` due to greedy whitespace character exclusions swallowing the letter 's'.
+- **NQL Lexer Editor**: Corrected cursor visual desynchronization that occurred while typing by perfectly matching the overlay text classes (especially monospace font configurations) with the active transparent input.
 
 ## [0.8.0] — 2026-06-13
 
