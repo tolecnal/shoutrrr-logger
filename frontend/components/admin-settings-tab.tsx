@@ -224,6 +224,8 @@ export function SettingsTab() {
         <TabsContent value="ui" className="space-y-4">
           {renderSetting("page_size")}
           {renderSetting("auto_refresh_interval")}
+          {renderSetting("alert_states_enabled")}
+          {renderSetting("test_rule_limit")}
         </TabsContent>
         <TabsContent value="retention" className="space-y-4">
           {renderSetting("retention_days")}
@@ -236,6 +238,7 @@ export function SettingsTab() {
           {renderSetting("private_tokens_enabled")}
           {renderSetting("max_private_tokens")}
           {renderSetting("rate_limit_per_minute")}
+          {renderSetting("user_plugin_profiles_max")}
         </TabsContent>
         <TabsContent value="alerts" className="space-y-4">
           {renderSetting("email_alerts_enabled")}

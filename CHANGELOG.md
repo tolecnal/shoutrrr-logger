@@ -15,6 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Unreachable Admin Settings**: Three settings were registered on the backend but never wired into the Admin → Settings UI, so admins couldn't view or change them: *Max plugin profiles per user* (`user_plugin_profiles_max`), *Enable alert states (Ack/Resolve)* (`alert_states_enabled`), and *Test rule preview limit* (`test_rule_limit`). All three now render — the profile cap and alert-states/test-rule toggles are editable from the Access and UI tabs respectively.
 - **User Plugin Test Button**: "Send test notification" in Preferences → My Plugins called the admin-only test endpoint, so it always failed with 403 for viewers — and tested the global config rather than the user's own. Tests now run through the user's selected profile via `POST /api/v1/user-plugins/{plugin}/profiles/{id}/test`.
 
 ### Changed
