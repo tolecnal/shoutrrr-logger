@@ -345,11 +345,11 @@ class NotificationService:
         Run all enabled plugins against a saved notification.
         """
         from sqlalchemy import select
-        from sqlalchemy.dialects.postgresql import insert
 
         from database import engine  # noqa: PLC0415
-        from models import PluginProfile, PluginUsageDaily, UserPluginConfig
+        from models import PluginProfile, UserPluginConfig
         from plugins import registry as plugin_registry  # noqa: PLC0415
+        from repositories.plugin_usage import plugin_usage_repo
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
@@ -439,29 +439,15 @@ class NotificationService:
             profile_user_id = getattr(row, "user_id", None)
             if profile_id:
                 try:
-                    today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
                     async with async_session() as stat_session:
-                        stmt = insert(PluginUsageDaily).values(
-                            date=today,
+                        await plugin_usage_repo.record_dispatch(
+                            stat_session,
                             plugin_id=plugin_id,
                             profile_id=profile_id,
                             user_id=profile_user_id,
-                            success_count=1 if is_success else 0,
-                            error_count=0 if is_success else 1,
-                            total_duration_ms=duration_ms,
+                            is_success=is_success,
+                            duration_ms=duration_ms,
                         )
-                        stmt = stmt.on_conflict_do_update(
-                            index_elements=["date", "plugin_id", "profile_id"],
-                            set_={
-                                "success_count": PluginUsageDaily.success_count
-                                + (1 if is_success else 0),
-                                "error_count": PluginUsageDaily.error_count
-                                + (0 if is_success else 1),
-                                "total_duration_ms": PluginUsageDaily.total_duration_ms
-                                + duration_ms,
-                            },
-                        )
-                        await stat_session.execute(stmt)
                         await stat_session.commit()
                 except Exception as stat_exc:
                     logger.error(f"Failed to record plugin stats for {plugin_id}: {stat_exc}")
