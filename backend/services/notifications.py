@@ -6,6 +6,7 @@ import io
 import json
 import logging
 import math
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -347,14 +348,12 @@ class NotificationService:
         from sqlalchemy import select
 
         from database import engine  # noqa: PLC0415
-        from models import PluginProfile, UserPluginConfig
+        from models import PluginConfig, PluginProfile, UserPluginConfig
         from plugins import registry as plugin_registry  # noqa: PLC0415
         from repositories.plugin_usage import plugin_usage_repo
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
         async with async_session() as session:
-            from models import PluginConfig
-
             pc_stmt = select(PluginConfig)
             plugin_configs_map = {
                 pc.id: pc for pc in (await session.execute(pc_stmt)).scalars().all()
@@ -366,8 +365,6 @@ class NotificationService:
 
             user_configs = []
             if user_id_str:
-                import uuid
-
                 try:
                     uid = uuid.UUID(user_id_str)
                     user_stmt = select(UserPluginConfig).where(
@@ -418,8 +415,6 @@ class NotificationService:
 
             merged_config = {**plugin.default_config, **row.config}
             is_success = False
-            import time
-
             start_time = time.perf_counter()
             try:
                 await plugin.on_notification(notification_dict, merged_config)
