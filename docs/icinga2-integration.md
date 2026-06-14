@@ -1,7 +1,7 @@
 # Integrating Shoutrrr Logger with Icinga2
 
 To forward monitoring alerts from Icinga2 to your Shoutrrr Logger instance, define
-native `NotificationCommand`s that run a small Bash script. The script gathers
+native `NotificationCommand`s that run a small Python script. The script gathers
 state information from Icinga2, builds a JSON payload, and POSTs it to the
 logger's ingestion endpoint.
 
@@ -15,99 +15,123 @@ read.
   (global) or in your user **Preferences** (personal). The token's **name**
   becomes the *sender* shown in the log, so name it something recognisable like
   `Icinga2`.
-- **`jq` installed on the Icinga2 host** (`apt install jq` / `dnf install jq`).
-  The script uses it to build the JSON payload safely — plugin output regularly
-  contains quotes, backslashes and newlines that would otherwise produce invalid
-  JSON and a rejected request.
+- **`python3` on the Icinga2 host** (almost always already present). The script
+  uses only the standard library — no `pip install`, and no `curl`/`jq` needed.
+  `json` escapes the payload safely and `ssl` controls certificate verification.
 
-## 1. Create the Bash Script
+## 1. Create the Script
 
 Create a new file in your Icinga2 scripts directory (typically
 `/etc/icinga2/scripts/`):
 
 ```bash
-sudo nano /etc/icinga2/scripts/shoutrrr-logger.sh
+sudo nano /etc/icinga2/scripts/shoutrrr-logger.py
 ```
 
-Paste the following script. It works for both host and service notifications:
+Paste the following. It works for both host and service notifications:
 
-```bash
-#!/bin/bash
-# /etc/icinga2/scripts/shoutrrr-logger.sh
+```python
+#!/usr/bin/env python3
+# /etc/icinga2/scripts/shoutrrr-logger.py
 # Forwards an Icinga2 host or service notification to Shoutrrr Logger.
-set -euo pipefail
+import json
+import os
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+
+def env(name: str, default: str = "") -> str:
+    return os.environ.get(name, default)
+
 
 # OBJECT_TYPE ("host" or "service") is set by the NotificationCommand and
 # decides which set of Icinga macros to read.
-if [ "${OBJECT_TYPE:-service}" = "host" ]; then
-  STATE="${HOSTSTATE}"
-  OUTPUT="${HOSTOUTPUT}"
-  TITLE="[${NOTIFICATIONTYPE}] Host ${HOSTDISPLAYNAME} is ${STATE}"
-  SERVICE_FIELD=""                 # host notifications have no service
-else
-  STATE="${SERVICESTATE}"
-  OUTPUT="${SERVICEOUTPUT}"
-  TITLE="[${NOTIFICATIONTYPE}] ${HOSTDISPLAYNAME} - ${SERVICEDISPLAYNAME} is ${STATE}"
-  SERVICE_FIELD="${SERVICEDESC}"
-fi
+if env("OBJECT_TYPE", "service") == "host":
+    state = env("HOSTSTATE")
+    output = env("HOSTOUTPUT")
+    title = f"[{env('NOTIFICATIONTYPE')}] Host {env('HOSTDISPLAYNAME')} is {state}"
+    service = ""  # host notifications have no service
+else:
+    state = env("SERVICESTATE")
+    output = env("SERVICEOUTPUT")
+    title = (
+        f"[{env('NOTIFICATIONTYPE')}] {env('HOSTDISPLAYNAME')} - "
+        f"{env('SERVICEDISPLAYNAME')} is {state}"
+    )
+    service = env("SERVICEDESC")
 
-# Use real newlines ($'\n') so jq encodes them as proper JSON line breaks.
-MESSAGE="${OUTPUT}"$'\n\n'"Time: ${LONGDATETIME}"
+message = f"{output}\n\nTime: {env('LONGDATETIME')}"
 
 # Append the comment if a user acknowledged or commented on the alert.
-if [ -n "${NOTIFICATIONCOMMENT:-}" ]; then
-  MESSAGE="${MESSAGE}"$'\n'"Comment: ${NOTIFICATIONCOMMENT} (${NOTIFICATIONAUTHORNAME})"
-fi
+comment = env("NOTIFICATIONCOMMENT")
+if comment:
+    message += f"\nComment: {comment} ({env('NOTIFICATIONAUTHORNAME')})"
 
 # Map Icinga2 host (UP/DOWN) and service (OK/WARNING/CRITICAL/UNKNOWN) states to
-# the severities Shoutrrr Logger colours:
-#   critical (red), error (orange), warning (yellow), info (blue).
-# Any other value is stored verbatim but renders neutral/grey, so stick to these.
-case "${STATE}" in
-  CRITICAL|DOWN)        SEVERITY="critical" ;;
-  WARNING)             SEVERITY="warning" ;;
-  UNKNOWN|UNREACHABLE) SEVERITY="error" ;;
-  OK|UP)               SEVERITY="info" ;;
-  *)                   SEVERITY="info" ;;
-esac
+# the severities Shoutrrr Logger colours: critical (red), error (orange),
+# warning (yellow), info (blue). Anything else renders neutral/grey.
+severity = {
+    "CRITICAL": "critical",
+    "DOWN": "critical",
+    "WARNING": "warning",
+    "UNKNOWN": "error",
+    "UNREACHABLE": "error",
+    "OK": "info",
+    "UP": "info",
+}.get(state, "info")
 
-# Build the JSON payload with jq so every value is escaped correctly.
-#   - "message" and "title" are first-class fields.
-#   - "severity" and "tags" are recognised by the ingestion endpoint
-#     ("tags" accepts a comma-separated string or a JSON array).
-#   - everything else (host, service, address) is stored as a custom field and
-#     shown in the notification's detail view.
-JSON_PAYLOAD=$(jq -n \
-  --arg title    "${TITLE}" \
-  --arg message  "${MESSAGE}" \
-  --arg severity "${SEVERITY}" \
-  --arg host     "${HOSTALIAS}" \
-  --arg service  "${SERVICE_FIELD}" \
-  --arg address  "${HOSTADDRESS}" \
-  '{
-     title:    $title,
-     message:  $message,
-     severity: $severity,
-     tags:     "icinga2",
-     host:     $host,
-     service:  $service,
-     address:  $address
-   }')
+# json.dumps escapes every value correctly, including quotes/backslashes/newlines
+# in plugin output. "message"/"title" are first-class fields; "severity"/"tags"
+# are recognised by the endpoint; the rest are stored as custom fields and shown
+# in the notification's detail view.
+payload = json.dumps(
+    {
+        "title": title,
+        "message": message,
+        "severity": severity,
+        "tags": "icinga2",
+        "host": env("HOSTALIAS"),
+        "service": service,
+        "address": env("HOSTADDRESS"),
+    }
+).encode("utf-8")
 
-# POST to the ingestion endpoint.
-#   -f         fail (non-zero exit) on HTTP >= 400, so Icinga records the
-#              notification as failed instead of silently dropping it.
-#   --max-time keeps a stuck logger from blocking the Icinga notification queue.
-curl -sf --max-time 15 -X POST "${SHOUTRRR_URL}/api/v1/shoutrrr" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer ${SHOUTRRR_TOKEN}" \
-     -d "${JSON_PAYLOAD}"
+url = env("SHOUTRRR_URL").rstrip("/") + "/api/v1/shoutrrr"
+request = urllib.request.Request(
+    url,
+    data=payload,
+    method="POST",
+    headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {env('SHOUTRRR_TOKEN')}",
+    },
+)
+
+# TLS verification is ON by default. Set SHOUTRRR_INSECURE=true to skip it when
+# the logger is served behind a self-signed or internal-CA certificate.
+context = ssl.create_default_context()
+if env("SHOUTRRR_INSECURE", "false").lower() in ("1", "true", "yes"):
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+
+try:
+    with urllib.request.urlopen(request, timeout=15, context=context) as response:
+        sys.exit(0 if response.status < 400 else 1)
+except urllib.error.HTTPError as exc:
+    # Surface the failure so Icinga records the notification as failed.
+    print(f"shoutrrr-logger: HTTP {exc.code}: {exc.read().decode(errors='replace')}", file=sys.stderr)
+    sys.exit(1)
+except Exception as exc:  # noqa: BLE001 - any failure should fail the notification
+    print(f"shoutrrr-logger: {exc}", file=sys.stderr)
+    sys.exit(1)
 ```
 
 Make the script executable:
 
 ```bash
-sudo chmod +x /etc/icinga2/scripts/shoutrrr-logger.sh
+sudo chmod +x /etc/icinga2/scripts/shoutrrr-logger.py
 ```
 
 ## 2. Define the NotificationCommands
@@ -119,7 +143,14 @@ two places, define them once as constants, e.g. in `/etc/icinga2/constants.conf`
 ```icinga2
 const ShoutrrrUrl = "https://your-logger-domain.com"   // base URL, no trailing slash
 const ShoutrrrToken = "your-access-token-here"
+const ShoutrrrInsecure = "false"                        // "true" to skip TLS verification
 ```
+
+> [!WARNING]
+> Set `ShoutrrrInsecure = "true"` only for self-signed / internal-CA certificates
+> on a trusted network. It disables certificate validation, so the connection is
+> no longer protected against interception. Prefer installing the CA on the
+> Icinga host and leaving verification on where you can.
 
 Then add both commands to your commands configuration (often
 `/etc/icinga2/conf.d/commands.conf`):
@@ -127,7 +158,7 @@ Then add both commands to your commands configuration (often
 ```icinga2
 object NotificationCommand "shoutrrr-logger-service" {
   import "plugin-notification-command"
-  command = [ SysconfDir + "/icinga2/scripts/shoutrrr-logger.sh" ]
+  command = [ SysconfDir + "/icinga2/scripts/shoutrrr-logger.py" ]
 
   env = {
     OBJECT_TYPE = "service"
@@ -145,12 +176,13 @@ object NotificationCommand "shoutrrr-logger-service" {
 
     SHOUTRRR_URL = ShoutrrrUrl
     SHOUTRRR_TOKEN = ShoutrrrToken
+    SHOUTRRR_INSECURE = ShoutrrrInsecure
   }
 }
 
 object NotificationCommand "shoutrrr-logger-host" {
   import "plugin-notification-command"
-  command = [ SysconfDir + "/icinga2/scripts/shoutrrr-logger.sh" ]
+  command = [ SysconfDir + "/icinga2/scripts/shoutrrr-logger.py" ]
 
   env = {
     OBJECT_TYPE = "host"
@@ -166,6 +198,7 @@ object NotificationCommand "shoutrrr-logger-host" {
 
     SHOUTRRR_URL = ShoutrrrUrl
     SHOUTRRR_TOKEN = ShoutrrrToken
+    SHOUTRRR_INSECURE = ShoutrrrInsecure
   }
 }
 ```
@@ -173,7 +206,7 @@ object NotificationCommand "shoutrrr-logger-host" {
 > [!NOTE]
 > The host command deliberately omits the `SERVICE*` macros — they don't exist in
 > a host notification context. Because `OBJECT_TYPE = "host"`, the script never
-> references them, which keeps `set -u` happy.
+> references them.
 
 ## 3. Attach the Notifications
 
