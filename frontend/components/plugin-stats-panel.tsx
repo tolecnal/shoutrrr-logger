@@ -34,30 +34,50 @@ export function PluginStatsPanel() {
     return Array.from(new Set(data.map(d => d.plugin_id))).sort();
   }, [data]);
 
-  const allChartsData = useMemo(() => {
-    if (!data) return {};
-    const map: Record<string, any[]> = {};
-    const pluginsToProcess = [...uniquePlugins, "all"];
+  const chartData = useMemo(() => {
+    if (!data) return [];
     
-    pluginsToProcess.forEach(pid => {
-      const filtered = pid === "all" ? data : data.filter(d => d.plugin_id === pid);
-      const grouped = filtered.reduce((acc, stat) => {
-        const dateStr = stat.date.substring(0, 10);
-        if (!acc[dateStr]) acc[dateStr] = { date: dateStr, success: 0, error: 0, total_duration_ms: 0 };
-        acc[dateStr].success += stat.success_count;
-        acc[dateStr].error += stat.error_count;
-        acc[dateStr].total_duration_ms += stat.total_duration_ms || 0;
-        return acc;
-      }, {} as Record<string, { date: string; success: number; error: number; total_duration_ms: number }>);
+    const grouped = data.reduce((acc, stat) => {
+      const dateStr = stat.date.substring(0, 10);
+      if (!acc[dateStr]) {
+        acc[dateStr] = { 
+          date: dateStr, 
+          success: 0, 
+          error: 0, 
+          total_duration_ms: 0,
+          plugin_stats: {}
+        };
+      }
       
-      map[pid] = Object.values(grouped).map(g => ({
-        ...g,
-        avg_response_time: (g.success + g.error) > 0 ? Math.round(g.total_duration_ms / (g.success + g.error)) : 0
-      })).sort((a, b) => a.date.localeCompare(b.date));
-    });
+      acc[dateStr].success += stat.success_count;
+      acc[dateStr].error += stat.error_count;
+      acc[dateStr].total_duration_ms += stat.total_duration_ms || 0;
+      
+      if (!acc[dateStr].plugin_stats[stat.plugin_id]) {
+         acc[dateStr].plugin_stats[stat.plugin_id] = { success: 0, error: 0, duration: 0 };
+      }
+      acc[dateStr].plugin_stats[stat.plugin_id].success += stat.success_count;
+      acc[dateStr].plugin_stats[stat.plugin_id].error += stat.error_count;
+      acc[dateStr].plugin_stats[stat.plugin_id].duration += stat.total_duration_ms || 0;
+      
+      return acc;
+    }, {} as Record<string, any>);
     
-    return map;
-  }, [data, uniquePlugins]);
+    return Object.values(grouped).map((g: any) => {
+      const result: any = {
+         date: g.date,
+         success: g.success,
+         error: g.error,
+         avg_response_time: (g.success + g.error) > 0 ? Math.round(g.total_duration_ms / (g.success + g.error)) : 0
+      };
+      
+      Object.entries(g.plugin_stats).forEach(([pid, stats]: [string, any]) => {
+         result[`${pid}_avg`] = (stats.success + stats.error) > 0 ? Math.round(stats.duration / (stats.success + stats.error)) : 0;
+      });
+      
+      return result;
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  }, [data]);
 
   const pluginBreakdown = useMemo(() => {
     if (!data) return [];
@@ -101,69 +121,85 @@ export function PluginStatsPanel() {
         <div className="h-52 flex items-center justify-center text-sm text-destructive rounded-lg border border-border bg-card p-5">
           Failed to load stats
         </div>
-      ) : uniquePlugins.length === 0 ? (
+      ) : chartData.length === 0 ? (
         <div className="h-52 flex items-center justify-center text-sm text-muted-foreground rounded-lg border border-border bg-card p-5">
           No plugin usage data yet
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[...uniquePlugins, "all"].map(pid => {
-            const chartData = allChartsData[pid] || [];
-            return (
-              <div key={pid} className="rounded-lg border border-border bg-card p-5">
-                <h2 className="text-sm font-medium text-foreground mb-4 capitalize">
-                  {pid === "all" ? "Average Over All Plugins" : pid}
-                </h2>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                      <XAxis 
-                        dataKey="date" 
-                        tickFormatter={(val) => format(parseISO(val), "MMM d")}
-                        tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                        tickLine={false}
-                        axisLine={false}
-                        dy={10}
-                      />
-                      <YAxis 
-                        yAxisId="left"
-                        tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                        tickLine={false}
-                        axisLine={false}
-                        dx={-10}
-                        allowDecimals={false}
-                      />
-                      <YAxis 
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                        tickLine={false}
-                        axisLine={false}
-                        dx={10}
-                        tickFormatter={(val) => `${val}ms`}
-                      />
-                      <Tooltip 
-                        cursor={{ fill: "var(--muted)", opacity: 0.2 }}
-                        contentStyle={{ 
-                          borderRadius: "6px", 
-                          border: "1px solid var(--border)",
-                          backgroundColor: "var(--card)",
-                          fontSize: "12px",
-                          color: "var(--foreground)"
-                        }}
-                        labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
-                      />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-                      <Bar yAxisId="left" name="Success" dataKey="success" stackId="a" fill="var(--primary)" radius={[0, 0, 4, 4]} maxBarSize={40} />
-                      <Bar yAxisId="left" name="Error" dataKey="error" stackId="a" fill="var(--destructive)" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                      <Line yAxisId="right" name="Avg Response Time (ms)" type="monotone" dataKey="avg_response_time" stroke="var(--chart-3, #4f46e5)" strokeWidth={2} dot={{ r: 3 }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            );
-          })}
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-medium text-foreground mb-4">
+            Dispatches Over Time
+          </h2>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={(val) => format(parseISO(val), "MMM d")}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dy={10}
+                />
+                <YAxis 
+                  yAxisId="left"
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dx={-10}
+                  allowDecimals={false}
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dx={10}
+                  tickFormatter={(val) => `${val}ms`}
+                />
+                <Tooltip 
+                  cursor={{ fill: "var(--muted)", opacity: 0.2 }}
+                  contentStyle={{ 
+                    borderRadius: "6px", 
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--card)",
+                    fontSize: "12px",
+                    color: "var(--foreground)"
+                  }}
+                  labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                <Bar yAxisId="left" name="Total Success" dataKey="success" stackId="a" fill="var(--primary)" radius={[0, 0, 4, 4]} maxBarSize={40} />
+                <Bar yAxisId="left" name="Total Error" dataKey="error" stackId="a" fill="var(--destructive)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                
+                {uniquePlugins.map((pid, idx) => (
+                  <Line 
+                    key={pid}
+                    yAxisId="right" 
+                    name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Avg (ms)`} 
+                    type="monotone" 
+                    dataKey={`${pid}_avg`} 
+                    stroke={`var(--chart-${(idx % 5) + 1})`} 
+                    strokeWidth={2} 
+                    dot={{ r: 3 }} 
+                  />
+                ))}
+                
+                <Line 
+                  yAxisId="right" 
+                  name="Overall Avg (ms)" 
+                  type="monotone" 
+                  dataKey="avg_response_time" 
+                  stroke="var(--foreground)" 
+                  strokeWidth={2} 
+                  strokeDasharray="5 5"
+                  dot={{ r: 4 }} 
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
