@@ -1,7 +1,14 @@
 "use client";
 
 import useSWR from "swr";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ComposedChart,
   Bar,
@@ -29,11 +36,20 @@ export function PluginStatsPanel() {
     { refreshInterval: 60_000 }
   );
 
+  const [selectedPlugin, setSelectedPlugin] = useState<string>("all");
+
+  const uniquePlugins = useMemo(() => {
+    if (!data) return [];
+    return Array.from(new Set(data.map(d => d.plugin_id))).sort();
+  }, [data]);
+
   const chartData = useMemo(() => {
     if (!data) return [];
     
+    const filteredData = selectedPlugin === "all" ? data : data.filter(d => d.plugin_id === selectedPlugin);
+    
     // Group by date, then sum success and errors
-    const grouped = data.reduce((acc, stat) => {
+    const grouped = filteredData.reduce((acc, stat) => {
       const dateStr = stat.date.substring(0, 10); // get YYYY-MM-DD
       if (!acc[dateStr]) {
         acc[dateStr] = { date: dateStr, success: 0, error: 0, total_duration_ms: 0 };
@@ -54,20 +70,25 @@ export function PluginStatsPanel() {
     if (!data) return [];
     
     const grouped = data.reduce((acc, stat) => {
-      const pid = stat.plugin_id;
-      if (!acc[pid]) {
-        acc[pid] = { plugin_id: pid, success: 0, error: 0, total_duration_ms: 0 };
+      const type = stat.user_id ? "User" : "Global (Admin)";
+      const key = `${stat.plugin_id}-${type}`;
+      if (!acc[key]) {
+        acc[key] = { plugin_id: stat.plugin_id, type, success: 0, error: 0, total_duration_ms: 0 };
       }
-      acc[pid].success += stat.success_count;
-      acc[pid].error += stat.error_count;
-      acc[pid].total_duration_ms += stat.total_duration_ms || 0;
+      acc[key].success += stat.success_count;
+      acc[key].error += stat.error_count;
+      acc[key].total_duration_ms += stat.total_duration_ms || 0;
       return acc;
-    }, {} as Record<string, { plugin_id: string; success: number; error: number; total_duration_ms: number }>);
+    }, {} as Record<string, { plugin_id: string; type: string; success: number; error: number; total_duration_ms: number }>);
     
     return Object.values(grouped).map(g => ({
       ...g,
       avg_response_time: (g.success + g.error) > 0 ? Math.round(g.total_duration_ms / (g.success + g.error)) : 0
-    })).sort((a, b) => (b.success + b.error) - (a.success + a.error));
+    })).sort((a, b) => {
+      const comp = a.plugin_id.localeCompare(b.plugin_id);
+      if (comp !== 0) return comp;
+      return a.type.localeCompare(b.type);
+    });
   }, [data]);
 
   return (
@@ -80,9 +101,26 @@ export function PluginStatsPanel() {
       </div>
 
       <div className="rounded-lg border border-border bg-card p-5">
-        <h2 className="text-sm font-medium text-foreground mb-4">
-          Dispatches Over Time
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-medium text-foreground">
+            Dispatches Over Time
+          </h2>
+          {uniquePlugins.length > 0 && (
+            <Select value={selectedPlugin} onValueChange={setSelectedPlugin}>
+              <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectValue placeholder="All Plugins" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Plugins</SelectItem>
+                {uniquePlugins.map((pid) => (
+                  <SelectItem key={pid} value={pid} className="capitalize">
+                    {pid}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
 
         {isLoading ? (
           <div className="h-52 flex items-center justify-center text-sm text-muted-foreground">
@@ -159,6 +197,7 @@ export function PluginStatsPanel() {
             <thead className="text-xs text-muted-foreground bg-muted/50 uppercase">
               <tr>
                 <th className="px-5 py-3 font-medium">Plugin</th>
+                <th className="px-5 py-3 font-medium">Profile Type</th>
                 <th className="px-5 py-3 font-medium text-right">Success</th>
                 <th className="px-5 py-3 font-medium text-right">Error</th>
                 <th className="px-5 py-3 font-medium text-right">Avg Response Time</th>
@@ -166,9 +205,12 @@ export function PluginStatsPanel() {
             </thead>
             <tbody>
               {pluginBreakdown.map((item) => (
-                <tr key={item.plugin_id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                <tr key={`${item.plugin_id}-${item.type}`} className="border-b border-border last:border-0 hover:bg-muted/30">
                   <td className="px-5 py-3 font-medium text-foreground capitalize">
                     {item.plugin_id}
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground">
+                    {item.type}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {item.success}
