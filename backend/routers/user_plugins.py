@@ -51,6 +51,7 @@ async def get_user_plugin_usage_stats(
             "user_id": str(s.user_id) if s.user_id else None,
             "success_count": s.success_count,
             "error_count": s.error_count,
+            "total_duration_ms": s.total_duration_ms,
         }
         for s in stats
     ]

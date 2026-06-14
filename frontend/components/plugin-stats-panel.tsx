@@ -3,8 +3,9 @@
 import useSWR from "swr";
 import { useMemo } from "react";
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -35,14 +36,18 @@ export function PluginStatsPanel() {
     const grouped = data.reduce((acc, stat) => {
       const dateStr = stat.date.substring(0, 10); // get YYYY-MM-DD
       if (!acc[dateStr]) {
-        acc[dateStr] = { date: dateStr, success: 0, error: 0 };
+        acc[dateStr] = { date: dateStr, success: 0, error: 0, total_duration_ms: 0 };
       }
       acc[dateStr].success += stat.success_count;
       acc[dateStr].error += stat.error_count;
+      acc[dateStr].total_duration_ms += stat.total_duration_ms || 0;
       return acc;
-    }, {} as Record<string, { date: string; success: number; error: number }>);
+    }, {} as Record<string, { date: string; success: number; error: number; total_duration_ms: number }>);
     
-    return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    return Object.values(grouped).map(g => ({
+      ...g,
+      avg_response_time: (g.success + g.error) > 0 ? Math.round(g.total_duration_ms / (g.success + g.error)) : 0
+    })).sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
   return (
@@ -74,7 +79,7 @@ export function PluginStatsPanel() {
         ) : (
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
@@ -85,11 +90,21 @@ export function PluginStatsPanel() {
                   dy={10}
                 />
                 <YAxis 
+                  yAxisId="left"
                   tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
                   axisLine={false}
                   dx={-10}
                   allowDecimals={false}
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dx={10}
+                  tickFormatter={(val) => `${val}ms`}
                 />
                 <Tooltip 
                   cursor={{ fill: "hsl(var(--muted))", opacity: 0.2 }}
@@ -103,9 +118,10 @@ export function PluginStatsPanel() {
                   labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-                <Bar name="Success" dataKey="success" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 4, 4]} />
-                <Bar name="Error" dataKey="error" stackId="a" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Bar yAxisId="left" name="Success" dataKey="success" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 4, 4]} />
+                <Bar yAxisId="left" name="Error" dataKey="error" stackId="a" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" name="Avg Response Time (ms)" type="monotone" dataKey="avg_response_time" stroke="hsl(var(--chart-3, 43 74% 66%))" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}

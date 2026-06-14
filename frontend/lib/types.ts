@@ -250,4 +250,5 @@ export interface PluginUsageStat {
   user_id: string | null;
   success_count: number;
   error_count: number;
+  total_duration_ms: number;
 }

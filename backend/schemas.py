@@ -534,3 +534,4 @@ class PluginUsageStatOut(BaseModel):
     user_id: uuid.UUID | None
     success_count: int
     error_count: int
+    total_duration_ms: float

@@ -453,6 +453,7 @@ class PluginUsageDaily(Base):
 
     success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_duration_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     __table_args__ = (
         Index(

@@ -17,6 +17,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **PagerDuty**: Send incidents to PagerDuty using the Events API V2.
 
 - **Plugin Usage Statistics**: The system now records daily aggregated success and error counts for plugin dispatches. A new "Plugin Stats" tab has been added to the Stats page, accessible to all users (users see their own metrics, admins see global metrics).
+  - Additionally tracks and displays the average response time for plugin executions on the frontend graph.
 
 - **Plugin Configuration UI Redesign**: The plugins page now uses a slide-out side sheet (drawer) instead of expanding accordion sections for cleaner configuration management.
 - **Global Plugin Toggles**: Administrators can now enable/disable plugins globally using a switch on the plugin card, completely disabling the plugin regardless of active global or user profiles.

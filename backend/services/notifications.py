@@ -416,6 +416,9 @@ class NotificationService:
 
             merged_config = {**plugin.default_config, **row.config}
             is_success = False
+            import time
+
+            start_time = time.perf_counter()
             try:
                 await plugin.on_notification(notification_dict, merged_config)
                 is_success = True
@@ -426,6 +429,8 @@ class NotificationService:
                     exc,
                     exc_info=True,
                 )
+            finally:
+                duration_ms = (time.perf_counter() - start_time) * 1000.0
 
             # Record stats
             profile_id = getattr(row, "id", None)
@@ -443,6 +448,7 @@ class NotificationService:
                             user_id=profile_user_id,
                             success_count=1 if is_success else 0,
                             error_count=0 if is_success else 1,
+                            total_duration_ms=duration_ms,
                         )
                         stmt = stmt.on_conflict_do_update(
                             index_elements=["date", "plugin_id", "profile_id", "user_id"],
@@ -451,6 +457,8 @@ class NotificationService:
                                 + (1 if is_success else 0),
                                 "error_count": PluginUsageDaily.error_count
                                 + (0 if is_success else 1),
+                                "total_duration_ms": PluginUsageDaily.total_duration_ms
+                                + duration_ms,
                             },
                         )
                         await stat_session.execute(stmt)
