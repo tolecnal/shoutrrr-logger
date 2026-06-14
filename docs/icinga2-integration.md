@@ -208,7 +208,32 @@ object NotificationCommand "shoutrrr-logger-host" {
 > a host notification context. Because `OBJECT_TYPE = "host"`, the script never
 > references them.
 
-## 3. Attach the Notifications
+## 3. Define a Notification Contact (User)
+
+Icinga2 will **not** send a notification unless it resolves to at least one
+`User` (contact). If Icingaweb2 shows *"No contacts configured / No contact
+groups configured"* on a host or service, this is the missing piece — the
+notification has nobody to deliver to, so the command never runs.
+
+This integration always posts to the same token regardless of who the "contact"
+is, so one minimal user is enough. Add it to e.g.
+`/etc/icinga2/conf.d/users.conf`:
+
+```icinga2
+object User "shoutrrr-logger" {
+  enable_notifications = true
+  // states/types are intentionally left unset (which means "all"); the
+  // per-notification states/types in the apply rules below do the filtering.
+}
+```
+
+> [!NOTE]
+> **Using Icinga Director?** Create this as a *Contact* (Icinga Director → Users)
+> and deploy it. The earlier guide assumed the stock `icinga2` install's default
+> `icingaadmin` user exists — on a Director-managed or trimmed install it may
+> not, which produces the "No contacts configured" symptom above.
+
+## 4. Attach the Notifications
 
 Create or edit your notifications configuration (e.g.
 `/etc/icinga2/conf.d/notifications.conf`) with one `apply` rule per object type.
@@ -218,7 +243,7 @@ Defining the `states`/`types`/`period` explicitly keeps the rules self-contained
 ```icinga2
 apply Notification "shoutrrr-logger-service" to Service {
   command = "shoutrrr-logger-service"
-  users = [ "icingaadmin" ] // User or UserGroup to notify
+  users = [ "shoutrrr-logger" ] // must reference an existing User (see step 3)
 
   states = [ OK, Warning, Critical, Unknown ]
   types  = [ Problem, Acknowledgement, Recovery, Custom,
@@ -226,12 +251,12 @@ apply Notification "shoutrrr-logger-service" to Service {
              DowntimeStart, DowntimeEnd, DowntimeRemoved ]
   period = "24x7"
 
-  assign where host.vars.notification.shoutrrr == true
+  assign where host.vars.shoutrrr_notifications == true
 }
 
 apply Notification "shoutrrr-logger-host" to Host {
   command = "shoutrrr-logger-host"
-  users = [ "icingaadmin" ]
+  users = [ "shoutrrr-logger" ]
 
   states = [ Up, Down ]   // host states differ from service states
   types  = [ Problem, Acknowledgement, Recovery, Custom,
@@ -239,16 +264,28 @@ apply Notification "shoutrrr-logger-host" to Host {
              DowntimeStart, DowntimeEnd, DowntimeRemoved ]
   period = "24x7"
 
-  assign where host.vars.notification.shoutrrr == true
+  assign where host.vars.shoutrrr_notifications == true
 }
 ```
 
 > [!NOTE]
 > The `users` list is required for Icinga to evaluate a notification, even though
 > this script ignores per-user contact details and always posts to the same
-> token. Any existing user (e.g. `icingaadmin`) works.
+> token. It must reference a `User` that actually exists (the `shoutrrr-logger`
+> contact from step 3); an empty or dangling list is the "No contacts
+> configured" case where nothing is sent.
 
-## 4. Validate and Restart Icinga2
+Mark the hosts you want forwarded with a flat boolean custom variable (use an
+underscore name — Icinga Director does not allow dots in custom-var names):
+
+```icinga2
+object Host "web01" {
+  // ...
+  vars.shoutrrr_notifications = true
+}
+```
+
+## 5. Validate and Restart Icinga2
 
 Check the configuration syntax, then restart the service:
 
@@ -257,7 +294,23 @@ sudo icinga2 daemon -C
 sudo systemctl restart icinga2
 ```
 
-Any host marked with `vars.notification.shoutrrr = true` — and every service on
+Any host marked with `vars.shoutrrr_notifications = true` — and every service on
 it — will now dispatch formatted, severity-tagged notifications to your Shoutrrr
 Logger instance for both host and service state changes. You can filter them in
 the log with the `tag:icinga2` query.
+
+## 6. Troubleshooting
+
+- **"No contacts configured" / nothing is sent.** The applied notification
+  resolves to no `User`. Confirm the `shoutrrr-logger` user from step 3 exists
+  and is referenced in the `users` list (Director users must be *deployed*).
+- **Test without waiting for a real state change.** In Icingaweb2, open a host or
+  service and use **Send custom notification** — this fires the command
+  immediately, bypassing state-change and re-notification-interval timing. It's
+  the fastest way to confirm the script and token work end-to-end.
+- **Check the log.** `journalctl -u icinga2 -f` or
+  `/var/log/icinga2/icinga2.log` reports notification execution and any error
+  output the script prints (it writes HTTP errors to stderr and exits non-zero).
+- **Notifications globally enabled?** Ensure the feature is on
+  (`icinga2 feature list` should show `notification`) and that
+  `enable_notifications` is not set to `false` on the host/service.
