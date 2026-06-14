@@ -20,7 +20,15 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Match only internationalized pathnames
-  // We exclude paths like /api, /_next, /_vercel, images, etc.
-  matcher: ['/', '/(en|es|fr|de|no)/:path*', '/((?!api|_next|_vercel|.*\\..*).*)']
+  // Match only internationalized pathnames.
+  // We exclude /api, /_next, /_vercel, any path with a file extension, and the
+  // extension-less Next.js metadata routes (app/icon.tsx -> /icon?<hash>,
+  // app/apple-icon.tsx -> /apple-icon?<hash>, plus opengraph/twitter images).
+  // Without these last exclusions the i18n middleware treats /icon as a locale
+  // path and 404s it instead of letting the metadata handler serve it.
+  matcher: [
+    '/',
+    '/(en|es|fr|de|no)/:path*',
+    '/((?!api|_next|_vercel|icon|apple-icon|opengraph-image|twitter-image|.*\\..*).*)',
+  ]
 };

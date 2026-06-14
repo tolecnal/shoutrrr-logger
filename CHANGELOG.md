@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Metadata routes 404**: The i18n proxy no longer intercepts Next.js's
+  extension-less metadata routes (`/icon`, `/apple-icon`). They were being
+  treated as locale paths and returned 404 (a failed request in browser
+  devtools); they now bypass the locale middleware and serve correctly.
+
 ## [1.0.0] — 2026-06-14
 
 ### Added
