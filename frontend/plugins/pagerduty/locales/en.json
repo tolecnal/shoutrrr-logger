@@ -1,0 +1,18 @@
+{
+  "name": "PagerDuty",
+  "description": "Send incidents to PagerDuty using the Events API V2.",
+  "integrationKey": "Integration Key",
+  "integrationKeyDesc": "The routing key for your PagerDuty integration.",
+  "source": "Source",
+  "sourceDesc": "The name of the system or application sending the event.",
+  "severity": "Severity Override",
+  "severityDesc": "Default severity if the event does not provide one.",
+  "severityCritical": "Critical",
+  "severityError": "Error",
+  "severityWarning": "Warning",
+  "severityInfo": "Info",
+  "sending": "Sending...",
+  "sendTestNotification": "Test",
+  "testSuccess": "Test message sent successfully.",
+  "testFailed": "Test failed: "
+}

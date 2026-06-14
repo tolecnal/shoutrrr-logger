@@ -9,7 +9,7 @@
  */
 
 import { Suspense, useState } from "react";
-import { ChevronDown, Save, Plus, Trash2, Pencil, Copy, Hash, Webhook, Activity, Puzzle, Settings } from "lucide-react";
+import { ChevronDown, Save, Plus, Trash2, Pencil, Copy, Hash, Webhook, Activity, Puzzle, Settings, Plug, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -386,6 +386,8 @@ export function PluginIcon({ pluginId, className }: { pluginId: string; classNam
   if (pluginId === "slack") return <Hash className={className} />;
   if (pluginId === "webhook") return <Webhook className={className} />;
   if (pluginId === "splunk") return <Activity className={className} />;
+  if (pluginId === "gotify") return <Plug className={className} />;
+  if (pluginId === "pagerduty") return <AlertTriangle className={className} />;
   return <Puzzle className={className} />;
 }
 

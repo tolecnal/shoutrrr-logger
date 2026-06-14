@@ -37,4 +37,10 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   telegram: lazy(() =>
     import("./telegram/config").then((m) => ({ default: m.TelegramConfigPanel }))
   ),
+  gotify: lazy(() =>
+    import("./gotify/config").then((m) => ({ default: m.GotifyConfigPanel }))
+  ),
+  pagerduty: lazy(() =>
+    import("./pagerduty/config").then((m) => ({ default: m.PagerDutyConfigPanel }))
+  ),
 };

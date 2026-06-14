@@ -1,0 +1,18 @@
+{
+  "name": "PagerDuty",
+  "description": "Send hendelser til PagerDuty via Events API V2.",
+  "integrationKey": "Integrasjonsn\u00f8kkel",
+  "integrationKeyDesc": "Rutingn\u00f8kkelen for din PagerDuty-integrasjon.",
+  "source": "Kilde",
+  "sourceDesc": "Navnet p\u00e5 systemet eller applikasjonen som sender hendelsen.",
+  "severity": "Alvorlighetsgrad",
+  "severityDesc": "Standard alvorlighetsgrad hvis hendelsen ikke angir en.",
+  "severityCritical": "Kritisk",
+  "severityError": "Feil",
+  "severityWarning": "Advarsel",
+  "severityInfo": "Info",
+  "sending": "Sender...",
+  "sendTestNotification": "Test",
+  "testSuccess": "Testmelding sendt vellykket.",
+  "testFailed": "Test feilet: "
+}

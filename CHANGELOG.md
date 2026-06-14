@@ -13,6 +13,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **Telegram**: Send rich HTML formatted notifications to a Telegram chat via Bot API.
   - **ntfy**: Send push notifications using ntfy.sh or a self-hosted instance.
   - **Pushover**: Send push notifications via the Pushover service.
+  - **Gotify**: Send push notifications to a Gotify server.
+  - **PagerDuty**: Send incidents to PagerDuty using the Events API V2.
 
 - **Plugin Configuration UI Redesign**: The plugins page now uses a slide-out side sheet (drawer) instead of expanding accordion sections for cleaner configuration management.
 - **Global Plugin Toggles**: Administrators can now enable/disable plugins globally using a switch on the plugin card, completely disabling the plugin regardless of active global or user profiles.
