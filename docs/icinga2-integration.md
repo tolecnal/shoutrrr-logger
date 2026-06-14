@@ -330,6 +330,16 @@ the log with the `tag:icinga2` query.
   Icinga Director, set `SHOUTRRR_URL`/`SHOUTRRR_TOKEN` as literal strings on the
   command rather than via constants (see the note in step 2). The script now
   reports this explicitly instead of raising a stack trace.
+- **Constant is defined (it's in `icinga2.vars`) but the env var is still
+  empty?** In an `env` value, reference a constant as a **bare identifier**
+  (`SHOUTRRR_URL = ShoutrrrUrl`), not as a runtime macro (`"$ShoutrrrUrl$"`):
+  `$...$` resolves against host/service/user *vars* and does **not** see global
+  constants, so it yields an empty string. (Constant names are case-sensitive but
+  the casing style is free — a genuine mismatch errors at config load rather than
+  emptying silently, so mixed case is not the cause.) Inspect what the command
+  actually resolved with:
+  `icinga2 object list --type NotificationCommand --name shoutrrr-logger-service`
+  and check its `env` field.
 - **Test without waiting for a real state change.** In Icingaweb2, open a host or
   service and use **Send custom notification** — this fires the command
   immediately, bypassing state-change and re-notification-interval timing. It's
