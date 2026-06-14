@@ -73,6 +73,8 @@ export function PluginStatsPanel() {
       
       Object.entries(g.plugin_stats).forEach(([pid, stats]: [string, any]) => {
          result[`${pid}_avg`] = (stats.success + stats.error) > 0 ? Math.round(stats.duration / (stats.success + stats.error)) : 0;
+         result[`${pid}_success`] = stats.success;
+         result[`${pid}_error`] = stats.error;
       });
       
       return result;
@@ -171,8 +173,34 @@ export function PluginStatsPanel() {
                   labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-                <Bar yAxisId="left" name="Total Success" dataKey="success" stackId="a" fill="var(--primary)" radius={[0, 0, 4, 4]} maxBarSize={40} />
-                <Bar yAxisId="left" name="Total Error" dataKey="error" stackId="a" fill="var(--destructive)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                {uniquePlugins.map((pid, idx) => (
+                  <Bar 
+                    key={`${pid}-success`} 
+                    yAxisId="left" 
+                    name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Success`} 
+                    dataKey={`${pid}_success`} 
+                    stackId={pid} 
+                    fill={`var(--chart-${(idx % 5) + 1})`} 
+                    radius={[0, 0, 4, 4]} 
+                    maxBarSize={40} 
+                  />
+                ))}
+                
+                {uniquePlugins.map((pid) => (
+                  <Bar 
+                    key={`${pid}-error`} 
+                    yAxisId="left" 
+                    name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Error`} 
+                    dataKey={`${pid}_error`} 
+                    stackId={pid} 
+                    fill="var(--destructive)" 
+                    radius={[4, 4, 0, 0]} 
+                    maxBarSize={40} 
+                  />
+                ))}
+
+                <Bar yAxisId="left" name="Total Success" dataKey="success" stackId="total" fill="var(--primary)" radius={[0, 0, 4, 4]} maxBarSize={40} />
+                <Bar yAxisId="left" name="Total Error" dataKey="error" stackId="total" fill="var(--destructive)" radius={[4, 4, 0, 0]} maxBarSize={40} />
                 
                 {uniquePlugins.map((pid, idx) => (
                   <Line 
