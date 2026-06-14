@@ -1,0 +1,15 @@
+{
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "The Microsoft Teams Incoming Webhook URL.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Template for the text inside the message. Supports markdown.",
+  "themeColor": "Theme Color",
+  "themeColorDesc": "Hex color code without the # (e.g. 0076D7).",
+  "includedFields": "Included Fields",
+  "includedFieldsPlaceholder": "Type field and press Enter",
+  "includedFieldsDesc": "Fields to include as Facts in the Message Card.",
+  "testing": "Testing...",
+  "testButton": "Send Test Incident",
+  "testSuccess": "Test event dispatched successfully",
+  "testFailed": "Test failed"
+}

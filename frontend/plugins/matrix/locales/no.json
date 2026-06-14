@@ -1,0 +1,14 @@
+{
+  "homeserverUrl": "Homeserver URL",
+  "homeserverUrlDesc": "URL til din Matrix homeserver (f.eks. https://matrix.org).",
+  "roomId": "Rom-ID",
+  "roomIdDesc": "IDen til rommet meldinger skal sendes til (f.eks. !abcdefg:matrix.org).",
+  "accessToken": "Tilgangstoken",
+  "accessTokenDesc": "Tilgangstoken for bot/brukerkonto.",
+  "messageTemplate": "Meldingsmal",
+  "messageTemplateDesc": "Mal for teksten inne i meldingen.",
+  "testing": "Tester...",
+  "testButton": "Send testhendelse",
+  "testSuccess": "Testhendelse ble sendt",
+  "testFailed": "Test feilet"
+}

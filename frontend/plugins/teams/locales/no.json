@@ -1,0 +1,15 @@
+{
+  "webhookUrl": "Webhook URL",
+  "webhookUrlDesc": "Microsoft Teams Incoming Webhook-URL.",
+  "messageTemplate": "Meldingsmal",
+  "messageTemplateDesc": "Mal for teksten inne i meldingen. Støtter markdown.",
+  "themeColor": "Temafarge",
+  "themeColorDesc": "Hex-fargekode uten # (f.eks. 0076D7).",
+  "includedFields": "Inkluderte felt",
+  "includedFieldsPlaceholder": "Skriv felt og trykk Enter",
+  "includedFieldsDesc": "Felt som skal inkluderes som Facts i meldingskortet.",
+  "testing": "Tester...",
+  "testButton": "Send testhendelse",
+  "testSuccess": "Testhendelse ble sendt",
+  "testFailed": "Test feilet"
+}

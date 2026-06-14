@@ -1,0 +1,14 @@
+{
+  "homeserverUrl": "Homeserver URL",
+  "homeserverUrlDesc": "The URL to your Matrix homeserver (e.g. https://matrix.org).",
+  "roomId": "Room ID",
+  "roomIdDesc": "The ID of the room to send messages to (e.g. !abcdefg:matrix.org).",
+  "accessToken": "Access Token",
+  "accessTokenDesc": "The access token for the bot/user account.",
+  "messageTemplate": "Message Template",
+  "messageTemplateDesc": "Template for the text inside the message.",
+  "testing": "Testing...",
+  "testButton": "Send Test Incident",
+  "testSuccess": "Test event dispatched successfully",
+  "testFailed": "Test failed"
+}

@@ -14,7 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **ntfy**: Send push notifications using ntfy.sh or a self-hosted instance.
   - **Pushover**: Send push notifications via the Pushover service.
   - **Gotify**: Send push notifications to a Gotify server.
+  - **Slack**: Full support for Slack webhooks, allowing custom layouts, emoji icons, and variable injection.
   - **PagerDuty**: Send incidents to PagerDuty using the Events API V2.
+  - **Microsoft Teams**: Send rich Adaptive/Message Cards via Incoming Webhooks.
+  - **Matrix**: Send room messages via the Matrix Client-Server API.
 
 - **Plugin Usage Statistics**: The system now records daily aggregated success and error counts for plugin dispatches. A new "Plugin Stats" tab has been added to the Stats page, accessible to all users (users see their own metrics, admins see global metrics).
   - Additionally tracks and displays the average response time for plugin executions on the frontend graph.

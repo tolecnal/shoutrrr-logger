@@ -43,4 +43,10 @@ export const PLUGIN_CONFIG_PANELS: Record<string, ComponentType<PluginConfigProp
   pagerduty: lazy(() =>
     import("./pagerduty/config").then((m) => ({ default: m.PagerDutyConfigPanel }))
   ),
+  teams: lazy(() =>
+    import("./teams/config").then((m) => ({ default: m.TeamsConfigPanel }))
+  ),
+  matrix: lazy(() =>
+    import("./matrix/config").then((m) => ({ default: m.MatrixConfigPanel }))
+  ),
 };
