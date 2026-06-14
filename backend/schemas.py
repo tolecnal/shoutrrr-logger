@@ -329,6 +329,20 @@ class PluginUpdate(BaseModel):
     allow_user_configs: bool | None = None
 
 
+class PluginUsageStatOut(BaseModel):
+    """One daily aggregated usage bucket for a plugin profile."""
+
+    date: datetime
+    plugin_id: str
+    profile_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    success_count: int
+    error_count: int
+    total_duration_ms: float
+
+    model_config = {"from_attributes": True}
+
+
 class UserPluginOut(BaseModel):
     """A plugin available for user configuration, with all of the user's profiles."""
 
@@ -525,13 +539,3 @@ class TemplatePreviewRequest(BaseModel):
 
 class TemplatePreviewResponse(BaseModel):
     html: str
-
-
-class PluginUsageStatOut(BaseModel):
-    date: str
-    plugin_id: str
-    profile_id: uuid.UUID
-    user_id: uuid.UUID | None
-    success_count: int
-    error_count: int
-    total_duration_ms: float
