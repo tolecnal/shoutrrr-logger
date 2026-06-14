@@ -50,6 +50,26 @@ export function PluginStatsPanel() {
     })).sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
+  const pluginBreakdown = useMemo(() => {
+    if (!data) return [];
+    
+    const grouped = data.reduce((acc, stat) => {
+      const pid = stat.plugin_id;
+      if (!acc[pid]) {
+        acc[pid] = { plugin_id: pid, success: 0, error: 0, total_duration_ms: 0 };
+      }
+      acc[pid].success += stat.success_count;
+      acc[pid].error += stat.error_count;
+      acc[pid].total_duration_ms += stat.total_duration_ms || 0;
+      return acc;
+    }, {} as Record<string, { plugin_id: string; success: number; error: number; total_duration_ms: number }>);
+    
+    return Object.values(grouped).map(g => ({
+      ...g,
+      avg_response_time: (g.success + g.error) > 0 ? Math.round(g.total_duration_ms / (g.success + g.error)) : 0
+    })).sort((a, b) => (b.success + b.error) - (a.success + a.error));
+  }, [data]);
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
@@ -125,6 +145,52 @@ export function PluginStatsPanel() {
             </ResponsiveContainer>
           </div>
         )}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <h2 className="text-sm font-medium text-foreground">
+            Plugin Breakdown
+          </h2>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-muted-foreground bg-muted/50 uppercase">
+              <tr>
+                <th className="px-5 py-3 font-medium">Plugin</th>
+                <th className="px-5 py-3 font-medium text-right">Success</th>
+                <th className="px-5 py-3 font-medium text-right">Error</th>
+                <th className="px-5 py-3 font-medium text-right">Avg Response Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pluginBreakdown.map((item) => (
+                <tr key={item.plugin_id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <td className="px-5 py-3 font-medium text-foreground capitalize">
+                    {item.plugin_id}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {item.success}
+                  </td>
+                  <td className="px-5 py-3 text-right text-destructive">
+                    {item.error > 0 ? item.error : "-"}
+                  </td>
+                  <td className="px-5 py-3 text-right text-muted-foreground">
+                    {item.avg_response_time > 0 ? `${item.avg_response_time}ms` : "-"}
+                  </td>
+                </tr>
+              ))}
+              {pluginBreakdown.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
+                    No data available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
