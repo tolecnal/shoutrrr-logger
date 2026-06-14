@@ -281,6 +281,7 @@ Version: Next.js 16
 - Server Components by default
 - Client Components only when necessary
 - TypeScript strict mode
+- Plugin UI Guardrails: Test buttons in plugin config panels MUST be `size="sm"` and left-aligned below a `<Separator />` within a `<div className="flex items-center gap-4 py-3">`. They must use the primary variant (default), match the exact styling of the Save changes button, and report test states uniformly via a `<CheckCircle2 />` or `<XCircle />` coupled with `testSuccess` / `testFailed` localized text.
 
 ### Directory Layout
 

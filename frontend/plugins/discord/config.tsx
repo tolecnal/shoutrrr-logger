@@ -182,15 +182,14 @@ export function DiscordConfigPanel({
 
       <Separator />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4 py-3">
         <Button
           size="sm"
-          variant="secondary"
           onClick={handleTest}
           disabled={testState === "loading" || saving}
-          className="h-7 text-xs gap-1.5"
+          className="gap-1.5"
         >
-          <Send className="h-3 w-3" />
+          <Send className="h-3.5 w-3.5" />
           {t("sendTestNotification")}
         </Button>
         {testState !== "idle" && (

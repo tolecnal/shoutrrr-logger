@@ -64,7 +64,7 @@ function UserPluginCard({
         onConfigure={() => setExpanded(true)}
       />
       <Sheet open={expanded} onOpenChange={setExpanded}>
-        <SheetContent className="sm:max-w-[700px] w-[90vw] overflow-y-auto">
+        <SheetContent className="sm:max-w-[800px] w-[90vw] overflow-y-auto">
           <SheetHeader className="mb-6">
             <SheetTitle>{tProfile('configurationTitle', { name })}</SheetTitle>
             <SheetDescription>{description}</SheetDescription>

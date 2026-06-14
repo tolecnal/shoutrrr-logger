@@ -154,6 +154,7 @@ default=uuid4,
   admin_user = Depends(require_admin)
 
 ### 5. Frontend (Next.js 16 & TypeScript) Rules
+- Plugin UI Guardrails: Test buttons in plugin config panels MUST be `size="sm"` and left-aligned below a `<Separator />` within a `<div className="flex items-center gap-4 py-3">`. They must use the primary variant (default), match the exact styling of the Save changes button, and report test states uniformly via a `<CheckCircle2 />` or `<XCircle />` coupled with `testSuccess` / `testFailed` localized text.
 
 - Architecture: Enforce Next.js App Router conventions. Default to Server Components; explicitly mark Client Components using 'use client' only when state hook interaction or client-specific APIs are required.
 - TypeScript Strictness: "strict": true is non-negotiable. Never inject any types. Provide explicit function return types. Treat interfaces as the standard for defining contract/DTO objects.
