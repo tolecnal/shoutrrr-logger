@@ -80,18 +80,18 @@ export function PluginStatsPanel() {
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                 <XAxis 
                   dataKey="date" 
                   tickFormatter={(val) => format(parseISO(val), "MMM d")}
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                   dy={10}
                 />
                 <YAxis 
                   yAxisId="left"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                   dx={-10}
@@ -100,27 +100,27 @@ export function PluginStatsPanel() {
                 <YAxis 
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                   dx={10}
                   tickFormatter={(val) => `${val}ms`}
                 />
                 <Tooltip 
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.2 }}
+                  cursor={{ fill: "var(--muted)", opacity: 0.2 }}
                   contentStyle={{ 
                     borderRadius: "6px", 
-                    border: "1px solid hsl(var(--border))",
-                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--card)",
                     fontSize: "12px",
-                    color: "hsl(var(--foreground))"
+                    color: "var(--foreground)"
                   }}
                   labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-                <Bar yAxisId="left" name="Success" dataKey="success" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 4, 4]} />
-                <Bar yAxisId="left" name="Error" dataKey="error" stackId="a" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" name="Avg Response Time (ms)" type="monotone" dataKey="avg_response_time" stroke="hsl(var(--chart-3, 43 74% 66%))" strokeWidth={2} dot={{ r: 3 }} />
+                <Bar yAxisId="left" name="Success" dataKey="success" stackId="a" fill="var(--primary)" radius={[0, 0, 4, 4]} maxBarSize={40} />
+                <Bar yAxisId="left" name="Error" dataKey="error" stackId="a" fill="var(--destructive)" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                <Line yAxisId="right" name="Avg Response Time (ms)" type="monotone" dataKey="avg_response_time" stroke="var(--chart-3, #4f46e5)" strokeWidth={2} dot={{ r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
