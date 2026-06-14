@@ -344,8 +344,6 @@ class NotificationService:
         """
         Run all enabled plugins against a saved notification.
         """
-        import datetime
-
         from sqlalchemy import select
         from sqlalchemy.dialects.postgresql import insert
 
