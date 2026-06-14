@@ -98,14 +98,25 @@ payload = json.dumps(
     }
 ).encode("utf-8")
 
-url = env("SHOUTRRR_URL").rstrip("/") + "/api/v1/shoutrrr"
+# Validate the connection settings up front so a misconfigured command produces
+# a clear message in the Icinga log instead of an opaque stack trace. An empty
+# SHOUTRRR_URL usually means the env var never reached the script (e.g. an
+# undefined constant, or a blank field in Icinga Director).
+base_url = env("SHOUTRRR_URL").strip().rstrip("/")
+token = env("SHOUTRRR_TOKEN").strip()
+if "://" not in base_url:
+    sys.exit("shoutrrr-logger: SHOUTRRR_URL is empty or missing a scheme "
+             "(set it to e.g. https://logger.example.com)")
+if not token:
+    sys.exit("shoutrrr-logger: SHOUTRRR_TOKEN is empty")
+
 request = urllib.request.Request(
-    url,
+    base_url + "/api/v1/shoutrrr",
     data=payload,
     method="POST",
     headers={
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {env('SHOUTRRR_TOKEN')}",
+        "Authorization": f"Bearer {token}",
     },
 )
 
@@ -145,6 +156,15 @@ const ShoutrrrUrl = "https://your-logger-domain.com"   // base URL, no trailing 
 const ShoutrrrToken = "your-access-token-here"
 const ShoutrrrInsecure = "false"                        // "true" to skip TLS verification
 ```
+
+> [!IMPORTANT]
+> **Using Icinga Director?** Director renders its own configuration and does
+> **not** see constants from a hand-edited `constants.conf`, so `SHOUTRRR_URL`
+> would arrive at the script empty (you'll see `ValueError: unknown url type:
+> '/api/v1/shoutrrr'` in the log). In Director, set the env values as **literal
+> strings** directly on the command's environment fields — e.g.
+> `SHOUTRRR_URL = "https://your-logger-domain.com"` — instead of referencing the
+> constants below.
 
 > [!WARNING]
 > Set `ShoutrrrInsecure = "true"` only for self-signed / internal-CA certificates
@@ -304,6 +324,12 @@ the log with the `tag:icinga2` query.
 - **"No contacts configured" / nothing is sent.** The applied notification
   resolves to no `User`. Confirm the `shoutrrr-logger` user from step 3 exists
   and is referenced in the `users` list (Director users must be *deployed*).
+- **`ValueError: unknown url type: '/api/v1/shoutrrr'`.** `SHOUTRRR_URL` reached
+  the script empty. The constant isn't resolving — verify it's defined in a
+  loaded file (`/etc/icinga2/constants.conf` is included by default), or, in
+  Icinga Director, set `SHOUTRRR_URL`/`SHOUTRRR_TOKEN` as literal strings on the
+  command rather than via constants (see the note in step 2). The script now
+  reports this explicitly instead of raising a stack trace.
 - **Test without waiting for a real state change.** In Icingaweb2, open a host or
   service and use **Send custom notification** — this fires the command
   immediately, bypassing state-change and re-notification-interval timing. It's
