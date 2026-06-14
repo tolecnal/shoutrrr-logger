@@ -96,6 +96,7 @@ Agents must respect the following multi-surface codebase boundaries:
 - Type Safety: Apply explicit Python type hints everywhere.
 - Async Sessions: All database calls must use async sessions.
 - Query Syntax: Use modern SQLAlchemy 2.x declarative models and explicit selection statements.
+- Dialect portability: the test harness runs on SQLite while production is PostgreSQL. Do not hardcode a single dialect's constructs (e.g. importing `sqlalchemy.dialects.postgresql.insert` for `on_conflict_do_update`) inline in business logic — it silently becomes postgres-only and untestable. Encapsulate such writes in a Repository method that selects the right dialect's `insert` at runtime (via `session.get_bind().dialect.name`) so the path is exercised by tests. Keep these in repositories, never in route handlers.
 
 # PREFERRED SELECT PATTERN
 
@@ -122,9 +123,40 @@ default=uuid4,
 ### 2. Database Migrations (Alembic)
 
 - Every schema modification requires a separate Alembic migration file.
-- Never modify an existing, committed migration file.
-- Autogenerate migrations from changes to SQLAlchemy models, but review the generated script for consistency before final execution.
-- Migrations are applied automatically by the application at container startup (`docker-entrypoint.sh` runs `alembic upgrade head` before the servers start). A release must NEVER require a manual migration step at deploy time, and migrations must tolerate `init_db()`'s create_all-built fresh databases (use defensive existence checks).
+- Never modify a migration that has shipped in a tagged release (it would
+  diverge already-migrated databases). Migrations still in `[Unreleased]` may be
+  corrected in place when that is cleaner than stacking a patch migration.
+- Autogenerate migrations from changes to SQLAlchemy models, but review the
+  generated script for consistency before final execution.
+- Migrations are applied automatically by the application at container startup
+  (`docker-entrypoint.sh` runs `alembic upgrade head` before the servers start).
+  A release must NEVER require a manual migration step at deploy time.
+- **Defensive existence checks are mandatory.** `init_db()` builds fresh
+  databases at *head* schema via `create_all()` but stamps *baseline*, so
+  `alembic upgrade head` replays every post-baseline migration over an
+  already-current schema (this is the `AUTO_MIGRATE=false` / out-of-band path).
+  Guard every operation with `_has_table` / `_has_column` / index-existence
+  helpers (see `4b9e0d21c6aa`) so a re-run is a no-op, never a
+  DuplicateTable/DuplicateColumn crash.
+- **Guard data migrations on the columns they actually read/write**, not a proxy
+  column. A later migration can re-add a same-named column for an unrelated
+  purpose and make a proxy guard misfire (this caused a real
+  `create_all`-path crash).
+- **Adding or narrowing a UNIQUE index/constraint must first de-duplicate
+  existing data** in the same migration (aggregate/merge, then delete), or the
+  index creation aborts startup with a `UniqueViolation` on real data. An empty
+  test database will not reveal this.
+- **Nullable columns in a UNIQUE index:** PostgreSQL treats NULLs as *distinct*,
+  so `ON CONFLICT` upserts never match for NULL-keyed rows and rows accumulate.
+  Keep nullable columns out of the conflict key, or use `NULLS NOT DISTINCT`.
+- **Validate migrations against real PostgreSQL — the test suite does not.** The
+  pytest harness uses SQLite and runs `create_all()`, so it never executes
+  migration files. Before committing a migration, run it on a throwaway
+  PostgreSQL on all three paths: (1) empty DB → `upgrade head` → `alembic check`
+  (no drift); (2) `init_db()` (create_all + stamp baseline) → `upgrade head`;
+  (3) seed representative *existing* data (including the duplicates/edge cases a
+  new constraint must tolerate) → `upgrade head`. Confirm `downgrade base` →
+  `upgrade head` round-trips.
 
 ### 3. API & Response Formatting
 
