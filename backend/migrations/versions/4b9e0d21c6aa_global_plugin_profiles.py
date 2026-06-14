@@ -64,7 +64,15 @@ def upgrade() -> None:
 
     # Move existing per-plugin state into a "Default" profile. Only possible
     # (and only needed) while plugin_configs still carries the old columns.
-    if _has_column("plugin_configs", "enabled"):
+    #
+    # Key the guard off `config` — the column the INSERT actually reads — NOT
+    # `enabled`: a later migration (d4e6b9c31f08) re-adds an unrelated `enabled`
+    # column to plugin_configs, so on a fresh database built at head schema by
+    # init_db()'s create_all() (which has the new `enabled` but no `config`/
+    # `rules`) an `enabled`-keyed guard would misfire and reference dropped
+    # columns. When `config` is present we are on the genuine old schema, where
+    # `enabled`/`config`/`rules` all coexist.
+    if _has_column("plugin_configs", "config"):
         op.execute(
             """
             INSERT INTO plugin_profiles (id, plugin_id, name, enabled, config, rules, updated_at)
@@ -73,9 +81,7 @@ def upgrade() -> None:
             """
         )
         op.drop_column("plugin_configs", "enabled")
-    if _has_column("plugin_configs", "config"):
         op.drop_column("plugin_configs", "config")
-    if _has_column("plugin_configs", "rules"):
         op.drop_column("plugin_configs", "rules")
 
 
