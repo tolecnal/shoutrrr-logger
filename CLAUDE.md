@@ -329,6 +329,11 @@ requirement for every change that adds or edits UI strings:
   `frontend/`) — it fails on parity gaps and on `t()` references to undefined
   keys. `pnpm i18n:check --all` adds advisory unused-key and hardcoded-string
   scans. See `TRANSLATING.md`.
+- next-intl message keys are typed at compile time via
+  `frontend/types/messages.d.ts` (referencing an unknown key is a `tsc` error).
+  When adding a plugin with its own `locales/en.json`, add a
+  `Plugin_<id>: typeof import("../plugins/<id>/locales/en.json")` line there or
+  its `t()` calls won't type-check.
 
 ---
 

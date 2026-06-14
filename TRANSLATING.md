@@ -100,3 +100,29 @@ It checks:
 
 The deterministic checks exit non-zero on failure, so `pnpm i18n:check` is safe
 to run in CI alongside `pnpm lint`.
+
+## 5. Compile-time key safety (typed messages)
+
+`frontend/types/messages.d.ts` augments next-intl's `AppConfig.Messages` type
+from the **English** catalogs (`messages/en.json` plus each plugin's
+`locales/en.json`, merged under `Plugin_<id>`). This makes `useTranslations` /
+`getTranslations` and the returned `t('key')` accept **only** keys that actually
+exist — referencing a missing or mistyped key becomes a `tsc` error, caught by
+`pnpm exec tsc --noEmit` (which already runs as a blocking step in CI).
+
+This complements `pnpm i18n:check`:
+
+- **Typed messages (`tsc`, blocking)** catch *code referencing a key that does
+  not exist in the base `en` catalog* — always a real bug. They never complain
+  about incomplete non-`en` translations, because next-intl falls back to `en`.
+- **`pnpm i18n:check` (advisory)** owns locale **parity** (e.g. keys missing
+  from `no.json`) and the heuristic hardcoded-string scan — things the type
+  system cannot see.
+
+> **Maintenance:** when you add a new plugin that ships a `locales/en.json`, add
+> a matching line to `frontend/types/messages.d.ts`:
+> ```ts
+> Plugin_<id>: typeof import("../plugins/<id>/locales/en.json");
+> ```
+> Otherwise `t()` calls in that plugin's `Plugin_<id>` namespace won't type-check
+> against its keys.

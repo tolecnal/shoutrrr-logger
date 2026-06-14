@@ -109,6 +109,11 @@ All user-facing text must be localized with `next-intl`. Never hardcode strings 
 pnpm i18n:check               # Verify locale key parity across en.json and no.json
 ```
 
+Message keys are also typed at compile time (`frontend/types/messages.d.ts`), so
+`pnpm exec tsc --noEmit` fails if you reference a key that doesn't exist in the
+English catalogs. New plugins must add a line there for their `Plugin_<id>`
+namespace.
+
 See `TRANSLATING.md` and `AGENTS.md` for more details on translating the application and writing plugins.
 
 ---
