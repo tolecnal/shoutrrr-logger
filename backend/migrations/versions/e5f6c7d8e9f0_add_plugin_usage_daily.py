@@ -17,7 +17,15 @@ branch_labels = None
 depends_on = None
 
 
+def _has_table(name: str) -> bool:
+    return sa.inspect(op.get_bind()).has_table(name)
+
+
 def upgrade() -> None:
+    # Defensive: init_db() builds fresh databases at head schema via create_all()
+    # but stamps baseline, so the table may already exist when this runs.
+    if _has_table("plugin_usage_daily"):
+        return
     op.create_table(
         "plugin_usage_daily",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -39,5 +47,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_plugin_usage_daily_unique", table_name="plugin_usage_daily")
-    op.drop_table("plugin_usage_daily")
+    if _has_table("plugin_usage_daily"):
+        op.drop_table("plugin_usage_daily")

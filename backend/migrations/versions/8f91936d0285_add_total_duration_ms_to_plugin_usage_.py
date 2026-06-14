@@ -18,14 +18,22 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_column(table: str, name: str) -> bool:
+    return any(c["name"] == name for c in sa.inspect(op.get_bind()).get_columns(table))
+
+
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column(
-        "plugin_usage_daily",
-        sa.Column("total_duration_ms", sa.Float(), nullable=False, server_default="0.0"),
-    )
+    # Defensive: init_db() builds fresh databases at head schema via create_all()
+    # but stamps baseline, so the column may already exist when this runs.
+    if not _has_column("plugin_usage_daily", "total_duration_ms"):
+        op.add_column(
+            "plugin_usage_daily",
+            sa.Column("total_duration_ms", sa.Float(), nullable=False, server_default="0.0"),
+        )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("plugin_usage_daily", "total_duration_ms")
+    if _has_column("plugin_usage_daily", "total_duration_ms"):
+        op.drop_column("plugin_usage_daily", "total_duration_ms")
