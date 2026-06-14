@@ -51,6 +51,27 @@ async def list_custom_field_keys(
     return await notification_service.custom_field_keys(db, limit=limit)
 
 
+@router.get("/stats/usage", response_model=list[dict])
+async def get_admin_plugin_usage_stats(
+    db: AsyncSession = Depends(get_db),
+    _user=Depends(_require_admin),
+) -> list[dict]:
+    from repositories.plugin_usage import plugin_usage_repo
+
+    stats = await plugin_usage_repo.get_admin_stats(db)
+    return [
+        {
+            "date": s.date.isoformat(),
+            "plugin_id": s.plugin_id,
+            "profile_id": str(s.profile_id),
+            "user_id": str(s.user_id) if s.user_id else None,
+            "success_count": s.success_count,
+            "error_count": s.error_count,
+        }
+        for s in stats
+    ]
+
+
 @router.get("", response_model=list[PluginOut])
 async def list_plugins(
     db: AsyncSession = Depends(get_db),

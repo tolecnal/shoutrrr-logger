@@ -242,3 +242,12 @@ export interface AlertRuleOut {
   created_at: string;
   updated_at: string;
 }
+
+export interface PluginUsageStat {
+  date: string;
+  plugin_id: string;
+  profile_id: string;
+  user_id: string | null;
+  success_count: number;
+  error_count: number;
+}

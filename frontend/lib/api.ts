@@ -12,6 +12,7 @@ import type {
   SettingOut,
   UserOut,
   VersionInfo,
+  PluginUsageStat,
 } from "./types";
 
 // Versioned base for all functional API calls
@@ -293,6 +294,12 @@ export const fetchApiPerformance = (windowHours = 24) =>
 
 // ---- Plugins ----
 export const fetchPlugins = () => apiFetch<PluginMeta[]>("/admin/plugins");
+
+export const fetchAdminPluginUsageStats = () =>
+  apiFetch<PluginUsageStat[]>("/admin/plugins/stats/usage");
+
+export const fetchUserPluginUsageStats = () =>
+  apiFetch<PluginUsageStat[]>("/user-plugins/stats/usage");
 
 export const fetchCustomFieldKeys = () =>
   apiFetch<string[]>("/admin/plugins/custom-field-keys");

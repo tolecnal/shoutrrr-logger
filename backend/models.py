@@ -433,3 +433,34 @@ class UserAlert(Base):
         Index("ix_user_alerts_created_at", "created_at"),
         Index("ix_user_alerts_user_id_is_read", "user_id", "is_read"),
     )
+
+
+class PluginUsageDaily(Base):
+    """Daily aggregated usage statistics for plugin dispatch operations."""
+
+    __tablename__ = "plugin_usage_daily"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # The date bucket (usually stored with time 00:00:00)
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    plugin_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Global profiles won't have a user_id, user profiles will
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    # The specific profile UUID (could be PluginProfile or UserPluginConfig)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
+    success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index(
+            "ix_plugin_usage_daily_unique",
+            "date",
+            "plugin_id",
+            "profile_id",
+            "user_id",
+            unique=True,
+        ),
+    )

@@ -35,6 +35,27 @@ async def list_user_plugins(
     return await plugin_service.list_user_plugins(db, current_user)
 
 
+@router.get("/stats/usage", response_model=list[dict])
+async def get_user_plugin_usage_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_viewer),
+) -> list[dict]:
+    from repositories.plugin_usage import plugin_usage_repo
+
+    stats = await plugin_usage_repo.get_user_stats(db, current_user.id)
+    return [
+        {
+            "date": s.date.isoformat(),
+            "plugin_id": s.plugin_id,
+            "profile_id": str(s.profile_id),
+            "user_id": str(s.user_id) if s.user_id else None,
+            "success_count": s.success_count,
+            "error_count": s.error_count,
+        }
+        for s in stats
+    ]
+
+
 @router.get("/{plugin_id}", response_model=UserPluginOut)
 async def get_user_plugin(
     plugin_id: str,

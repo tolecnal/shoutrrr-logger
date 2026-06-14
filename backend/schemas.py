@@ -525,3 +525,12 @@ class TemplatePreviewRequest(BaseModel):
 
 class TemplatePreviewResponse(BaseModel):
     html: str
+
+
+class PluginUsageStatOut(BaseModel):
+    date: str
+    plugin_id: str
+    profile_id: uuid.UUID
+    user_id: uuid.UUID | None
+    success_count: int
+    error_count: int

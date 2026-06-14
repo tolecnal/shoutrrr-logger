@@ -344,10 +344,13 @@ class NotificationService:
         """
         Run all enabled plugins against a saved notification.
         """
+        import datetime
+
         from sqlalchemy import select
+        from sqlalchemy.dialects.postgresql import insert
 
         from database import engine  # noqa: PLC0415
-        from models import PluginProfile, UserPluginConfig
+        from models import PluginProfile, PluginUsageDaily, UserPluginConfig
         from plugins import registry as plugin_registry  # noqa: PLC0415
 
         async_session = async_sessionmaker(engine, expire_on_commit=False)
@@ -412,8 +415,10 @@ class NotificationService:
                     continue
 
             merged_config = {**plugin.default_config, **row.config}
+            is_success = False
             try:
                 await plugin.on_notification(notification_dict, merged_config)
+                is_success = True
             except Exception as exc:
                 logger.error(
                     "[plugin:%s] on_notification raised: %s",
@@ -421,6 +426,37 @@ class NotificationService:
                     exc,
                     exc_info=True,
                 )
+
+            # Record stats
+            profile_id = getattr(row, "id", None)
+            profile_user_id = getattr(row, "user_id", None)
+            if profile_id:
+                try:
+                    today = datetime.datetime.now(datetime.UTC).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                    async with async_session() as stat_session:
+                        stmt = insert(PluginUsageDaily).values(
+                            date=today,
+                            plugin_id=plugin_id,
+                            profile_id=profile_id,
+                            user_id=profile_user_id,
+                            success_count=1 if is_success else 0,
+                            error_count=0 if is_success else 1,
+                        )
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["date", "plugin_id", "profile_id", "user_id"],
+                            set_={
+                                "success_count": PluginUsageDaily.success_count
+                                + (1 if is_success else 0),
+                                "error_count": PluginUsageDaily.error_count
+                                + (0 if is_success else 1),
+                            },
+                        )
+                        await stat_session.execute(stmt)
+                        await stat_session.commit()
+                except Exception as stat_exc:
+                    logger.error(f"Failed to record plugin stats for {plugin_id}: {stat_exc}")
 
 
 notification_service = NotificationService()
