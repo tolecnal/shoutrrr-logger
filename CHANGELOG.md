@@ -12,6 +12,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   extension-less metadata routes (`/icon`, `/apple-icon`). They were being
   treated as locale paths and returned 404 (a failed request in browser
   devtools); they now bypass the locale middleware and serve correctly.
+- **Average Response Time chart**: With only a single day of data the chart
+  rendered as a column of overlapping, disconnected dots (a line needs ≥2
+  points). It now renders grouped bars per plugin for a single bucket and
+  switches to trend lines automatically once two or more days accumulate.
 
 ## [1.0.0] — 2026-06-14
 

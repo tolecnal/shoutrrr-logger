@@ -187,55 +187,109 @@ export function PluginStatsPanel() {
             </h2>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                  <XAxis 
-                    dataKey="date" 
-                    tickFormatter={(val) => format(parseISO(val), "MMM d")}
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    tickLine={false}
-                    axisLine={false}
-                    dy={10}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                    tickLine={false}
-                    axisLine={false}
-                    dx={-10}
-                    tickFormatter={(val) => `${val}ms`}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: "6px", 
-                      border: "1px solid var(--border)",
-                      backgroundColor: "var(--card)",
-                      fontSize: "12px",
-                      color: "var(--foreground)"
-                    }}
-                    labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
-                  {uniquePlugins.map((pid, idx) => (
-                    <Line 
-                      key={pid}
-                      name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Avg (ms)`} 
-                      type="monotone" 
-                      dataKey={`${pid}_avg`} 
-                      stroke={`var(--chart-${(idx % 5) + 1})`} 
-                      strokeWidth={2} 
-                      dot={{ r: 3 }} 
+                {chartData.length < 2 ? (
+                  // A single time bucket cannot draw a line (a line needs >= 2
+                  // points), which renders as a column of overlapping dots in
+                  // empty space. Show grouped bars per plugin instead; this
+                  // switches to a trend line automatically once >= 2 days exist.
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(val) => format(parseISO(val), "MMM d")}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      dy={10}
                     />
-                  ))}
-                  <Line 
-                    name="Overall Avg (ms)" 
-                    type="monotone" 
-                    dataKey="avg_response_time" 
-                    stroke="var(--foreground)" 
-                    strokeWidth={2} 
-                    strokeDasharray="5 5"
-                    dot={{ r: 4 }} 
-                  />
-                </LineChart>
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      dx={-10}
+                      tickFormatter={(val) => `${val}ms`}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "var(--muted)", opacity: 0.2 }}
+                      contentStyle={{
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                        fontSize: "12px",
+                        color: "var(--foreground)"
+                      }}
+                      labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                    {uniquePlugins.map((pid, idx) => (
+                      <Bar
+                        key={pid}
+                        name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Avg (ms)`}
+                        dataKey={`${pid}_avg`}
+                        fill={`var(--chart-${(idx % 5) + 1})`}
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={40}
+                      />
+                    ))}
+                    <Bar
+                      name="Overall Avg (ms)"
+                      dataKey="avg_response_time"
+                      fill="var(--primary)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={40}
+                    />
+                  </BarChart>
+                ) : (
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(val) => format(parseISO(val), "MMM d")}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      dy={10}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      dx={-10}
+                      tickFormatter={(val) => `${val}ms`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "6px",
+                        border: "1px solid var(--border)",
+                        backgroundColor: "var(--card)",
+                        fontSize: "12px",
+                        color: "var(--foreground)"
+                      }}
+                      labelFormatter={(label) => format(parseISO(label as string), "EEE, MMM d")}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                    {uniquePlugins.map((pid, idx) => (
+                      <Line
+                        key={pid}
+                        name={`${pid.charAt(0).toUpperCase() + pid.slice(1)} Avg (ms)`}
+                        type="monotone"
+                        dataKey={`${pid}_avg`}
+                        stroke={`var(--chart-${(idx % 5) + 1})`}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    ))}
+                    <Line
+                      name="Overall Avg (ms)"
+                      type="monotone"
+                      dataKey="avg_response_time"
+                      stroke="var(--foreground)"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
