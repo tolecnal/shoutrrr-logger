@@ -45,6 +45,45 @@ def upgrade() -> None:
     if "user_id" in cols:
         op.drop_index("ix_plugin_usage_daily_unique", table_name="plugin_usage_daily")
     if not _has_index("plugin_usage_daily", "ix_plugin_usage_daily_unique"):
+        # The old 4-column index (NULLs distinct) let global profiles accumulate
+        # multiple rows per (date, plugin_id, profile_id). Collapse those into a
+        # single row — summing the counters — before building the 3-column unique
+        # index, otherwise its creation fails with a UniqueViolation on the
+        # existing duplicate data. Roll the duplicates up into the lowest-id row
+        # of each group, then delete the rest.
+        op.execute(
+            """
+            UPDATE plugin_usage_daily AS keep
+            SET success_count = agg.s,
+                error_count = agg.e,
+                total_duration_ms = agg.d
+            FROM (
+                SELECT date, plugin_id, profile_id,
+                       min(id::text) AS keep_id,
+                       sum(success_count) AS s,
+                       sum(error_count) AS e,
+                       sum(total_duration_ms) AS d
+                FROM plugin_usage_daily
+                GROUP BY date, plugin_id, profile_id
+                HAVING count(*) > 1
+            ) AS agg
+            WHERE keep.id::text = agg.keep_id
+            """
+        )
+        op.execute(
+            """
+            DELETE FROM plugin_usage_daily AS d
+            USING (
+                SELECT date, plugin_id, profile_id, min(id::text) AS keep_id
+                FROM plugin_usage_daily
+                GROUP BY date, plugin_id, profile_id
+            ) AS k
+            WHERE d.date = k.date
+              AND d.plugin_id = k.plugin_id
+              AND d.profile_id = k.profile_id
+              AND d.id::text <> k.keep_id
+            """
+        )
         op.create_index(
             "ix_plugin_usage_daily_unique",
             "plugin_usage_daily",
