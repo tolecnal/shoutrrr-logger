@@ -1,7 +1,7 @@
 import {getRequestConfig} from 'next-intl/server';
 import {routing} from './routing';
 
-const PLUGINS = ['splunk', 'slack', 'webhook', 'ntfy', 'pushover', 'discord', 'telegram', 'gotify', 'pagerduty'];
+const PLUGINS = ['splunk', 'slack', 'webhook', 'ntfy', 'pushover', 'discord', 'telegram', 'gotify', 'pagerduty', 'teams', 'matrix'];
 
 export default getRequestConfig(async ({requestLocale}) => {
   // This typically corresponds to the `[locale]` segment

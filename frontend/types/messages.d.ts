@@ -20,6 +20,8 @@ type AppMessages = typeof import("../messages/en.json") & {
   Plugin_telegram: typeof import("../plugins/telegram/locales/en.json");
   Plugin_gotify: typeof import("../plugins/gotify/locales/en.json");
   Plugin_pagerduty: typeof import("../plugins/pagerduty/locales/en.json");
+  Plugin_teams: typeof import("../plugins/teams/locales/en.json");
+  Plugin_matrix: typeof import("../plugins/matrix/locales/en.json");
 };
 
 declare module "next-intl" {

@@ -396,13 +396,19 @@ class NotificationService:
                 from services.routing_rules import routing_rule_service
 
                 try:
-                    # Instantiate rules dynamically from the JSON objects
-                    rule_objs = [RoutingRuleCreate.model_validate(r) for r in row.rules]
+                    rule_objs = []
+                    for r in row.rules:
+                        if not r:
+                            continue
+                        rule_objs.append(RoutingRuleCreate.model_validate(r))
 
-                    matched_any = any(
-                        routing_rule_service.rule_matches(rule, notification_dict)
-                        for rule in rule_objs
-                    )
+                    if rule_objs:
+                        matched_any = any(
+                            routing_rule_service.rule_matches(rule, notification_dict)
+                            for rule in rule_objs
+                        )
+                        if not matched_any:
+                            continue
                 except Exception as exc:
                     logger.error(
                         "[plugin:%s] failed to evaluate routing rules: %s",
@@ -410,8 +416,6 @@ class NotificationService:
                         exc,
                         exc_info=True,
                     )
-                    continue
-                if not matched_any:
                     continue
 
             merged_config = {**plugin.default_config, **row.config}
@@ -437,9 +441,7 @@ class NotificationService:
             profile_user_id = getattr(row, "user_id", None)
             if profile_id:
                 try:
-                    today = datetime.datetime.now(datetime.UTC).replace(
-                        hour=0, minute=0, second=0, microsecond=0
-                    )
+                    today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
                     async with async_session() as stat_session:
                         stmt = insert(PluginUsageDaily).values(
                             date=today,
