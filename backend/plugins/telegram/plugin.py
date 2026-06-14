@@ -62,13 +62,13 @@ class TelegramPlugin(BasePlugin):
             for field in included:
                 val = notification.get(field)
                 if val is not None:
-                    fields_text += f"{field}: {val}\n"
+                    fields_text += f"{html.escape(field)}: {html.escape(str(val))}\n"
                     has_fields = True
                 elif field.startswith("custom_fields."):
                     cf_key = field.replace("custom_fields.", "")
                     val = custom_fields.get(cf_key)
                     if val is not None:
-                        fields_text += f"{field}: {val}\n"
+                        fields_text += f"{html.escape(field)}: {html.escape(str(val))}\n"
                         has_fields = True
             fields_text += "</pre>"
             if has_fields:
