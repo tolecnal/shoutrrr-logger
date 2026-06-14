@@ -62,7 +62,7 @@ class PagerDutyPlugin(BasePlugin):
             "event_action": "trigger",
             "payload": {
                 "summary": notification.get("title")
-                or notification.get("message")[:100]
+                or (notification.get("message") or "")[:100]
                 or "New Alert",
                 "source": config.get("source", "Shoutrrr Logger"),
                 "severity": pd_severity,
