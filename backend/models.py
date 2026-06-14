@@ -456,12 +456,17 @@ class PluginUsageDaily(Base):
     total_duration_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     __table_args__ = (
+        # profile_id is a globally-unique UUID, so (date, plugin_id, profile_id)
+        # already uniquely identifies a daily bucket. user_id is intentionally
+        # NOT part of the uniqueness: it is nullable for global profiles, and in
+        # PostgreSQL NULLs are distinct in a unique index, which would make the
+        # ON CONFLICT upsert never match for global profiles (one row inserted
+        # per dispatch instead of aggregating). See dispatch_plugins().
         Index(
             "ix_plugin_usage_daily_unique",
             "date",
             "plugin_id",
             "profile_id",
-            "user_id",
             unique=True,
         ),
     )

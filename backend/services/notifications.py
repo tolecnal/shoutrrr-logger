@@ -451,7 +451,7 @@ class NotificationService:
                             total_duration_ms=duration_ms,
                         )
                         stmt = stmt.on_conflict_do_update(
-                            index_elements=["date", "plugin_id", "profile_id", "user_id"],
+                            index_elements=["date", "plugin_id", "profile_id"],
                             set_={
                                 "success_count": PluginUsageDaily.success_count
                                 + (1 if is_success else 0),
