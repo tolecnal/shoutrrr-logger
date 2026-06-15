@@ -402,7 +402,8 @@
     "deleteSavedSearch": "Delete saved search",
     "saveSearchFailed": "Couldn't save the search.",
     "save": "Save",
-    "renameSavedSearch": "Rename saved search"
+    "renameSavedSearch": "Rename saved search",
+    "tabHasNew": "New data"
   },
   "Theme": {
     "light": "Light",

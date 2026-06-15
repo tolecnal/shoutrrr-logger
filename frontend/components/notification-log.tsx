@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2, AlertCircle, Plus, Bookmark, BookmarkPlus, Pencil, Check } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2, AlertCircle, Plus, Bookmark, BookmarkPlus, Pencil, Check, Circle } from "lucide-react";
 import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, deleteSelectedNotifications, settingsToMap } from "@/lib/api";
 import type { LogFilterState, NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
@@ -188,6 +188,10 @@ export function NotificationLog() {
     shouldRetryOnError: false,
   });
 
+  // Holds the latest "refresh inactive-tab new-data indicators" scheduler so the
+  // SSE handler (defined before the tabs logic) can trigger it without stale refs.
+  const refreshIndicatorsRef = useRef<(() => void) | null>(null);
+
   // Listen for real-time updates via Server-Sent Events (SSE)
   useEffect(() => {
     const url = new URL("/api/v1/notifications/stream", window.location.origin);
@@ -199,6 +203,8 @@ export function NotificationLog() {
         if (payload && (payload.event === "new" || payload.event === "update")) {
           // Re-fetch the current page to get the new or updated notifications
           mutate();
+          // New data may match other (inactive) tabs — re-check their indicators.
+          if (payload.event === "new") refreshIndicatorsRef.current?.();
         }
       } catch (err) {
         // Ignore parse errors from ping messages or malformed data
@@ -414,8 +420,21 @@ export function NotificationLog() {
     if (!activeTab) return;
     if (loadedTabIdRef.current === activeTab.id) return;
     loadedTabIdRef.current = activeTab.id;
-    applyFilterState(activeTab.filters);
-  }, [activeTab, applyFilterState]);
+    const f = normalizeFilterState(activeTab.filters);
+    // If only client-side filters (label / group-by) differ from the current
+    // view, the SWR key won't change and no fetch is triggered. Force a
+    // revalidation in that case so the activated tab always reflects current
+    // server data — its label/group-by filter then applies to a fresh fetch,
+    // resolving any imprecise "new data" indicator.
+    const sameServerQuery =
+      f.query === query &&
+      f.scope === scope &&
+      f.time_range === timeRange &&
+      f.custom_after === customAfter &&
+      f.custom_before === customBefore;
+    applyFilterState(f);
+    if (sameServerQuery) mutate();
+  }, [activeTab, applyFilterState, mutate, query, scope, timeRange, customAfter, customBefore]);
 
   // Persist filter edits back to the active tab, debounced. Skips when the
   // view already matches the tab's stored filters (e.g. right after a tab
@@ -429,6 +448,83 @@ export function NotificationLog() {
     }, 600);
     return () => clearTimeout(handle);
   }, [currentFilterState, activeTabId, activeTab, saveTabFilters]);
+
+  // --- "New data" indicators for inactive tabs ----------------------------
+  // Session-only. For each inactive tab we track the received_at of its newest
+  // matching notification at the time it was last seen (baselineRef). When new
+  // data arrives (SSE "new"), we re-query each inactive tab's server-side filter
+  // and flag it if a *newer* matching notification has appeared. The active tab
+  // is always "read"; switching to a tab clears its flag.
+  const [tabNewIds, setTabNewIds] = useState<Set<string>>(new Set());
+  const tabBaselineRef = useRef<Record<string, string | null>>({});
+  const tabsRef = useRef(tabs);
+  const activeTabIdRef = useRef(activeTabId);
+  const indicatorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => { tabsRef.current = tabs; }, [tabs]);
+  useEffect(() => { activeTabIdRef.current = activeTabId; }, [activeTabId]);
+
+  const refreshInactiveIndicators = useCallback(async () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    const activeId = activeTabIdRef.current;
+    await Promise.all(
+      tabsRef.current.map(async (tab) => {
+        if (tab.id === activeId) return;
+        const f = tab.filters;
+        const { after, before } = resolveTimeRange(
+          (f.time_range as Preset) ?? "all",
+          f.custom_after ?? "",
+          f.custom_before ?? "",
+        );
+        const key = notificationsKey(null, f.query ?? "", 1, after, before, f.scope ?? "all");
+        try {
+          const page = await fetchNotifications(key);
+          const newest = page.items?.[0]?.received_at ?? null;
+          const baseline = tabBaselineRef.current[tab.id];
+          if (baseline === undefined) {
+            // First time we see this tab — seed its baseline, don't flag.
+            tabBaselineRef.current[tab.id] = newest;
+            return;
+          }
+          if (newest && (baseline === null || new Date(newest) > new Date(baseline))) {
+            setTabNewIds((prev) => {
+              if (prev.has(tab.id)) return prev;
+              const next = new Set(prev);
+              next.add(tab.id);
+              return next;
+            });
+          }
+        } catch {
+          // ignore — indicators are best-effort
+        }
+      }),
+    );
+  }, []);
+
+  // Debounced scheduler exposed to the SSE handler (collapses bursts).
+  useEffect(() => {
+    refreshIndicatorsRef.current = () => {
+      if (indicatorDebounceRef.current) clearTimeout(indicatorDebounceRef.current);
+      indicatorDebounceRef.current = setTimeout(() => refreshInactiveIndicators(), 800);
+    };
+  }, [refreshInactiveIndicators]);
+
+  // Seed baselines when the set of tabs changes (initial load, new tab added).
+  useEffect(() => {
+    refreshInactiveIndicators();
+  }, [tabs.length, refreshInactiveIndicators]);
+
+  // The active tab is always "read": keep its baseline at its current newest
+  // item and clear any flag as its data loads/refreshes.
+  useEffect(() => {
+    if (!activeTabId) return;
+    tabBaselineRef.current[activeTabId] = data?.items?.[0]?.received_at ?? null;
+    setTabNewIds((prev) => {
+      if (!prev.has(activeTabId)) return prev;
+      const next = new Set(prev);
+      next.delete(activeTabId);
+      return next;
+    });
+  }, [activeTabId, data]);
 
   // Drop the multi-select whenever the result set changes out from under it
   // (new search/scope/time/label), so a stale selection can't linger.
@@ -622,6 +718,7 @@ export function NotificationLog() {
           onRename={renameTab}
           onClose={deleteTab}
           onReorder={reorderTabs}
+          newTabIds={tabNewIds}
         />
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/50">
@@ -1420,6 +1517,7 @@ function LogTabBar({
   onRename,
   onClose,
   onReorder,
+  newTabIds,
 }: {
   tabs: import("@/lib/types").LogTabOut[];
   activeTabId: string | null;
@@ -1428,6 +1526,7 @@ function LogTabBar({
   onRename: (id: string, name: string) => void;
   onClose: (id: string) => void;
   onReorder: (ids: string[]) => void;
+  newTabIds: Set<string>;
 }) {
   const t = useTranslations("NotificationLog");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1474,11 +1573,12 @@ function LogTabBar({
   };
 
   return (
-    <div className="flex items-stretch gap-1 px-2 pt-1.5 border-b border-border bg-card/30 overflow-x-auto">
+    <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-muted/40 overflow-x-auto">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         const isEditing = editingId === tab.id;
         const isDragOver = dragOverId === tab.id && draggingId !== tab.id;
+        const isNew = !isActive && newTabIds.has(tab.id);
         return (
           <div
             key={tab.id}
@@ -1500,12 +1600,12 @@ function LogTabBar({
             }}
             onDragEnd={resetDrag}
             className={cn(
-              "group relative flex items-center gap-1 rounded-t-md border border-b-0 border-t-2 px-2.5 py-1.5 text-xs shrink-0 transition-colors",
+              "group relative flex items-center gap-1.5 rounded-md border px-3 py-1 text-sm shrink-0 transition-colors",
               isEditing ? "cursor-text" : "cursor-grab active:cursor-grabbing",
               isActive
-                ? "bg-primary/10 border-x-primary/40 border-t-primary text-foreground font-semibold shadow-sm -mb-px"
-                : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60",
-              isDragOver && "border-l-2 border-l-primary",
+                ? "bg-primary/15 border-primary text-foreground font-semibold shadow-sm"
+                : "bg-background border-muted-foreground/60 text-muted-foreground hover:bg-accent hover:text-foreground hover:border-muted-foreground",
+              isDragOver && "ring-2 ring-primary",
               draggingId === tab.id && "opacity-40",
             )}
             onClick={() => !editingId && onSelect(tab.id)}
@@ -1514,6 +1614,18 @@ function LogTabBar({
             aria-selected={isActive}
             title={t('tabRenameHint')}
           >
+            <Circle
+              className={cn(
+                "h-2 w-2 shrink-0 fill-current",
+                isActive
+                  ? "text-green-600 dark:text-green-400"
+                  : isNew
+                    ? "text-sky-600 dark:text-sky-400 animate-pulse"
+                    : "text-muted-foreground",
+              )}
+              aria-hidden="true"
+            />
+            {isNew && <span className="sr-only">{t('tabHasNew')}</span>}
             {isEditing ? (
               <Input
                 ref={editRef}
@@ -1525,7 +1637,7 @@ function LogTabBar({
                   if (e.key === "Enter") commitEdit();
                   else if (e.key === "Escape") setEditingId(null);
                 }}
-                className="h-5 w-28 px-1 py-0 text-xs bg-input"
+                className="h-6 w-32 px-1.5 py-0 text-sm bg-input"
                 aria-label={t('tabName')}
               />
             ) : (

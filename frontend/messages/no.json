@@ -402,7 +402,8 @@
     "deleteSavedSearch": "Slett lagret søk",
     "saveSearchFailed": "Kunne ikke lagre søket.",
     "save": "Lagre",
-    "renameSavedSearch": "Gi nytt navn til lagret søk"
+    "renameSavedSearch": "Gi nytt navn til lagret søk",
+    "tabHasNew": "Nye data"
   },
   "Theme": {
     "light": "Lys",
