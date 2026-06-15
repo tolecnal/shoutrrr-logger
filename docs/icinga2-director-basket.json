@@ -1,0 +1,234 @@
+{
+    "Datafield": {
+        "1": {
+            "varname": "shoutrrr_notifications",
+            "caption": "Forward to Shoutrrr Logger",
+            "description": "When set, host/service state-change notifications are forwarded to Shoutrrr Logger.",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeBoolean",
+            "format": null,
+            "settings": {}
+        },
+        "2": {
+            "varname": "shoutrrr_url",
+            "caption": "Shoutrrr Logger URL",
+            "description": "Base URL of the Shoutrrr Logger instance, e.g. https://logger.example.com",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "settings": {}
+        },
+        "3": {
+            "varname": "shoutrrr_token_file",
+            "caption": "Shoutrrr Logger token file",
+            "description": "Path on the Icinga host to the file containing the access token.",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "settings": {}
+        },
+        "4": {
+            "varname": "shoutrrr_insecure",
+            "caption": "Skip TLS verification",
+            "description": "Skip TLS certificate verification — enable for a self-signed / internal-CA certificate.",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeBoolean",
+            "format": null,
+            "settings": {}
+        }
+    },
+    "UserTemplate": {
+        "shoutrrr-logger-settings": {
+            "fields": [
+                {
+                    "datafield_id": 2,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 3,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 4,
+                    "is_required": "n",
+                    "var_filter": null
+                }
+            ],
+            "object_name": "shoutrrr-logger-settings",
+            "object_type": "template"
+        }
+    },
+    "Command": {
+        "shoutrrr-logger-service": {
+            "arguments": {
+                "--object-type": {
+                    "value": "service"
+                },
+                "--notification-type": {
+                    "value": "$notification.type$"
+                },
+                "--state": {
+                    "value": "$service.state$"
+                },
+                "--output": {
+                    "value": "$service.output$"
+                },
+                "--service-name": {
+                    "value": "$service.name$"
+                },
+                "--service-display-name": {
+                    "value": "$service.display_name$"
+                },
+                "--host-display-name": {
+                    "value": "$host.display_name$"
+                },
+                "--host-alias": {
+                    "value": "$host.display_name$"
+                },
+                "--host-address": {
+                    "value": "$address$"
+                },
+                "--long-date-time": {
+                    "value": "$icinga.long_date_time$"
+                },
+                "--author": {
+                    "value": "$notification.author$"
+                },
+                "--comment": {
+                    "value": "$notification.comment$"
+                },
+                "--url": {
+                    "value": "$user.vars.shoutrrr_url$"
+                },
+                "--token-file": {
+                    "value": "$user.vars.shoutrrr_token_file$"
+                },
+                "--insecure": {
+                    "set_if": "$user.vars.shoutrrr_insecure$"
+                }
+            },
+            "command": "/etc/icinga2/scripts/shoutrrr-logger.py",
+            "methods_execute": "PluginNotification",
+            "object_name": "shoutrrr-logger-service",
+            "object_type": "object",
+            "timeout": "30"
+        },
+        "shoutrrr-logger-host": {
+            "arguments": {
+                "--object-type": {
+                    "value": "host"
+                },
+                "--notification-type": {
+                    "value": "$notification.type$"
+                },
+                "--state": {
+                    "value": "$host.state$"
+                },
+                "--output": {
+                    "value": "$host.output$"
+                },
+                "--host-display-name": {
+                    "value": "$host.display_name$"
+                },
+                "--host-alias": {
+                    "value": "$host.display_name$"
+                },
+                "--host-address": {
+                    "value": "$address$"
+                },
+                "--long-date-time": {
+                    "value": "$icinga.long_date_time$"
+                },
+                "--author": {
+                    "value": "$notification.author$"
+                },
+                "--comment": {
+                    "value": "$notification.comment$"
+                },
+                "--url": {
+                    "value": "$user.vars.shoutrrr_url$"
+                },
+                "--token-file": {
+                    "value": "$user.vars.shoutrrr_token_file$"
+                },
+                "--insecure": {
+                    "set_if": "$user.vars.shoutrrr_insecure$"
+                }
+            },
+            "command": "/etc/icinga2/scripts/shoutrrr-logger.py",
+            "methods_execute": "PluginNotification",
+            "object_name": "shoutrrr-logger-host",
+            "object_type": "object",
+            "timeout": "30"
+        }
+    },
+    "User": {
+        "shoutrrr-logger": {
+            "enable_notifications": true,
+            "imports": [
+                "shoutrrr-logger-settings"
+            ],
+            "object_name": "shoutrrr-logger",
+            "object_type": "object",
+            "vars": {
+                "shoutrrr_url": "",
+                "shoutrrr_token_file": "/etc/icinga2/scripts/shoutrrr-logger.token",
+                "shoutrrr_insecure": false
+            }
+        }
+    },
+    "Notification": {
+        "shoutrrr-logger-service": {
+            "apply_to": "service",
+            "assign_filter": "service.vars.shoutrrr_notifications=true|host.vars.shoutrrr_notifications=true",
+            "command": "shoutrrr-logger-service",
+            "notification_interval": "0",
+            "object_name": "shoutrrr-logger-service",
+            "object_type": "apply",
+            "states": [
+                "OK",
+                "Warning",
+                "Critical",
+                "Unknown"
+            ],
+            "types": [
+                "Problem",
+                "Acknowledgement",
+                "Recovery",
+                "Custom",
+                "FlappingStart",
+                "FlappingEnd",
+                "DowntimeStart",
+                "DowntimeEnd",
+                "DowntimeRemoved"
+            ],
+            "users": [
+                "shoutrrr-logger"
+            ]
+        },
+        "shoutrrr-logger-host": {
+            "apply_to": "host",
+            "assign_filter": "host.vars.shoutrrr_notifications=true",
+            "command": "shoutrrr-logger-host",
+            "notification_interval": "0",
+            "object_name": "shoutrrr-logger-host",
+            "object_type": "apply",
+            "states": [
+                "Up",
+                "Down"
+            ],
+            "types": [
+                "Problem",
+                "Acknowledgement",
+                "Recovery",
+                "Custom",
+                "FlappingStart",
+                "FlappingEnd",
+                "DowntimeStart",
+                "DowntimeEnd",
+                "DowntimeRemoved"
+            ],
+            "users": [
+                "shoutrrr-logger"
+            ]
+        }
+    }
+}

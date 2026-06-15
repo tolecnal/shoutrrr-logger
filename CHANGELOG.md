@@ -23,6 +23,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Access) cap how many saved searches and open log tabs each user may keep —
   **Max saved searches per user** (default 100) and **Max notification-log tabs
   per user** (default 30). Set either to 0 for unlimited.
+- **Icinga Director basket**: The Icinga2 integration guide now ships an
+  importable Director configuration basket
+  (`docs/icinga2-director-basket.json`) containing both notification commands,
+  the notification contact (with a UserTemplate that exposes the endpoint URL,
+  token-file path and TLS-verification toggle as editable data fields), the
+  host/service apply rules, and the `shoutrrr_notifications` boolean toggle field
+  — so Director users can restore it instead of hand-building each object.
 
 ### Fixed
 - **Metadata routes 404**: The i18n proxy no longer intercepts Next.js's
