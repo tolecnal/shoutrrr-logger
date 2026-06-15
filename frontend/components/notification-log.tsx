@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import useSWR from "swr";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Download, RefreshCw, Inbox, X, ListFilter, Clock, FileJson, FileSpreadsheet, HelpCircle, Trash2, Loader2, AlertCircle, Plus, Bookmark, BookmarkPlus, Pencil, Check } from "lucide-react";
 import { fetchNotifications, fetchSettings, fetchSearchFilters, notificationsKey, exportNotificationsUrl, bulkDeleteNotifications, deleteSelectedNotifications, settingsToMap } from "@/lib/api";
-import type { NotificationOut } from "@/lib/types";
+import type { LogFilterState, NotificationOut } from "@/lib/types";
 import { usePreferences } from "@/lib/use-preferences";
 import { useLabelRules, isExcluded, LABEL_COLOR_CLASSES } from "@/lib/use-label-rules";
+import { useLogTabs, useSavedSearches, normalizeFilterState, filterStatesEqual, DEFAULT_FILTER_STATE } from "@/lib/use-log-views";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { validateQuery } from "@/lib/search-parser";
@@ -29,6 +30,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -353,6 +356,80 @@ export function NotificationLog() {
     setClientPage(1);
   }, []);
 
+  // --- Tabs & saved searches (server-backed, per-user) ---------------------
+  const {
+    tabs,
+    activeTab,
+    activeTabId,
+    setActiveTabId,
+    createTab,
+    renameTab,
+    saveTabFilters,
+    deleteTab,
+    reorderTabs,
+  } = useLogTabs(t('defaultTabName'));
+  const { searches, createSearch, renameSearch, deleteSearch } = useSavedSearches();
+
+  // The current notification-log view, assembled from the individual filter
+  // states. This is what gets persisted to the active tab and what a saved
+  // search captures. Uses the *committed* query (not the input draft).
+  const currentFilterState = useMemo<LogFilterState>(
+    () => ({
+      query,
+      scope,
+      time_range: timeRange,
+      custom_after: customAfter,
+      custom_before: customBefore,
+      active_label: activeLabel,
+      group_field: groupField,
+      group_values: Array.from(groupValues),
+    }),
+    [query, scope, timeRange, customAfter, customBefore, activeLabel, groupField, groupValues],
+  );
+
+  // Load a filter blob into the individual states (used when switching tabs or
+  // applying a saved search).
+  const applyFilterState = useCallback(
+    (raw: Partial<LogFilterState> | null | undefined) => {
+      const f = normalizeFilterState(raw);
+      setSearch(f.query);
+      setQuery(f.query);
+      setScope(f.scope);
+      setTimeRange(f.time_range as Preset);
+      setCustomAfter(f.custom_after);
+      setCustomBefore(f.custom_before);
+      setActiveLabel(f.active_label);
+      setGroupField(f.group_field);
+      setGroupValues(new Set(f.group_values));
+      resetPagination();
+    },
+    [resetPagination],
+  );
+
+  // When the active tab changes (initial load or a tab switch), load its
+  // filters into the view. Guarded by a ref so an in-tab filter edit doesn't
+  // re-trigger an apply.
+  const loadedTabIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeTab) return;
+    if (loadedTabIdRef.current === activeTab.id) return;
+    loadedTabIdRef.current = activeTab.id;
+    applyFilterState(activeTab.filters);
+  }, [activeTab, applyFilterState]);
+
+  // Persist filter edits back to the active tab, debounced. Skips when the
+  // view already matches the tab's stored filters (e.g. right after a tab
+  // switch), which also prevents a feedback loop with the apply effect above.
+  useEffect(() => {
+    if (!activeTabId || !activeTab) return;
+    if (loadedTabIdRef.current !== activeTabId) return;
+    if (filterStatesEqual(currentFilterState, activeTab.filters)) return;
+    const handle = setTimeout(() => {
+      saveTabFilters(activeTabId, currentFilterState);
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [currentFilterState, activeTabId, activeTab, saveTabFilters]);
+
   // Drop the multi-select whenever the result set changes out from under it
   // (new search/scope/time/label), so a stale selection can't linger.
   useEffect(() => {
@@ -536,13 +613,23 @@ export function NotificationLog() {
     <div className="flex flex-1 h-full">
       {/* List panel */}
       <div className="flex flex-col flex-1 min-w-0 border-r border-border">
+        {/* Tab bar */}
+        <LogTabBar
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSelect={setActiveTabId}
+          onCreate={() => createTab(t('newTabName'), DEFAULT_FILTER_STATE)}
+          onRename={renameTab}
+          onClose={deleteTab}
+          onReorder={reorderTabs}
+        />
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/50">
           <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1">
-            <SearchAutocomplete 
-              value={search} 
-              onChange={setSearch} 
-              filters={searchFilters} 
+            <SearchAutocomplete
+              value={search}
+              onChange={setSearch}
+              filters={searchFilters}
               inputRef={searchInputRef}
             />
             <Button type="submit" size="sm" variant="secondary" className="h-8 gap-1.5">
@@ -562,6 +649,14 @@ export function NotificationLog() {
               </Button>
             )}
           </form>
+          <SavedSearchMenu
+            searches={searches}
+            canSave={!!currentFilterState.query || currentFilterState.scope !== "all" || currentFilterState.time_range !== "all" || currentFilterState.active_label !== null || currentFilterState.group_field !== null}
+            onApply={(s) => applyFilterState(s.filters)}
+            onSave={(name) => createSearch(name, currentFilterState)}
+            onRename={renameSearch}
+            onDelete={deleteSearch}
+          />
           <Button
             size="sm"
             variant="ghost"
@@ -1314,6 +1409,377 @@ function GroupByControl({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function LogTabBar({
+  tabs,
+  activeTabId,
+  onSelect,
+  onCreate,
+  onRename,
+  onClose,
+  onReorder,
+}: {
+  tabs: import("@/lib/types").LogTabOut[];
+  activeTabId: string | null;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+  onRename: (id: string, name: string) => void;
+  onClose: (id: string) => void;
+  onReorder: (ids: string[]) => void;
+}) {
+  const t = useTranslations("NotificationLog");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (editingId && editRef.current) {
+      editRef.current.focus();
+      editRef.current.select();
+    }
+  }, [editingId]);
+
+  const beginEdit = (id: string, name: string) => {
+    setEditingId(id);
+    setDraft(name);
+  };
+
+  const commitEdit = () => {
+    if (editingId) {
+      const name = draft.trim();
+      if (name) onRename(editingId, name);
+    }
+    setEditingId(null);
+  };
+
+  const resetDrag = () => {
+    setDraggingId(null);
+    setDragOverId(null);
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!draggingId || draggingId === targetId) return resetDrag();
+    const ids = tabs.map((tb) => tb.id);
+    const from = ids.indexOf(draggingId);
+    if (from === -1) return resetDrag();
+    ids.splice(from, 1);
+    const insertAt = ids.indexOf(targetId); // insert before the drop target
+    ids.splice(insertAt === -1 ? ids.length : insertAt, 0, draggingId);
+    onReorder(ids);
+    resetDrag();
+  };
+
+  return (
+    <div className="flex items-stretch gap-1 px-2 pt-1.5 border-b border-border bg-card/30 overflow-x-auto">
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTabId;
+        const isEditing = editingId === tab.id;
+        const isDragOver = dragOverId === tab.id && draggingId !== tab.id;
+        return (
+          <div
+            key={tab.id}
+            draggable={!isEditing}
+            onDragStart={(e) => {
+              setDraggingId(tab.id);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              if (!draggingId) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDragOverId(tab.id);
+            }}
+            onDragLeave={() => setDragOverId((cur) => (cur === tab.id ? null : cur))}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(tab.id);
+            }}
+            onDragEnd={resetDrag}
+            className={cn(
+              "group relative flex items-center gap-1 rounded-t-md border border-b-0 border-t-2 px-2.5 py-1.5 text-xs shrink-0 transition-colors",
+              isEditing ? "cursor-text" : "cursor-grab active:cursor-grabbing",
+              isActive
+                ? "bg-primary/10 border-x-primary/40 border-t-primary text-foreground font-semibold shadow-sm -mb-px"
+                : "bg-muted/30 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60",
+              isDragOver && "border-l-2 border-l-primary",
+              draggingId === tab.id && "opacity-40",
+            )}
+            onClick={() => !editingId && onSelect(tab.id)}
+            onDoubleClick={() => beginEdit(tab.id, tab.name)}
+            role="tab"
+            aria-selected={isActive}
+            title={t('tabRenameHint')}
+          >
+            {isEditing ? (
+              <Input
+                ref={editRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commitEdit}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  else if (e.key === "Escape") setEditingId(null);
+                }}
+                className="h-5 w-28 px-1 py-0 text-xs bg-input"
+                aria-label={t('tabName')}
+              />
+            ) : (
+              <span className="max-w-[12rem] truncate">{tab.name}</span>
+            )}
+            {tabs.length > 1 && !isEditing && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose(tab.id);
+                }}
+                className="ml-0.5 rounded p-0.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-opacity"
+                aria-label={t('closeTab')}
+                title={t('closeTab')}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        onClick={onCreate}
+        className="flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors shrink-0 self-center"
+        aria-label={t('newTab')}
+        title={t('newTab')}
+      >
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function SavedSearchMenu({
+  searches,
+  canSave,
+  onApply,
+  onSave,
+  onRename,
+  onDelete,
+}: {
+  searches: import("@/lib/types").SavedSearchOut[];
+  canSave: boolean;
+  onApply: (s: import("@/lib/types").SavedSearchOut) => void;
+  onSave: (name: string) => Promise<unknown>;
+  onRename: (id: string, name: string) => Promise<unknown>;
+  onDelete: (id: string) => void;
+}) {
+  const t = useTranslations("NotificationLog");
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+
+  const beginRename = (id: string, current: string) => {
+    setEditingId(id);
+    setEditDraft(current);
+  };
+
+  const commitRename = async () => {
+    const id = editingId;
+    const trimmed = editDraft.trim();
+    setEditingId(null);
+    if (!id || !trimmed) return;
+    const existing = searches.find((s) => s.id === id);
+    if (!existing || existing.name === trimmed) return;
+    try {
+      await onRename(id, trimmed);
+    } catch (err) {
+      toast({
+        title: t('saveSearchFailed'),
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(trimmed);
+      setSaveOpen(false);
+      setName("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('saveSearchFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            title={t('savedSearches')}
+            aria-label={t('savedSearches')}
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>{t('savedSearches')}</DropdownMenuLabel>
+          <DropdownMenuItem
+            disabled={!canSave}
+            onSelect={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              setError(null);
+              setSaveOpen(true);
+            }}
+            className="gap-2"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5" />
+            {t('saveCurrentSearch')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {searches.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-muted-foreground">{t('noSavedSearches')}</p>
+          ) : (
+            <div className="max-h-64 overflow-y-auto">
+              {searches.map((s) => {
+                const isEditing = editingId === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    className="group flex items-center gap-1 rounded-sm px-2 py-1.5 text-sm hover:bg-muted/50"
+                  >
+                    {isEditing ? (
+                      <>
+                        <Input
+                          autoFocus
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          onBlur={commitRename}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitRename();
+                            } else if (e.key === "Escape") {
+                              setEditingId(null);
+                            }
+                          }}
+                          className="h-6 flex-1 px-1 py-0 text-sm bg-input"
+                          aria-label={t('renameSavedSearch')}
+                        />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={commitRename}
+                          className="rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                          aria-label={t('save')}
+                          title={t('save')}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="flex-1 truncate text-left"
+                          onClick={() => {
+                            onApply(s);
+                            setOpen(false);
+                          }}
+                          title={s.name}
+                        >
+                          {s.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            beginRename(s.id, s.name);
+                          }}
+                          className="rounded p-0.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-opacity"
+                          aria-label={t('renameSavedSearch')}
+                          title={t('renameSavedSearch')}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(s.id);
+                          }}
+                          className="rounded p-0.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-destructive transition-opacity"
+                          aria-label={t('deleteSavedSearch')}
+                          title={t('deleteSavedSearch')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent className="max-w-sm bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">{t('saveSearchTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="saved-search-name" className="text-xs text-muted-foreground">
+              {t('searchName')}
+            </label>
+            <Input
+              id="saved-search-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSave();
+                }
+              }}
+              placeholder={t('searchNamePlaceholder')}
+              className="h-8 text-sm bg-input"
+              autoFocus
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setSaveOpen(false)} disabled={saving}>
+              {t('cancel')}
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving || !name.trim()}>
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+              {t('save')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

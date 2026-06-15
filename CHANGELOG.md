@@ -7,6 +7,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Notification-log tabs**: The notification log now supports multiple named
+  tabs, each holding its own independent search (query, scope, time range,
+  label filter and grouping). Tabs are stored server-side per user, so they
+  survive logout, session expiry and switching browser/device. Rename a tab by
+  double-clicking it, drag tabs to reorder them, and the focused tab is
+  remembered locally between visits.
+- **Saved searches**: Save the current notification-log view (its full filter
+  state) under a name and re-apply, rename, or delete it any time from the
+  "Saved searches" dropdown in the log toolbar. Saved searches are per-user and
+  stored server side. Backed by new `/api/v1/me/tabs` and
+  `/api/v1/me/saved-searches` endpoints.
+- **Configurable per-user limits**: Two new admin settings (Admin → Settings →
+  Access) cap how many saved searches and open log tabs each user may keep —
+  **Max saved searches per user** (default 100) and **Max notification-log tabs
+  per user** (default 30). Set either to 0 for unlimited.
+
 ### Fixed
 - **Metadata routes 404**: The i18n proxy no longer intercepts Next.js's
   extension-less metadata routes (`/icon`, `/apple-icon`). They were being

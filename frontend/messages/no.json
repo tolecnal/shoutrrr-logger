@@ -386,7 +386,23 @@
       "regexTitle": "Regulære uttrykk",
       "regexDesc": "Full støtte for POSIX regulære uttrykk.",
       "regexComment": "// treffer ett av dem"
-    }
+    },
+    "defaultTabName": "Logg",
+    "newTabName": "Ny fane",
+    "newTab": "Ny fane",
+    "closeTab": "Lukk fane",
+    "tabName": "Fanenavn",
+    "tabRenameHint": "Dobbeltklikk for å gi nytt navn",
+    "savedSearches": "Lagrede søk",
+    "saveCurrentSearch": "Lagre gjeldende søk …",
+    "saveSearchTitle": "Lagre søk",
+    "searchName": "Navn",
+    "searchNamePlaceholder": "f.eks. Kritisk fra Icinga2",
+    "noSavedSearches": "Ingen lagrede søk ennå.",
+    "deleteSavedSearch": "Slett lagret søk",
+    "saveSearchFailed": "Kunne ikke lagre søket.",
+    "save": "Lagre",
+    "renameSavedSearch": "Gi nytt navn til lagret søk"
   },
   "Theme": {
     "light": "Lys",

@@ -22,6 +22,7 @@ A self-hosted notification logging service for [shoutrrr](https://containrrr.dev
   - [Rate limiting](#rate-limiting)
 - [Watchtower integration](#watchtower-integration)
 - [Advanced Search](#advanced-search)
+  - [Tabs and saved searches](#tabs-and-saved-searches)
 - [User roles](#user-roles)
 - [Preferences](#preferences)
 - [Alerts](#alerts)
@@ -550,6 +551,21 @@ The notification log features a powerful search bar with auto-complete and advan
 - **Free-text**: Any terms without prefixes search across the title, message, and sender name simultaneously.
 
 Queries can be mixed and matched: `severity:error tag:prod /timeout/ after:1h`
+
+### Tabs and saved searches
+
+- **Tabs** — open multiple named tabs in the notification log, each with its
+  own independent search (query, scope, time range, label filter and
+  grouping). Useful for watching several systems at once. Double-click a tab to
+  rename it and drag tabs to reorder them. Tabs are stored per user on the
+  server, so they reopen after a session times out or you log in from another
+  browser/device.
+- **Saved searches** — save the current view's full filter state under a name
+  and re-apply, rename, or delete it any time from the **Saved searches**
+  dropdown in the log toolbar. Also per-user and server-stored.
+
+Admins can cap how many saved searches and tabs each user may keep under
+**Admin → Settings → Access** (0 = unlimited).
 
 ---
 

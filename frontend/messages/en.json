@@ -386,7 +386,23 @@
       "regexTitle": "Regular Expressions",
       "regexDesc": "Full POSIX regular expression support.",
       "regexComment": "// matches either"
-    }
+    },
+    "defaultTabName": "Log",
+    "newTabName": "New tab",
+    "newTab": "New tab",
+    "closeTab": "Close tab",
+    "tabName": "Tab name",
+    "tabRenameHint": "Double-click to rename",
+    "savedSearches": "Saved searches",
+    "saveCurrentSearch": "Save current search…",
+    "saveSearchTitle": "Save search",
+    "searchName": "Name",
+    "searchNamePlaceholder": "e.g. Critical from Icinga2",
+    "noSavedSearches": "No saved searches yet.",
+    "deleteSavedSearch": "Delete saved search",
+    "saveSearchFailed": "Couldn't save the search.",
+    "save": "Save",
+    "renameSavedSearch": "Rename saved search"
   },
   "Theme": {
     "light": "Light",

@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repositories.settings import SettingsRepository, settings_repository
+from schemas import MAX_LOG_TABS_PER_USER, MAX_SAVED_SEARCHES_PER_USER
 
 # Returned by GET /settings and /admin/settings in place of a configured
 # secret's real value, and accepted by PATCH /admin/settings to mean "leave
@@ -76,6 +77,30 @@ KNOWN_SETTINGS: list[SettingMeta] = [
         min_value=0,
         max_value=100,
         unit="profiles",
+    ),
+    SettingMeta(
+        key="max_saved_searches_per_user",
+        label="Max saved searches per user",
+        description=(
+            "Maximum number of saved notification-log searches each user may "
+            "keep. Set to 0 for unlimited."
+        ),
+        default=MAX_SAVED_SEARCHES_PER_USER,
+        min_value=0,
+        max_value=1000,
+        unit="searches",
+    ),
+    SettingMeta(
+        key="max_log_tabs_per_user",
+        label="Max notification-log tabs per user",
+        description=(
+            "Maximum number of open notification-log tabs each user may keep. "
+            "Set to 0 for unlimited."
+        ),
+        default=MAX_LOG_TABS_PER_USER,
+        min_value=0,
+        max_value=200,
+        unit="tabs",
     ),
     SettingMeta(
         key="user_external_delivery_enabled",

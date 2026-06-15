@@ -3,9 +3,9 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from models import UserRole
 
@@ -539,3 +539,97 @@ class TemplatePreviewRequest(BaseModel):
 
 class TemplatePreviewResponse(BaseModel):
     html: str
+
+
+# ---------------------------------------------------------------------------
+# Saved searches & log tabs (per-user notification-log views)
+# ---------------------------------------------------------------------------
+# Default per-user caps. These are the defaults for the admin-configurable
+# "max_saved_searches_per_user" / "max_log_tabs_per_user" settings (see
+# services.settings.KNOWN_SETTINGS); the live limit is read from settings at
+# request time, with 0 meaning unlimited.
+MAX_SAVED_SEARCHES_PER_USER = 100
+MAX_LOG_TABS_PER_USER = 30
+
+
+class LogFilterState(BaseModel):
+    """The full notification-log filter state captured by a tab or saved search.
+
+    Field names mirror the frontend's serialized view so the same blob round
+    trips without translation. All fields are optional with sensible defaults
+    so older/partial blobs still load.
+    """
+
+    query: str = ""
+    scope: Literal["all", "global", "mine"] = "all"
+    time_range: str = "all"
+    custom_after: str = ""
+    custom_before: str = ""
+    active_label: str | None = None
+    group_field: str | None = None
+    group_values: list[str] = Field(default_factory=list)
+
+    # Reject obviously oversized inputs (the query is also bounded client- and
+    # server-side by the search parser's MAX_TOKENS).
+    @field_validator("query", "time_range", "custom_after", "custom_before")
+    @classmethod
+    def _bounded_str(cls, v: str) -> str:
+        if len(v) > 2000:
+            raise ValueError("value too long")
+        return v
+
+    @field_validator("group_values")
+    @classmethod
+    def _bounded_values(cls, v: list[str]) -> list[str]:
+        if len(v) > 200:
+            raise ValueError("too many group values")
+        return v
+
+    model_config = {"extra": "ignore"}
+
+
+class SavedSearchCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    filters: LogFilterState = Field(default_factory=LogFilterState)
+
+
+class SavedSearchUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    filters: LogFilterState | None = None
+
+
+class SavedSearchOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    filters: LogFilterState
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LogTabCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    filters: LogFilterState = Field(default_factory=LogFilterState)
+
+
+class LogTabUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    filters: LogFilterState | None = None
+
+
+class LogTabOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    filters: LogFilterState
+    position: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LogTabReorder(BaseModel):
+    """New left-to-right ordering for the caller's tabs, as an ordered id list."""
+
+    ids: list[uuid.UUID]

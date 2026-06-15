@@ -470,3 +470,62 @@ class PluginUsageDaily(Base):
             unique=True,
         ),
     )
+
+
+class SavedSearch(Base):
+    """A user's named, reusable notification-log search.
+
+    Captures the full notification-log filter state (query text, scope, time
+    range, active label, grouping) as a JSON blob so the exact view can be
+    restored on demand. Personal to the owning user.
+    """
+
+    __tablename__ = "saved_searches"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The notification-log filter state — see schemas.LogFilterState
+    filters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (Index("ix_saved_searches_user_name", "user_id", "name", unique=True),)
+
+
+class LogTab(Base):
+    """A user's open notification-log tab.
+
+    Tabs are the user's persistent working views: each holds a name and the
+    same filter blob as a SavedSearch, plus a position for left-to-right
+    ordering. They survive logout/session expiry because they are stored
+    server-side per user (not in the browser).
+    """
+
+    __tablename__ = "log_tabs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # The notification-log filter state — see schemas.LogFilterState
+    filters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # Left-to-right ordering within the user's tab bar
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (Index("ix_log_tabs_user_position", "user_id", "position"),)

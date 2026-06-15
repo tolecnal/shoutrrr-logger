@@ -91,6 +91,43 @@ export interface VersionInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Saved searches & log tabs (per-user notification-log views)
+// ---------------------------------------------------------------------------
+
+/**
+ * The full notification-log filter state captured by a tab or saved search.
+ * Mirrors the backend's LogFilterState (snake_case) so the blob round-trips
+ * without translation. All fields optional with sensible defaults.
+ */
+export interface LogFilterState {
+  query: string;
+  scope: "all" | "global" | "mine";
+  time_range: string;
+  custom_after: string;
+  custom_before: string;
+  active_label: string | null;
+  group_field: string | null;
+  group_values: string[];
+}
+
+export interface SavedSearchOut {
+  id: string;
+  name: string;
+  filters: LogFilterState;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LogTabOut {
+  id: string;
+  name: string;
+  filters: LogFilterState;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
 export interface SettingOut {

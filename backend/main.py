@@ -41,11 +41,13 @@ from routers import (
     alerts,
     api_metrics,
     audit_logs,
+    log_tabs,
     me,
     monitoring,
     notifications,
     plugins,
     routing_rules,
+    saved_searches,
     shoutrrr,
     tokens,
     user_plugins,
@@ -277,6 +279,8 @@ app.include_router(user_plugins.router, prefix=_V1)
 app.include_router(settings_router.public_router, prefix=_V1)
 app.include_router(settings_router.admin_router, prefix=_V1)
 app.include_router(me.router, prefix=_V1)
+app.include_router(saved_searches.router, prefix=_V1)
+app.include_router(log_tabs.router, prefix=_V1)
 app.include_router(api_metrics.router, prefix=_V1)
 app.include_router(alerts.router, prefix=_V1)
 

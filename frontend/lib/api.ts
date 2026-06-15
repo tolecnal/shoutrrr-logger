@@ -449,3 +449,36 @@ export const testAlertEmail = (body: Partial<import("./types").AlertRuleOut> & {
 
 export const previewTemplate = (body: { template: string, notification_id?: string }) =>
   apiFetch<{ html: string }>("/alerts/preview-template", { method: "POST", body: JSON.stringify(body) });
+
+// ---- Saved searches & log tabs (per-user notification-log views) ----
+export const fetchSavedSearches = () =>
+  apiFetch<import("./types").SavedSearchOut[]>("/me/saved-searches");
+
+export const createSavedSearch = (body: { name: string; filters: import("./types").LogFilterState }) =>
+  apiFetch<import("./types").SavedSearchOut>("/me/saved-searches", { method: "POST", body: JSON.stringify(body) });
+
+export const updateSavedSearch = (
+  id: string,
+  body: { name?: string; filters?: import("./types").LogFilterState },
+) =>
+  apiFetch<import("./types").SavedSearchOut>(`/me/saved-searches/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const deleteSavedSearch = (id: string) =>
+  apiFetch<void>(`/me/saved-searches/${id}`, { method: "DELETE" });
+
+export const fetchLogTabs = () => apiFetch<import("./types").LogTabOut[]>("/me/tabs");
+
+export const createLogTab = (body: { name: string; filters: import("./types").LogFilterState }) =>
+  apiFetch<import("./types").LogTabOut>("/me/tabs", { method: "POST", body: JSON.stringify(body) });
+
+export const updateLogTab = (
+  id: string,
+  body: { name?: string; filters?: import("./types").LogFilterState },
+) =>
+  apiFetch<import("./types").LogTabOut>(`/me/tabs/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const deleteLogTab = (id: string) =>
+  apiFetch<void>(`/me/tabs/${id}`, { method: "DELETE" });
+
+export const reorderLogTabs = (ids: string[]) =>
+  apiFetch<import("./types").LogTabOut[]>("/me/tabs/order", { method: "PUT", body: JSON.stringify({ ids }) });
