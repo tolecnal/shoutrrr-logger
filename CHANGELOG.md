@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-06-16
+
 ### Fixed
 - **Session expiry no longer dead-ends the user.** When a session timed out, the
   protected pages redirected through the next-intl router to `/api/auth/login`,
