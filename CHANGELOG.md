@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Session expiry no longer dead-ends the user.** When a session timed out, the
+  protected pages redirected through the next-intl router to `/api/auth/login`,
+  which prefixed the active locale (`/en/api/auth/login`) — a route that does
+  not exist and is not proxied to the backend, so a manual refresh 404'd.
+  Login redirects now perform a real full-page navigation to the backend OIDC
+  route. Additionally, any authenticated API call that returns `401` (e.g. a
+  background notification-log poll after the session expired) now transparently
+  bounces the user through the login flow instead of surfacing a raw
+  "Not authenticated" banner and leaving them stuck.
+
 ## [1.1.0] — 2026-06-15
 
 ### Added

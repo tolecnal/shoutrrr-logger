@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
+import { redirectToLogin } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
 import { StatsPanel } from "@/components/stats-panel";
 import { PluginStatsPanel } from "@/components/plugin-stats-panel";
@@ -10,11 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StatsPage() {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) router.replace("/api/auth/login");
-  }, [user, isLoading, router]);
+    if (!isLoading && !user) redirectToLogin();
+  }, [user, isLoading]);
 
   if (isLoading) {
     return (

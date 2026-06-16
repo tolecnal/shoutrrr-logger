@@ -21,6 +21,33 @@ const BASE = "/api/v1";
 // Unversioned base for endpoints that will never change (health, version, auth)
 const BASE_UNVERSIONED = "/api";
 
+// Backend route that starts the OIDC login flow (302 → identity provider).
+// This is NOT a localized Next.js app route, so navigation to it MUST be a full
+// browser navigation. Routing here through the next-intl router would prefix the
+// active locale (e.g. /en/api/auth/login), which has no page and is not proxied
+// to the backend — producing a 404.
+export const LOGIN_PATH = `${BASE_UNVERSIONED}/auth/login`;
+
+// Error carrying the HTTP status so callers can distinguish e.g. 401 vs 404.
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+// Send the browser to the login flow. Guarded so a burst of failing requests
+// (e.g. SWR + SSE polling all 401-ing at once on session expiry) triggers a
+// single navigation rather than fighting over window.location.
+let redirectingToLogin = false;
+export function redirectToLogin(): void {
+  if (typeof window === "undefined" || redirectingToLogin) return;
+  redirectingToLogin = true;
+  window.location.href = LOGIN_PATH;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
@@ -28,6 +55,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
+    // A 401 from an authenticated API call means the session expired or was
+    // invalidated mid-use. Rather than surfacing a raw "Not authenticated"
+    // banner (and leaving the user stuck), bounce them through the login flow —
+    // if their IdP SSO session is still alive this re-authenticates silently.
+    if (res.status === 401) {
+      redirectToLogin();
+    }
     const text = await res.text().catch(() => res.statusText);
     let detail: string | undefined;
     try {
@@ -36,7 +70,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // not JSON — fall through to raw text
     }
-    throw new Error(detail || text || `HTTP ${res.status}`);
+    throw new ApiError(detail || text || `HTTP ${res.status}`, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

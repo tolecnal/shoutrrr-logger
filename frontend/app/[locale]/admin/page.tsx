@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
+import { redirectToLogin } from "@/lib/api";
 import { AdminPanel } from "@/components/admin-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { ShieldAlert } from "lucide-react";
@@ -11,13 +11,12 @@ import { useTranslations } from "next-intl";
 export default function AdminPage() {
   const t = useTranslations("Admin");
   const { user, isLoading } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/api/auth/login");
+      redirectToLogin();
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading]);
 
   if (isLoading) {
     return (

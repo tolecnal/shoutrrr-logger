@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "@/i18n/routing";
 import { useAuth } from "@/lib/auth-context";
+import { redirectToLogin } from "@/lib/api";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiPerformancePanel } from "@/components/api-performance-panel";
 
@@ -11,7 +12,7 @@ export default function PerformancePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) router.replace("/api/auth/login");
+    if (!isLoading && !user) redirectToLogin();
     if (!isLoading && user && user.role !== "admin") router.replace("/log");
   }, [user, isLoading, router]);
 
