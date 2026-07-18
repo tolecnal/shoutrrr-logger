@@ -107,7 +107,8 @@ class AlertsRepository:
 
         matched = []
         try:
-            pattern = re.compile(match_pattern, re.IGNORECASE) if match_type == "regex" else None
+            safe_pattern = re.escape(match_pattern) if match_type == "regex" else None
+            pattern = re.compile(safe_pattern, re.IGNORECASE) if safe_pattern is not None else None
         except re.error:
             return [], 0
 
