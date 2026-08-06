@@ -1,6 +1,6 @@
 [project]
 name = "shoutrrr-logger-backend"
-version = "1.1.1"
+version = "1.2.0"
 description = "Backend API for shoutrrr-logger"
 requires-python = ">=3.12"
 dependencies = [
