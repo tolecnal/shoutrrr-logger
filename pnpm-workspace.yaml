@@ -1,17 +1,38 @@
 packages:
   - "frontend"
 
-# postcss <8.5.10 bundled by next/autoprefixer is vulnerable to XSS via
-# unescaped </style> in stringified output (GHSA-qx2v-qp2m-jg93). Force
-# every resolution to the patched line.
+# postcss <8.5.23 bundled by next/autoprefixer/@tailwindcss/postcss is
+# vulnerable to XSS via unescaped </style> in stringified output
+# (GHSA-qx2v-qp2m-jg93) and to an arbitrary .map file read via an
+# attacker-controlled sourceMappingURL when `from` is unset
+# (GHSA-fxqj-rqcc-2cmp). Force every resolution to the patched line.
 #
 # esbuild <0.28.1 (pulled transitively via vitest → vite) has a Windows-only
 # path-traversal in its dev server allowing arbitrary file reads from the
 # served directory. We never run esbuild's dev server, but force the patched
 # line to clear the advisory and protect anyone on Windows who might.
+#
+# js-yaml <4.3.0 (via @eslint/eslintrc) allows YAML merge-key chains to force
+# quadratic CPU consumption (GHSA-52cp-r559-cp3m).
+#
+# brace-expansion is reached through two incompatible major lines —
+# minimatch@3 needs 1.x, minimatch@10 needs 5.x — so each line is pinned to
+# its own patched release rather than collapsed onto one version. Both lines
+# are affected by the same three DoS advisories: exponential-time expansion
+# of consecutive non-expanding {} groups (GHSA-3jxr-9vmj-r5cp), unbounded
+# expansion length causing OOM (GHSA-mh99-v99m-4gvg), and unbounded
+# intermediate arrays bypassing the CVE-2026-14257 mitigation
+# (GHSA-rgw5-rvv9-x895).
+#
+# sharp <0.35.0 inherits four libvips CVEs (GHSA-f88m-g3jw-g9cj). It needs no
+# override here: next 16.3.0 declares sharp ^0.35.3, so the patched line
+# resolves naturally. Do not downgrade next below 16.3.0 without adding one.
 overrides:
-  postcss: ^8.5.10
+  postcss: ^8.5.23
   esbuild: ^0.28.1
+  js-yaml: ^4.3.0
+  brace-expansion@1: ^1.1.18
+  brace-expansion@>=4: ^5.0.9
 
 # pnpm 10+ skips install/postinstall scripts by default. These are trusted
 # build steps (native binary downloads/compilation) required for Next.js

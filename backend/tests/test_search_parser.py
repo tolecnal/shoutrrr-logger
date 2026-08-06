@@ -1,6 +1,14 @@
 import pytest
 
-from utils.search_parser import MAX_TOKENS, AndNode, NotNode, OrNode, TermNode, parse_query
+from utils.search_parser import (
+    MAX_QUERY_LENGTH,
+    MAX_TOKENS,
+    AndNode,
+    NotNode,
+    OrNode,
+    TermNode,
+    parse_query,
+)
 
 
 def test_parse_simple_term():
@@ -134,6 +142,33 @@ def test_deep_query_at_limit_parses_without_error():
     # A query right at the cap must parse cleanly (no RecursionError).
     ast = parse_query(" ".join(["x"] * MAX_TOKENS))
     assert ast is not None
+
+
+def test_overlong_query_raises():
+    # MAX_TOKENS only applies after tokenizing, so the raw string needs its own
+    # bound to cap the tokenizer scan. Rejected before the regex sees it.
+    with pytest.raises(ValueError, match="too long"):
+        parse_query("x" * (MAX_QUERY_LENGTH + 1))
+
+
+def test_query_at_length_limit_parses_without_error():
+    # A single term exactly at the cap is still a valid query.
+    ast = parse_query("x" * MAX_QUERY_LENGTH)
+    assert isinstance(ast, TermNode)
+    assert ast.value == "x" * MAX_QUERY_LENGTH
+
+
+def test_field_prefix_scan_is_not_quadratic():
+    # Regression guard for py/polynomial-redos: a long unterminated field-prefix
+    # run (word characters with no closing ':') must not blow up the tokenizer.
+    # Linear behaviour keeps this far under the timeout; the pre-fix backtracking
+    # was O(n) of dead retries per token.
+    import time
+
+    start = time.perf_counter()
+    for _ in range(50):
+        parse_query("0" * MAX_QUERY_LENGTH)
+    assert time.perf_counter() - start < 5.0
 
 
 def test_quoted_phrase_marked_exact_unquoted_not():
