@@ -25,6 +25,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   The length cap previously existed only in the `/notifications` `q` parameter
   and the saved-search schema — a caller's contract rather than the parser's.
   Query matching behaviour is unchanged.
+- **Container no longer ships an end-of-life Node.** The runtime installed
+  Debian's `nodejs` package, which on trixie is Node 20 — past end of life and
+  no longer receiving security updates. Node now comes from the official
+  `node:24-trixie-slim` image, matching the major the frontend is built and
+  tested against.
+
+### Fixed
+- **Image optimization was broken inside the container.** The frontend was
+  built on `node:24-alpine` (musl) while the runtime is `python:3.14-slim`
+  (Debian/glibc). Next traces `sharp` into the standalone bundle, so the
+  musl-only prebuilt (`@img/sharp-linuxmusl-x64`) was copied into a glibc
+  image, where it could not load at all: *"Could not load the sharp module
+  using the linux-x64 runtime."* The builder is now `node:24-trixie-slim`, the
+  same distro and glibc as the runtime, so the correct prebuilt is selected
+  and `sharp` loads (libvips 8.18.3). This never surfaced in practice because
+  nothing renders `next/image` yet — the `/icon` and `/apple-icon` routes are
+  generated at build time, where `sharp` worked — but any future use of
+  `next/image` would have failed in production while working locally.
 
 ### Changed
 - **Next.js 16.2.11 → 16.3.0.** Next 16.2 pins `sharp` to `^0.34.5`, which
@@ -39,6 +57,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `globals` — both declared but never imported since the flat config was
   reduced to spreading `eslint-config-next` — this removes 62 packages from
   the install tree and clears all outstanding peer-dependency warnings.
+- **pnpm 11.6.0 → 11.20.0**, pinned by integrity hash in the workspace root's
+  `packageManager` field and activated by corepack. The lockfile is unchanged
+  by the upgrade and still installs cleanly under `--frozen-lockfile`.
 
 ## [1.1.1] — 2026-06-16
 

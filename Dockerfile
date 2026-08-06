@@ -3,7 +3,14 @@
 # ============================================================
 # Stage 1 – Build the Next.js frontend
 # ============================================================
-FROM node:24-alpine AS frontend-builder
+# Must match the runtime stage's libc. Next traces `sharp` into the standalone
+# bundle, and pnpm resolves sharp's prebuilt binary per platform: an Alpine
+# builder selects @img/sharp-linuxmusl-x64, which is then copied into the
+# glibc runtime below and fails to load ("Could not load the sharp module
+# using the linux-x64 runtime"). Debian trixie here matches python:3.14-slim
+# exactly — same distro, same glibc — so the glibc prebuild is selected and
+# loads in the runtime. Do not move this to Alpine.
+FROM node:24-trixie-slim AS frontend-builder
 
 # `frontend/` is a member of the pnpm workspace rooted here — install MUST
 # run from the workspace root. Installing from frontend/ alone makes pnpm
@@ -74,10 +81,19 @@ FROM python:3.14-slim AS runtime
 # Minimal system runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    nodejs \
     # curl for health-checks
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Node for the Next.js server (docker-entrypoint.sh runs `node server.js`).
+# Taken from the official image rather than Debian's `nodejs` package, which
+# on trixie is Node 20 — past end-of-life and no longer receiving security
+# updates. This also keeps the runtime on the same major the frontend was
+# built and tested with instead of silently running it on an older one. The
+# node binary is self-contained against this base's shared libraries, so
+# copying it alone is enough; the image tag must stay in step with the
+# frontend-builder stage above.
+COPY --from=node:24-trixie-slim /usr/local/bin/node /usr/local/bin/node
 
 # Non-root runtime user. Both servers bind unprivileged ports (4000/9000)
 # and only log to stdout, so nothing needs root at runtime.
