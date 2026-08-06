@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-08-06
+
 ### Security
 - **All open Dependabot advisories resolved.** Nine alerts across four
   transitive packages: `postcss` (arbitrary `.map` file read via an
