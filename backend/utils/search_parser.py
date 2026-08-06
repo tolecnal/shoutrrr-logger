@@ -42,6 +42,15 @@ class ParseError(Exception):
 # RecursionError. Also keeps the generated SQL boolean tree a sane size.
 MAX_TOKENS = 200
 
+# Upper bound on the raw query string, enforced before the tokenizer regex ever
+# sees it. MAX_TOKENS only applies *after* tokenizing, so on its own it bounds
+# the AST but not the scan that builds it. Callers already cap `q` at 2000
+# characters (the /notifications `q` query param and the saved-search filter
+# schema), but that is the caller's contract, not this module's: enforcing the
+# same bound here keeps the parser safe for any future call site and caps the
+# tokenizer's worst-case work regardless of who invokes it.
+MAX_QUERY_LENGTH = 2000
+
 
 T_AND = "AND"
 T_OR = "OR"
@@ -67,14 +76,22 @@ class Token:
 # Double quote: "..."
 # Single quote: '...'
 # Unquoted: ...
+#
+# The field-prefix runs use a possessive quantifier (`++`) rather than a plain
+# `+`. `[a-zA-Z0-9_]+` already consumes the maximal run of word characters, so
+# any backtracked (shorter) match is by construction followed by another word
+# character and never the `:` the pattern requires — retrying those positions
+# can only ever fail. Making it possessive drops that dead search, which was
+# O(token length) of wasted backtracking per token and the polynomial factor
+# CodeQL flags as py/polynomial-redos. Match semantics are unchanged.
 TOKEN_REGEX = re.compile(
     r"(?P<LPAREN>\()|"
     r"(?P<RPAREN>\))|"
     r"(?P<AND>\bAND\b)|"
     r"(?P<OR>\bOR\b)|"
     r"(?P<NOT>\bNOT\b|-)|"
-    r"(?P<TERM_EXPR>(?P<key>[a-zA-Z0-9_]+:)?(?:/(?P<regex>(?:\\/|[^/])+)/|\"(?P<dquote>(?:\\\"|[^\"])+)\"|'(?P<squote>(?:\\'|[^'])+)'|(?P<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\s\(\)\/\"'][^\s\(\)]*)))|"
-    r"(?P<KEY_ONLY>[a-zA-Z0-9_]+:)|"
+    r"(?P<TERM_EXPR>(?P<key>[a-zA-Z0-9_]++:)?(?:/(?P<regex>(?:\\/|[^/])+)/|\"(?P<dquote>(?:\\\"|[^\"])+)\"|'(?P<squote>(?:\\'|[^'])+)'|(?P<unquoted>(?!(?:title|message|sender|severity|tag|after|before):)[^\s\(\)\/\"'][^\s\(\)]*)))|"
+    r"(?P<KEY_ONLY>[a-zA-Z0-9_]++:)|"
     r"(?P<WS>\s+)",
     re.IGNORECASE,
 )
@@ -221,6 +238,10 @@ def parse_query(query: str) -> ASTNode | None:
     """
     if not query or not query.strip():
         return None
+    if len(query) > MAX_QUERY_LENGTH:
+        raise ValueError(
+            f"Invalid search query: Query too long (max {MAX_QUERY_LENGTH} characters)"
+        )
     try:
         tokens = tokenize(query)
         if len(tokens) > MAX_TOKENS:

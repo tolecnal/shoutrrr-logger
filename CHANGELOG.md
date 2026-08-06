@@ -7,6 +7,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+- **All open Dependabot advisories resolved.** Nine alerts across four
+  transitive packages: `postcss` (arbitrary `.map` file read via an
+  attacker-controlled `sourceMappingURL`), `js-yaml` (quadratic CPU use via
+  YAML merge-key chains), `brace-expansion` (three separate expansion DoS
+  advisories) and `sharp` (four inherited libvips CVEs). `brace-expansion` is
+  reached through two incompatible major lines — `minimatch@3` needs 1.x and
+  `minimatch@10` needs 5.x — so each line is pinned to its own patched release
+  rather than collapsed onto one version.
+- **Search parser no longer backtracks on field prefixes.** The tokenizer's
+  `field:` prefix pattern retried every shorter match looking for a `:` that
+  could not be there, the polynomial factor reported by CodeQL as
+  `py/polynomial-redos`. The prefix runs are now possessive, and `parse_query`
+  enforces its own 2000-character bound: `MAX_TOKENS` only applies *after*
+  tokenizing, so it capped the resulting AST but not the scan that built it.
+  The length cap previously existed only in the `/notifications` `q` parameter
+  and the saved-search schema — a caller's contract rather than the parser's.
+  Query matching behaviour is unchanged.
+
+### Changed
+- **Next.js 16.2.11 → 16.3.0.** Next 16.2 pins `sharp` to `^0.34.5`, which
+  excludes the patched 0.35.x line; 16.3.0 declares `^0.35.3`, so this is the
+  vendor-supported way to clear the `sharp` advisory rather than forcing a
+  resolution outside the framework's declared range.
+- **Dead ESLint dependencies removed.** The workspace root carried a
+  `dependencies` block duplicating seven frontend packages at stale majors
+  (`lucide-react ^0.564` against the frontend's `^1.17`, `vitest ^3.2.6`
+  against `^4.1.8`), whose `eslint-config-next` pulled in an entire second
+  ESLint toolchain that nothing consumed. Together with `@eslint/js` and
+  `globals` — both declared but never imported since the flat config was
+  reduced to spreading `eslint-config-next` — this removes 62 packages from
+  the install tree and clears all outstanding peer-dependency warnings.
+
 ## [1.1.1] — 2026-06-16
 
 ### Fixed
