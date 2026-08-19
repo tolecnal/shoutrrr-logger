@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-08-19
+
 ### Security
 - **`nanoid` pinned to >=3.3.18** (GHSA-2v37-7h3g-55p8 / CVE-2026-67213,
   high). Versions below 3.3.18 loop forever in `customAlphabet` and
