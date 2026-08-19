@@ -758,8 +758,11 @@ During local development (backend running directly): `http://localhost:9000/api/
 
 ### Prerequisites
 
-- Python 3.14+ with [uv](https://docs.astral.sh/uv/)
-- Node.js 22+ with pnpm 10+
+- Python 3.12+ with [uv](https://docs.astral.sh/uv/) — see
+  `requires-python` in `backend/pyproject.toml`; CI runs 3.14 and the
+  container image ships 3.14
+- Node.js 24+ with pnpm 11 (the exact version is pinned by `packageManager`
+  in the root `package.json`; `corepack` will honour it)
 - PostgreSQL 17 (local install or `docker compose up postgres`)
 
 ### Backend

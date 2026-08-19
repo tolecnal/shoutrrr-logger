@@ -7,6 +7,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+- **`nanoid` pinned to >=3.3.18** (GHSA-2v37-7h3g-55p8 / CVE-2026-67213,
+  high). Versions below 3.3.18 loop forever in `customAlphabet` and
+  `customRandom` when given a `size` of 0, hanging the calling thread.
+  `nanoid` is reached transitively through `postcss`, which only declares
+  `^3.3.11`, so a `nanoid@3` override forces the patched 3.x line; the
+  upstream 5.1.6 fix is a major bump `postcss` cannot take.
+
+### Documentation
+- **`AGENTS.md` is now the single source of truth for agent instructions**, and
+  `CLAUDE.md` is a pointer to it. The two files had drifted apart and shared
+  the same stale content — consolidating removes the drift by construction.
+- **Corrected long-standing inaccuracies in the agent instructions.** The
+  documented ruff invocation (`cd backend && .venv/bin/ruff check backend/`)
+  could never have worked — after the `cd` there is no `backend/` to lint, so
+  it failed with `E902`. The two-venv layout (`backend/.venv` locally, a
+  throwaway root `.venv` in the CI ruff job) is now spelled out. The
+  documented auth dependencies `get_current_user` and `require_role(...)` do
+  not exist; the real ones are `get_current_user_from_session`,
+  `require_admin` and `require_viewer`. The supported Python version is
+  `>=3.12` per `backend/pyproject.toml` (CI exercises 3.14), not "3.13+".
+- **Refreshed the workspace layouts**, which had gone badly stale: the backend
+  tree omitted `middleware/`, `migrations/`, `repositories/`, `services/` and
+  `utils/` (the last two being directories the guidance itself mandates), and
+  the frontend tree omitted the `app/[locale]/` segment every route lives
+  under, the `alerts/`, `performance/` and `stats/` routes, and `i18n/`,
+  `messages/`, `scripts/` and `types/`. Both trees listed `splunk` as the only
+  plugin when there are eleven on each side. `pnpm-lock.yaml` is at the repo
+  root, not in `frontend/`.
+- **Documented the Alembic CI gate** (`alembic check` for model/migration
+  drift plus a downgrade round-trip), which is enforced on every PR but was
+  described nowhere, and the dependency-override convention in
+  `pnpm-workspace.yaml`.
+- **Corrected the README development prerequisites**, which asked for Python
+  3.14+ (`backend/pyproject.toml` allows 3.12+, and `CONTRIBUTING.md` already
+  said so) and Node 22+/pnpm 10+ (CI runs Node 24, and `packageManager` pins
+  pnpm 11).
+
+### Added
+- `make lint` and `make test` targets wrapping the exact CI commands, so the
+  venv paths no longer have to be recalled by hand. Granular
+  `lint-backend`, `lint-frontend`, `test-backend` and `test-frontend` targets
+  are available too.
+
 ## [1.2.0] — 2026-08-06
 
 ### Security
