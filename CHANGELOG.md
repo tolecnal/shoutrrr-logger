@@ -7,6 +7,69 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-11-20
+
+Dependency-only security release. No features, no API changes and no
+migrations, so it deploys onto an existing database with no manual step.
+
+### Security
+- **`next` 16.3.0 → 16.4.5**, clearing 19 Next.js advisories. Five are
+  critical unauthenticated remote code execution: in the Image Optimization
+  API via SVG (GHSA-2464-fhr4-w9xw) and AVIF (GHSA-2xp9-vwfh-vxw4) files, in
+  `use cache` functions returning typed arrays (GHSA-673q-mjm6-r5xr), on
+  Windows-hosted servers (GHSA-p293-qw3h-jr36), and in `next/og`
+  `ImageResponse` (GHSA-vcvr-r3jv-pc5j). The rest include SSRF in Image
+  Optimization (GHSA-cjq9-62q9-8jv4), a Server Actions DoS
+  (GHSA-p3m5-59mp-jv5r), HttpOnly cookie exposure on Edge routes
+  (GHSA-f3mh-rxg3-f5g2), and a series of cache poisoning and cross-user
+  disclosure issues in SSG/ISR and `use cache`.
+- **`PyJWT` 2.13.0 → 2.15.0**, clearing 15 advisories. These include an
+  asymmetric-PEM detection bypass that defeats the HS/asymmetric key
+  confusion guard (GHSA-ffc3-869f-jxw9, critical), JWK/DER public keys and
+  empty keys accepted as HMAC secrets (GHSA-p4g4-x82p-q773,
+  GHSA-w2cx-738m-mc7w, GHSA-9j54-fg26-wv3r, GHSA-pxh4-856f-4h89),
+  `PyJWKClient` following redirects when fetching JWKS
+  (GHSA-9v7f-9g4p-ffgj), a BOM bypass (GHSA-r6x4-923q-g947), and several
+  DoS issues. This backend verifies OIDC tokens with PyJWT, so this is the
+  most relevant fix for deployments.
+- **`certifi` 2026.5.20 → 2026.10.19**: removes emSign root CAs whose
+  intermediate CA keys were compromised (GHSA-6q48-6c7w-9gw2, critical).
+- **`anyio` 4.13.0 → 4.14.2**: IDNA 2003 host name encoding in `TLSStream`
+  enabled possible TLS certificate spoofing (GHSA-82r6-8w77-94w6, critical),
+  and process-pool workers could block on undrained stderr
+  (GHSA-5p39-cfhj-2xmp).
+- **`urllib3` 2.7.0 → 2.8.0**: HTTPS proxy TLS configuration could be ignored
+  (GHSA-8988-9cw3-xx77), unbounded chunk-size line buffering
+  (GHSA-vxq7-64xx-v4gw), and an infinite loop in chunked deflate streaming
+  (GHSA-gh4c-6fx4-qh6g).
+- **`dnspython` 2.8.0 → 2.9.2**: excessive CPU and memory use when parsing
+  names (GHSA-45c3-73f7-pv4m, GHSA-vvf4-9x63-8xvv).
+- **`Mako` 1.3.12 → 1.4.2**: path traversal via drive-letter URIs on Windows
+  in `TemplateLookup` (GHSA-5639-2j2p-m4mx).
+- **`zod` 4.4.3 → 4.6.6**: memory exhaustion while validating oversized
+  constrained collections (GHSA-mrhx-c7xc-m3w5).
+- **`sharp` 0.35.3 → 0.35.5**: libheif (GHSA-rgj7-g3m4-5g8c) and librsvg
+  (GHSA-wq5f-xc86-pv6w) vulnerabilities. Comes in through next 16.4.5, which
+  requires `sharp ^0.35.5`.
+- **Transitive frontend packages**, forced through new or raised overrides
+  in `pnpm-workspace.yaml`:
+  - `js-yaml` 4.3.1 → 4.3.2 (GHSA-2883-xcg3-v3hh).
+  - `brace-expansion` 1.1.18 → 1.1.22 and 5.0.9 → 5.0.13, three DoS
+    advisories (GHSA-6j4f-fj2g-mc7p, GHSA-qhr7-859c-m2p7,
+    GHSA-q2hr-2g5m-vwhr).
+  - `browserslist` 4.28.2 → 4.29.6 (GHSA-c83g-rgw3-j3cx,
+    GHSA-73wf-gq98-2v4g).
+  - `vite` 7.3.5 → 7.3.8, five advisories in vite and its bundled
+    launch-editor (GHSA-698v-4r3x-3vcv, GHSA-587h-7wmj-h5pm,
+    GHSA-r825-w8mm-5pxw, GHSA-9jrq-w75r-8gcw, GHSA-rq7h-c2jc-7f22).
+- **Other transitive updates**: `source-map-js` 1.2.1 → 1.2.4
+  (GHSA-68fv-2mgg-jv7q), and `minimatch` 10.2.5 → 11.0.9
+  (GHSA-g3hv-75wg-m249) via `typescript-eslint` 8.61.0 → 8.73.0, which
+  declares `minimatch ^11.0.1`.
+- **Dev tooling**: `vitest` and `@vitest/coverage-v8` 4.1.8 → 4.1.12
+  (GHSA-82fw-gwwq-j7x9, GHSA-qxg6-89mg-rqv8, GHSA-xp26-3454-mjgp). These
+  run only in development and CI.
+
 ## [1.2.1] — 2026-08-19
 
 ### Security
