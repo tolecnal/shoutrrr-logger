@@ -13,16 +13,35 @@ packages:
 # line to clear the advisory and protect anyone on Windows who might.
 #
 # js-yaml <4.3.0 (via @eslint/eslintrc) allows YAML merge-key chains to force
-# quadratic CPU consumption (GHSA-52cp-r559-cp3m).
+# quadratic CPU consumption (GHSA-52cp-r559-cp3m). <4.3.2 additionally lets
+# empty merge sources bypass the maxTotalMergeKeys CPU limit
+# (GHSA-2883-xcg3-v3hh).
 #
 # brace-expansion is reached through two incompatible major lines —
-# minimatch@3 needs 1.x, minimatch@10 needs 5.x — so each line is pinned to
+# minimatch@3 needs 1.x, minimatch@11 needs 5.x — so each line is pinned to
 # its own patched release rather than collapsed onto one version. Both lines
 # are affected by the same three DoS advisories: exponential-time expansion
 # of consecutive non-expanding {} groups (GHSA-3jxr-9vmj-r5cp), unbounded
 # expansion length causing OOM (GHSA-mh99-v99m-4gvg), and unbounded
 # intermediate arrays bypassing the CVE-2026-14257 mitigation
-# (GHSA-rgw5-rvv9-x895).
+# (GHSA-rgw5-rvv9-x895). Both lines are also affected by three later DoS
+# advisories, fixed in 1.1.21 / 5.0.12: stack exhaustion via recursion in
+# parseCommaParts (GHSA-6j4f-fj2g-mc7p) and on nested brace groups
+# (GHSA-qhr7-859c-m2p7), and quadratic-time expansion of the `{a},b}`
+# rewrite (GHSA-q2hr-2g5m-vwhr).
+#
+# browserslist <=4.28.6 (via @babel/helper-compilation-targets) grows memory
+# without bound across distinct queries (GHSA-c83g-rgw3-j3cx) and can crash or
+# write to the prototype from an untrusted browserslist-stats.json
+# (GHSA-73wf-gq98-2v4g). Babel's range already allows the patched release,
+# but the lockfile dedupe keeps the old one, so force it.
+#
+# vite 7.x <=7.3.6 (via vitest) bundles a vulnerable launch-editor with three
+# Windows/editor command-injection advisories (GHSA-698v-4r3x-3vcv,
+# GHSA-587h-7wmj-h5pm, GHSA-r825-w8mm-5pxw), plus cross-origin script
+# execution through custom middleware (GHSA-9jrq-w75r-8gcw) and serving files
+# outside server.fs.allow (GHSA-rq7h-c2jc-7f22). vitest accepts the patched
+# release, but the lockfile dedupe keeps the old one, so force it.
 #
 # nanoid <3.3.18 (pulled transitively via postcss) hangs the calling thread
 # when customAlphabet/customRandom are given a size of 0 — the generation loop
@@ -33,13 +52,19 @@ packages:
 # sharp <0.35.0 inherits four libvips CVEs (GHSA-f88m-g3jw-g9cj). It needs no
 # override here: next 16.3.0 declares sharp ^0.35.3, so the patched line
 # resolves naturally. Do not downgrade next below 16.3.0 without adding one.
+# Later libheif (GHSA-rgj7-g3m4-5g8c) and librsvg (GHSA-wq5f-xc86-pv6w)
+# advisories are fixed in 0.35.5, which next 16.4.5 declares as its floor
+# (sharp ^0.35.5). Do not downgrade next below 16.4.5 without adding an
+# override for it.
 overrides:
   postcss: ^8.5.23
   esbuild: ^0.28.1
-  js-yaml: ^4.3.0
+  js-yaml: ^4.3.2
   nanoid@3: ^3.3.18
-  brace-expansion@1: ^1.1.18
-  brace-expansion@>=4: ^5.0.9
+  brace-expansion@1: ^1.1.21
+  brace-expansion@>=4: ^5.0.12
+  browserslist: ^4.28.7
+  vite@7: ^7.3.7
 
 # pnpm 10+ skips install/postinstall scripts by default. These are trusted
 # build steps (native binary downloads/compilation) required for Next.js
